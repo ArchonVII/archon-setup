@@ -36,6 +36,36 @@ test("plan.build closes over required features transitively", async () => {
   assert.ok(plan.selectedFeatureIds.includes("remote.github"));
 });
 
+test("agent-workflow.anomaly-triage feature loads and depends on remote.github", async () => {
+  const { features, groups } = await loadRegistry();
+  const triage = features.find((f) => f.id === "agent-workflow.anomaly-triage");
+  assert.ok(triage, "anomaly-triage feature missing");
+  assert.equal(triage.group, "agent-workflow");
+  assert.ok(triage.requires.includes("remote.github"));
+  assert.ok(triage.creates.includes(".github/workflows/anomaly-triage.yml"));
+  const group = groups.find((g) => g.id === "agent-workflow");
+  assert.ok(group, "agent-workflow group missing from groups.json");
+});
+
+test("planning anomaly-triage pulls in remote.github transitively", async () => {
+  const plan = await buildPlan({
+    selection: ["agent-workflow.anomaly-triage"],
+    options: {},
+    context: {
+      targetPath: "X",
+      owner: "o",
+      repo: "r",
+      visibility: "private",
+      capabilities: { "gh.repoCreateAllowed": true },
+    },
+  });
+  assert.ok(plan.selectedFeatureIds.includes("remote.github"));
+  assert.ok(
+    plan.files.some((f) => f.path === ".github/workflows/anomaly-triage.yml"),
+    "anomaly-triage workflow should be planned for creation"
+  );
+});
+
 test("plan with branch protection adds deferred post-check", async () => {
   const plan = await buildPlan({
     selection: ["remote.branch-protection"],
