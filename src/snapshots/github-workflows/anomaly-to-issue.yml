@@ -1,0 +1,21 @@
+# Copy this file to `.github/workflows/anomaly-to-issue.yml` in any consumer
+# repo that uses the .anomalies/ directory pattern. On PR merge, each newly
+# added anomaly file is promoted to a GitHub issue.
+
+name: Anomaly to Issue
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  promote:
+    uses: ArchonVII/github-workflows/.github/workflows/anomaly-to-issue.yml@v1
+    # with:
+    #   anomaly-dir: '.anomalies/'
+    #   base-label: 'anomaly'

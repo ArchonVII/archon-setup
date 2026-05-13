@@ -1,0 +1,36 @@
+{
+  "name": "@archonvii/archon-setup",
+  "version": "0.1.0-pre",
+  "description": "Plug-and-play repo bootstrapper for the ArchonVII ecosystem. Local browser wizard that scaffolds a new repo with AGENTS.md, workflows, labels, and branch protection.",
+  "type": "module",
+  "bin": {
+    "archon-setup": "bin/archon-setup.mjs"
+  },
+  "scripts": {
+    "start": "node bin/archon-setup.mjs",
+    "dev": "node bin/archon-setup.mjs --dev",
+    "refresh-snapshots": "node scripts/refresh-snapshots.mjs",
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "scaffold",
+    "bootstrap",
+    "agents",
+    "github",
+    "archonvii"
+  ],
+  "license": "MIT",
+  "author": "Joseph Maguirre"
+}

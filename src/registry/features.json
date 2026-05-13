@@ -1,0 +1,205 @@
+[
+  {
+    "id": "foundation.readme",
+    "label": "README.md",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": ["README.md"],
+    "tasks": ["writeReadme"],
+    "beginnerDescription": "A short README so anyone landing on the repo knows what it is and how to run it.",
+    "advancedDescription": "Quickstart template extracted from ArchonVII/.github/STARTER.md."
+  },
+  {
+    "id": "foundation.license",
+    "label": "LICENSE",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": ["LICENSE"],
+    "tasks": ["writeLicense"],
+    "options": {
+      "spdx": {
+        "type": "select",
+        "default": "MIT",
+        "choices": ["MIT", "Apache-2.0", "BSD-3-Clause", "Unlicense"]
+      }
+    },
+    "beginnerDescription": "A license tells other people what they can do with your code.",
+    "advancedDescription": "Body fetched from api.github.com/licenses/{spdx}; no auth required."
+  },
+  {
+    "id": "foundation.gitignore",
+    "label": ".gitignore",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": [".gitignore"],
+    "tasks": ["writeGitignore"],
+    "options": {
+      "language": {
+        "type": "select",
+        "default": "Node",
+        "choices": ["Node", "Python", "Both", "None"]
+      }
+    },
+    "beginnerDescription": "Tells git which files to never commit (build output, secrets, etc.).",
+    "advancedDescription": "Body fetched from api.github.com/gitignore/templates/{language}; 'Both' concatenates."
+  },
+  {
+    "id": "foundation.agents",
+    "label": "AGENTS.md",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": ["AGENTS.md"],
+    "tasks": ["writeAgentsMd"],
+    "beginnerDescription": "The cross-tool contract for AI agents (Claude, Codex, Gemini) working in this repo.",
+    "advancedDescription": "Copied from snapshot of ArchonVII/repo-template/AGENTS.md with CHANGELOG-mode placeholder resolved."
+  },
+  {
+    "id": "foundation.claude-md",
+    "label": "CLAUDE.md",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": ["CLAUDE.md"],
+    "tasks": ["writeClaudeMd"],
+    "beginnerDescription": "A short file that tells Claude to read AGENTS.md first.",
+    "advancedDescription": "5-line stub. Claude-specific addenda land below the pointer."
+  },
+  {
+    "id": "foundation.gemini-md",
+    "label": "GEMINI.md",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": ["GEMINI.md"],
+    "tasks": ["writeGeminiMd"],
+    "beginnerDescription": "Same as CLAUDE.md but for Gemini.",
+    "advancedDescription": "5-line stub pointing at AGENTS.md."
+  },
+  {
+    "id": "foundation.git-init",
+    "label": "git init + initial commit on main",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "requires": [
+      "foundation.readme",
+      "foundation.license",
+      "foundation.gitignore"
+    ],
+    "tasks": ["initGitAndCommit"],
+    "beginnerDescription": "Sets up version control and saves the first snapshot of the repo.",
+    "advancedDescription": "`git init -b main`, stages tracked files only, single initial commit."
+  },
+
+  {
+    "id": "remote.github",
+    "label": "Create GitHub repo",
+    "group": "remote",
+    "default": false,
+    "requires": ["foundation.git-init"],
+    "capabilitiesNeeded": ["gh.repoCreateAllowed"],
+    "commands": [
+      {
+        "tool": "gh",
+        "argsTemplate": [
+          "repo",
+          "create",
+          "{owner}/{repo}",
+          "{visibilityFlag}",
+          "--source=.",
+          "--remote=origin",
+          "--push"
+        ]
+      }
+    ],
+    "tasks": ["ghRepoCreateAndPush"],
+    "beginnerDescription": "Creates the repo on github.com and pushes your initial commit.",
+    "advancedDescription": "Uses `gh repo create OWNER/REPO --source=. --remote=origin --push`."
+  },
+  {
+    "id": "remote.labels",
+    "label": "Apply standard labels",
+    "group": "remote",
+    "default": true,
+    "requires": ["remote.github"],
+    "tasks": ["applyLabels"],
+    "beginnerDescription": "Adds ~30 standard labels (type / severity / priority / effort / status / workflow).",
+    "advancedDescription": "Invokes ArchonVII/github-workflows/scripts/setup-repo.mjs --solo for label application."
+  },
+  {
+    "id": "remote.branch-protection",
+    "label": "Apply baseline branch protection",
+    "group": "remote",
+    "default": true,
+    "requires": ["remote.github"],
+    "capabilitiesNeeded": ["gh.branchProtectionAllowed"],
+    "tasks": ["applyBaselineBranchProtection"],
+    "beginnerDescription": "Protects main: require PRs, no force-push, conversations must resolve. Named required checks come later.",
+    "advancedDescription": "Baseline only. Named required status checks are deferred (GitHub requires a check to have run within 7 days before it can be required). A postCheck is recorded in the manifest."
+  },
+
+  {
+    "id": "workflow.pr-policy",
+    "label": "pr-policy.yml",
+    "group": "workflows.pr-contract",
+    "default": true,
+    "requires": ["remote.github"],
+    "creates": [".github/workflows/pr-policy.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "pr-policy" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "Blocks a PR until its body has a `## Verification` section, at least one checked checkbox, and links an issue.",
+    "advancedDescription": "Caller to github-workflows/.github/workflows/pr-policy.yml@v1."
+  },
+  {
+    "id": "workflow.semantic-pr-title",
+    "label": "semantic-pr-title.yml",
+    "group": "workflows.pr-contract",
+    "default": true,
+    "requires": ["remote.github"],
+    "creates": [".github/workflows/semantic-pr-title.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "semantic-pr-title" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "Blocks PRs whose titles don't follow the `type(scope): description` convention.",
+    "advancedDescription": "Caller wraps amannn/action-semantic-pull-request@v5 via the @v1 reusable workflow."
+  },
+  {
+    "id": "workflow.pr-body-autoinject",
+    "label": "pr-body-autoinject.yml",
+    "group": "workflows.pr-contract",
+    "default": false,
+    "requires": ["remote.github"],
+    "creates": [".github/workflows/pr-body-autoinject.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "pr-body-autoinject" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "If a bot (like Copilot) opens a PR with an empty body, this injects the verification template.",
+    "advancedDescription": "Runs on `opened` only. Idempotent — won't overwrite an existing stub."
+  },
+  {
+    "id": "workflow.branch-naming",
+    "label": "branch-naming.yml",
+    "group": "workflows.pr-contract",
+    "default": false,
+    "requires": ["remote.github"],
+    "creates": [".github/workflows/branch-naming.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "branch-naming" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "Blocks branch names that don't match the agreed convention (e.g. `agent/claude/12-foo`).",
+    "advancedDescription": "Default regex covers the conventions documented in repo-template/AGENTS.md."
+  }
+]

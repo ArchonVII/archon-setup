@@ -1,0 +1,26 @@
+# Copy to `.github/workflows/ci.yml`. Defaults assume:
+#   - pyproject.toml at the repo root
+#   - ruff for lint + format-check
+#   - pyright for typecheck
+#   - pytest for tests
+# Override the *-command inputs to swap any of these.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ArchonVII/github-workflows/.github/workflows/python-ci.yml@v1
+    with:
+      python-versions: '["3.12"]'
+      # use-uv: true
+      # typecheck-command: 'mypy .'
+      # test-command: 'pytest -n auto'

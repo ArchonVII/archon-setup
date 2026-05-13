@@ -1,0 +1,20 @@
+# Copy this file to `.github/workflows/changelog-fragment.yml` in any
+# consumer repo that uses the per-PR CHANGELOG fragment convention.
+
+name: Changelog Fragment
+
+on:
+  pull_request:
+    types: [opened, synchronize, edited, labeled, unlabeled, reopened]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  check:
+    uses: ArchonVII/github-workflows/.github/workflows/changelog-fragment.yml@v1
+    # with:
+    #   src-path-prefix: 'src/'
+    #   fragment-dir: '.changelog/unreleased/'
+    #   opt-out-label: 'no-changelog'

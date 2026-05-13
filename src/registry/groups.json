@@ -1,0 +1,60 @@
+[
+  {
+    "id": "foundations",
+    "label": "Foundations",
+    "description": "Files every repo gets. Locked on.",
+    "order": 0,
+    "locked": true
+  },
+  {
+    "id": "documentation",
+    "label": "Documentation",
+    "description": "Optional docs scaffolding (ARCHITECTURE, CONTRIBUTING, ADRs, CHANGELOG).",
+    "order": 10
+  },
+  {
+    "id": "remote",
+    "label": "GitHub remote",
+    "description": "Create the repo on GitHub, apply labels, apply baseline branch protection.",
+    "order": 20,
+    "capabilitiesNeeded": ["gh.repoCreateAllowed"]
+  },
+  {
+    "id": "workflows.pr-contract",
+    "label": "PR contract bundle",
+    "description": "Reusable workflows that enforce PR title, body, branch naming, and policy.",
+    "order": 30,
+    "requires": ["remote.github"]
+  },
+  {
+    "id": "workflows.security",
+    "label": "Security & dependencies (v0.2)",
+    "description": "CodeQL, dependency review, Dependabot auto-merge.",
+    "order": 40,
+    "requires": ["remote.github"],
+    "disabled": true
+  },
+  {
+    "id": "workflows.ci",
+    "label": "CI (v0.2)",
+    "description": "node-ci.yml, python-ci.yml.",
+    "order": 50,
+    "requires": ["remote.github"],
+    "disabled": true
+  },
+  {
+    "id": "workflows.hygiene",
+    "label": "Repo hygiene (v0.2)",
+    "description": "stale.yml, lock-threads.yml, anomaly-to-issue.yml.",
+    "order": 60,
+    "requires": ["remote.github"],
+    "disabled": true
+  },
+  {
+    "id": "copilot",
+    "label": "Copilot / Pro tier (v0.4)",
+    "description": "Copilot enablement and Actions secrets. Hidden until v0.4.",
+    "order": 70,
+    "disabled": true
+  }
+]

@@ -1,0 +1,19 @@
+# Copy to `.github/workflows/branch-naming.yml`. Enforces the `open`-skill
+# branch convention by default. Override `pattern` for repos that use a
+# different convention.
+
+name: Branch Naming
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  check:
+    uses: ArchonVII/github-workflows/.github/workflows/branch-naming.yml@v1
+    # with:
+    #   enforce: false  # warn-only
+    #   pattern: '^(feat|fix|chore)/[a-z0-9-]+$'

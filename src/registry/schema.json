@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "archon-setup feature",
+  "type": "object",
+  "required": ["id", "label", "group", "tasks"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Dotted identifier, e.g. workflow.semantic-pr-title",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+    },
+    "label": { "type": "string" },
+    "group": { "type": "string" },
+    "default": { "type": "boolean", "default": false },
+    "locked": {
+      "type": "boolean",
+      "description": "If true, user cannot uncheck (used for Foundations).",
+      "default": false
+    },
+    "disabled": {
+      "type": "boolean",
+      "description": "If true, feature is hidden from UI (used to stage future capabilities).",
+      "default": false
+    },
+    "requires": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Other feature IDs or capability strings that must be satisfied."
+    },
+    "conflictsWith": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Feature IDs that cannot be enabled at the same time."
+    },
+    "capabilitiesNeeded": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Preflight capabilities required for this feature to be enable-able."
+    },
+    "creates": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Files this feature writes into the generated repo."
+    },
+    "commands": {
+      "type": "array",
+      "items": { "type": "object" },
+      "description": "External commands (gh, git) this feature will invoke."
+    },
+    "tasks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Task module IDs to run, in order."
+    },
+    "options": {
+      "type": "object",
+      "description": "User-selectable options (e.g. license SPDX, gitignore language)."
+    },
+    "validations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "beginnerDescription": { "type": "string" },
+    "advancedDescription": { "type": "string" }
+  }
+}

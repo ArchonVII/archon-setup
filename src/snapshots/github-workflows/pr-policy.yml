@@ -1,0 +1,24 @@
+# Copy this file to `.github/workflows/pr-policy.yml` in any consumer repo.
+# The thin caller owns the pull_request trigger; the reusable workflow holds
+# all the logic. Pin to a tag (e.g. @v1) so a breaking change upstream does
+# not silently re-deploy here.
+
+name: PR Policy
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  policy:
+    uses: ArchonVII/github-workflows/.github/workflows/pr-policy.yml@v1
+    # All inputs are optional; defaults match the original Pigafetta workflow.
+    # with:
+    #   require-linked-issue: true
+    #   require-verification-section: true
+    #   require-checked-box: true
+    #   run-actionlint: true

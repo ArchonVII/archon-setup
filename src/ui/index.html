@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>archon-setup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      .card {
+        @apply rounded-lg border border-slate-200 bg-white shadow-sm;
+      }
+      .pill {
+        @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium;
+      }
+      .pill-green {
+        @apply bg-emerald-100 text-emerald-800;
+      }
+      .pill-yellow {
+        @apply bg-amber-100 text-amber-800;
+      }
+      .pill-red {
+        @apply bg-rose-100 text-rose-800;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-50 text-slate-900">
+    <div id="app" class="mx-auto max-w-3xl p-6"></div>
+    <script type="module" src="./app.mjs"></script>
+  </body>
+</html>

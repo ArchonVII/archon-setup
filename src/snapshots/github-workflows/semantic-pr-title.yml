@@ -1,0 +1,21 @@
+# Copy to `.github/workflows/semantic-pr-title.yml`. Validates the PR title
+# against Conventional Commits format on open/edit/sync.
+
+name: Semantic PR Title
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate:
+    uses: ArchonVII/github-workflows/.github/workflows/semantic-pr-title.yml@v1
+    # with:
+    #   types: |
+    #     feat
+    #     fix
+    #     chore
+    #   require-scope: false

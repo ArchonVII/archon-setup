@@ -1,0 +1,24 @@
+# Copy to `.github/workflows/ci.yml`. Assumes package.json has `lint`,
+# `typecheck`, and `test` scripts. Pass empty strings to skip any of them.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ArchonVII/github-workflows/.github/workflows/node-ci.yml@v1
+    with:
+      node-versions: '["22"]'
+      # os-matrix: '["ubuntu-latest","windows-latest"]'
+      # lint-script: 'lint'
+      # typecheck-script: 'typecheck'
+      # test-script: 'test'
+      # build-script: ''

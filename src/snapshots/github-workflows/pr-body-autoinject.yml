@@ -1,0 +1,18 @@
+# Copy this file to `.github/workflows/pr-body-autoinject.yml` in any
+# consumer repo that uses Copilot SWE agent or other bot PR authors. Pairs
+# with pr-policy.yml — without auto-inject, bot PRs fail policy because they
+# do not read PULL_REQUEST_TEMPLATE.md.
+
+name: PR Body Auto-Inject
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  inject:
+    uses: ArchonVII/github-workflows/.github/workflows/pr-body-autoinject.yml@v1

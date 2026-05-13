@@ -1,0 +1,43 @@
+{
+  "snapshots": {
+    "githubWorkflows": {
+      "source": "ArchonVII/github-workflows",
+      "ref": "v1",
+      "sha": "2ef014a103e5e9e601f6ed32f0c7f820dedb046d",
+      "capturedAt": "2026-05-13T00:00:00Z",
+      "path": "src/snapshots/github-workflows/",
+      "contents": [
+        "anomaly-to-issue.yml",
+        "auto-merge-dependabot.yml",
+        "branch-naming.yml",
+        "changelog-fragment.yml",
+        "codeql.yml",
+        "dependency-review.yml",
+        "labeler.yml",
+        "lock-threads.yml",
+        "node-ci.yml",
+        "pr-body-autoinject.yml",
+        "pr-policy.yml",
+        "python-ci.yml",
+        "semantic-pr-title.yml",
+        "stale.yml"
+      ]
+    },
+    "repoTemplate": {
+      "source": "ArchonVII/repo-template",
+      "ref": "main",
+      "sha": "180ba5be1dc615c162f888d9f0dc800efa29f957",
+      "capturedAt": "2026-05-13T00:00:00Z",
+      "path": "src/snapshots/repo-template/",
+      "contents": ["AGENTS.md"]
+    },
+    "orgDefaults": {
+      "source": "ArchonVII/.github",
+      "ref": "main",
+      "sha": "0e4a82a7f43a9e6cf98f8e34d123b0c77aa72bba",
+      "capturedAt": "2026-05-13T00:00:00Z",
+      "path": "src/snapshots/org-defaults/",
+      "contents": ["STARTER.md"]
+    }
+  }
+}
