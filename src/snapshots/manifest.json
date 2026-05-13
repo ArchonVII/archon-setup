@@ -2,12 +2,14 @@
   "snapshots": {
     "githubWorkflows": {
       "source": "ArchonVII/github-workflows",
-      "ref": "v1",
-      "sha": "2ef014a103e5e9e601f6ed32f0c7f820dedb046d",
-      "capturedAt": "2026-05-13T00:00:00Z",
+      "ref": "v1-pending",
+      "sha": "42fd4b5d1ad03cb64c275bf17ff33afbe7b57741",
+      "shaPendingUpstreamPr": "ArchonVII/github-workflows#2",
+      "capturedAt": "2026-05-13T22:00:00Z",
       "path": "src/snapshots/github-workflows/",
       "contents": [
         "anomaly-to-issue.yml",
+        "anomaly-triage.yml",
         "auto-merge-dependabot.yml",
         "branch-naming.yml",
         "changelog-fragment.yml",
@@ -25,9 +27,10 @@
     },
     "repoTemplate": {
       "source": "ArchonVII/repo-template",
-      "ref": "main",
-      "sha": "180ba5be1dc615c162f888d9f0dc800efa29f957",
-      "capturedAt": "2026-05-13T00:00:00Z",
+      "ref": "main-pending",
+      "sha": "d6da37d3ed3559a735b76552a7ac354871069915",
+      "shaPendingUpstreamPr": "ArchonVII/repo-template#2",
+      "capturedAt": "2026-05-13T22:00:00Z",
       "path": "src/snapshots/repo-template/",
       "contents": ["AGENTS.md"]
     },

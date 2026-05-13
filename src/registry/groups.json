@@ -20,6 +20,13 @@
     "capabilitiesNeeded": ["gh.repoCreateAllowed"]
   },
   {
+    "id": "agent-workflow",
+    "label": "Agent workflow",
+    "description": "Capabilities that AI agents use during PR work. Pairs with AGENTS.md contract sections.",
+    "order": 25,
+    "requires": ["remote.github"]
+  },
+  {
     "id": "workflows.pr-contract",
     "label": "PR contract bundle",
     "description": "Reusable workflows that enforce PR title, body, branch naming, and policy.",
