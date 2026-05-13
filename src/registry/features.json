@@ -143,6 +143,21 @@
   },
 
   {
+    "id": "agent-workflow.anomaly-triage",
+    "label": "Anomaly triage",
+    "group": "agent-workflow",
+    "default": true,
+    "requires": ["remote.github"],
+    "creates": [".github/workflows/anomaly-triage.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "anomaly-triage" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "While an agent is writing code, it can flag side bugs it notices into a per-PR file. This workflow turns them into PR comments or new issues automatically.",
+    "advancedDescription": "Caller to ArchonVII/github-workflows/anomaly-triage.yml@v1. Pairs with the AGENTS.md contract section documenting `.archon/anomalies-thispr.md` (shipped by repo-template). Idempotent across PR re-syncs via fingerprint markers."
+  },
+  {
     "id": "workflow.pr-policy",
     "label": "pr-policy.yml",
     "group": "workflows.pr-contract",
