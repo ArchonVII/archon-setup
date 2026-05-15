@@ -86,6 +86,9 @@ Two modes — pick one per repo:
 
 For solo repos with low PR concurrency. Use **Keep a Changelog** format:
 
+Direct edit means "edit the canonical changelog file in the PR branch." It is
+not a direct-to-`main` shortcut after branch protection is enabled.
+
 ```markdown
 # Changelog
 
