@@ -20,6 +20,21 @@ Your default browser opens to a local URL. The wizard walks you through:
 
 Nothing leaves your machine except the `git` / `gh` calls you approve.
 
+## Updating Existing Repos
+
+Use the update command to refresh managed files in an existing repo after the
+central ArchonVII sources change:
+
+```bash
+node C:\GitHub\archon-setup\bin\archon-setup.mjs update --target C:\path\to\repo --dry-run
+node C:\GitHub\archon-setup\bin\archon-setup.mjs update --target C:\path\to\repo
+```
+
+The updater only changes workflow callers that already reference
+`ArchonVII/github-workflows@v1`, and preserves repo-specific inputs such as Node
+versions and script names. Bespoke local workflows, hooks, and repo-specific
+`AGENTS.md` sections are skipped unless they gain an explicit managed sync path.
+
 ## What this is
 
 Today, bootstrapping an ArchonVII repo is a 5-step manual recipe (clone template → customize → run setup script → tick required checks → commit). This tool wraps that recipe behind a UI that:
