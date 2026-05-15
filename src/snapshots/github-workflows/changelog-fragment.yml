@@ -5,7 +5,7 @@ name: Changelog Fragment
 
 on:
   pull_request:
-    types: [opened, synchronize, edited, labeled, unlabeled, reopened]
+    types: [opened, synchronize, edited, reopened]
 
 permissions:
   pull-requests: read
