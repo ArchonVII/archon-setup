@@ -4,7 +4,7 @@
 // v0.1: expects the sibling repos to be checked out locally. Future versions
 // will clone-shallow from github.com directly.
 
-import { readFile, writeFile, cp, rm } from "node:fs/promises";
+import { writeFile, cp, rm, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -27,7 +27,7 @@ const SOURCES = [
     key: "repoTemplate",
     source: "ArchonVII/repo-template",
     localPath: process.env.ARCHON_REPO_TEMPLATE || "C:/github/repo-template",
-    copyFiles: ["AGENTS.md"],
+    copyFiles: ["AGENTS.md", "docs/repo-update-log.md"],
     snapshotDir: "repo-template",
     ref: "main",
   },
@@ -58,6 +58,7 @@ async function run() {
       await cp(join(s.localPath, s.copyFrom), dest, { recursive: true });
     } else if (s.copyFiles) {
       for (const f of s.copyFiles) {
+        await mkdir(dirname(join(dest, f)), { recursive: true });
         await cp(join(s.localPath, f), join(dest, f), { recursive: false });
       }
     }
