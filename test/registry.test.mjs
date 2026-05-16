@@ -47,6 +47,15 @@ test("agent-workflow.anomaly-triage feature loads and depends on remote.github",
   assert.ok(group, "agent-workflow group missing from groups.json");
 });
 
+test("foundation.agents plans the repo update log with AGENTS.md", async () => {
+  const { features } = await loadRegistry();
+  const agents = features.find((f) => f.id === "foundation.agents");
+
+  assert.ok(agents, "foundation.agents feature missing");
+  assert.ok(agents.creates.includes("AGENTS.md"));
+  assert.ok(agents.creates.includes("docs/repo-update-log.md"));
+});
+
 test("planning anomaly-triage pulls in remote.github transitively", async () => {
   const plan = await buildPlan({
     selection: ["agent-workflow.anomaly-triage"],
