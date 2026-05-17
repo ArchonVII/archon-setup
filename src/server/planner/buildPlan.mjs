@@ -68,6 +68,42 @@ export async function buildPlan({ selection, options = {}, context }) {
     }
   }
 
+  // Conflicts: a feature may declare `conflictsWith` to mark mutual exclusion
+  // (e.g. the three `workflow.*-ci` features — exactly one CI flavor per repo).
+  const resolvedIds = new Set(resolved.map((f) => f.id));
+  for (const f of resolved) {
+    for (const conflictId of f.conflictsWith || []) {
+      if (resolvedIds.has(conflictId) && f.id < conflictId) {
+        // Emit once per pair using ordered ids to avoid duplicate warnings.
+        plan.warnings.push({
+          feature: f.id,
+          message: `conflicts with selected feature: ${conflictId}`,
+        });
+      }
+    }
+  }
+
+  // Required CI: when this repo is being wired to a GitHub remote, exactly
+  // one `workflows.ci` feature must be selected so branch protection has a
+  // `ci-success` check to require (F1 / issue #17). Surfaced as a warning
+  // rather than a hard error so the planner stays pure; the UI / CLI is
+  // responsible for blocking Execute when this warning is present.
+  if (resolvedIds.has("remote.github")) {
+    const ciSelected = resolved.filter((f) => f.group === "workflows.ci");
+    if (ciSelected.length === 0) {
+      plan.warnings.push({
+        feature: "workflows.ci",
+        message:
+          "no language CI selected — pick one of workflow.node-ci, workflow.python-ci, or workflow.minimal-ci so branch protection can require ci-success.",
+      });
+    } else if (ciSelected.length > 1) {
+      plan.warnings.push({
+        feature: "workflows.ci",
+        message: `more than one language CI selected (${ciSelected.map((f) => f.id).join(", ")}) — pick exactly one.`,
+      });
+    }
+  }
+
   // Order foundations → remote → workflows by group.order from groups.json
   const { groups } = await loadRegistry();
   const groupOrder = new Map(groups.map((g) => [g.id, g.order]));

@@ -77,3 +77,93 @@ test("plan with branch protection adds deferred post-check", async () => {
     "expected a tightenRequiredChecks post-check"
   );
 });
+
+// --- issue #17 / F1: language-CI features ---
+
+test("workflows.ci group is enabled and contains node/python/minimal CI features", async () => {
+  const { features, groups } = await loadRegistry();
+  const group = groups.find((g) => g.id === "workflows.ci");
+  assert.ok(group, "workflows.ci group missing");
+  assert.ok(!group.disabled, "workflows.ci group should be enabled");
+
+  for (const id of ["workflow.node-ci", "workflow.python-ci", "workflow.minimal-ci"]) {
+    const f = features.find((x) => x.id === id);
+    assert.ok(f, `${id} feature missing`);
+    assert.equal(f.group, "workflows.ci");
+    assert.ok(f.requires.includes("remote.github"));
+    assert.equal(f.tasks[0], "installWorkflow");
+  }
+});
+
+test("language-CI features declare mutual conflictsWith", async () => {
+  const { features } = await loadRegistry();
+  const ciIds = ["workflow.node-ci", "workflow.python-ci", "workflow.minimal-ci"];
+  for (const id of ciIds) {
+    const f = features.find((x) => x.id === id);
+    const others = ciIds.filter((x) => x !== id);
+    for (const other of others) {
+      assert.ok(
+        f.conflictsWith?.includes(other),
+        `${id} should declare conflictsWith ${other}`
+      );
+    }
+  }
+});
+
+test("planner warns when remote.github is selected without a language CI", async () => {
+  const plan = await buildPlan({
+    selection: ["remote.github"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: { "gh.repoCreateAllowed": true } },
+  });
+  assert.ok(
+    plan.warnings.some((w) => w.feature === "workflows.ci" && /no language CI selected/.test(w.message)),
+    "expected missing-CI warning"
+  );
+});
+
+test("planner does not warn about CI when a language-CI feature is selected", async () => {
+  const plan = await buildPlan({
+    selection: ["workflow.node-ci"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: { "gh.repoCreateAllowed": true } },
+  });
+  assert.ok(plan.selectedFeatureIds.includes("workflow.node-ci"));
+  assert.ok(plan.selectedFeatureIds.includes("remote.github"), "transitive remote.github");
+  assert.ok(
+    !plan.warnings.some((w) => w.feature === "workflows.ci"),
+    "should not warn about CI when one is selected"
+  );
+});
+
+test("planner warns and flags conflict when two language-CI features are selected", async () => {
+  const plan = await buildPlan({
+    selection: ["workflow.node-ci", "workflow.python-ci"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: { "gh.repoCreateAllowed": true } },
+  });
+  assert.ok(
+    plan.warnings.some((w) => /more than one language CI selected/.test(w.message)),
+    "expected duplicate-CI warning"
+  );
+  assert.ok(
+    plan.warnings.some((w) => /conflicts with selected feature/.test(w.message)),
+    "expected conflictsWith warning"
+  );
+});
+
+test("language-CI features point at existing snapshot files", async () => {
+  const { features } = await loadRegistry();
+  const { readFile } = await import("node:fs/promises");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const snapDir = join(here, "..", "src", "snapshots", "github-workflows");
+  for (const id of ["workflow.node-ci", "workflow.python-ci", "workflow.minimal-ci"]) {
+    const f = features.find((x) => x.id === id);
+    const name = f.options.workflowName.value;
+    const body = await readFile(join(snapDir, `${name}.yml`), "utf8");
+    assert.ok(body.includes("ci-success:"), `${name}.yml should define a ci-success job`);
+    assert.ok(body.includes("@v1"), `${name}.yml must reference @v1 for installWorkflow validator`);
+  }
+});
