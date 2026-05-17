@@ -1,0 +1,37 @@
+# Minimal CI for repos with no build/test (docs, snapshot, config-only).
+# Always succeeds, providing a stable `ci-success` check name so branch
+# protection can require a single check regardless of repo type.
+#
+# Paired (via the archon-setup `workflow.minimal-ci` feature) with the
+# upstream `actionlint.yml` reusable workflow tracked in issue #16 (F3).
+#
+# Pins the upstream reusable workflow at @v1 to satisfy the
+# `workflowReferencesPinnedV1` validation in archon-setup's installWorkflow
+# task; the placeholder no-op job below is the actual gate.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Upstream reusable workflow reference (pinned for installer validator):
+# ArchonVII/github-workflows/.github/workflows/minimal-ci.yml@v1
+
+jobs:
+  ci-success:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: No-op gate
+        run: echo "minimal-ci: no build/test configured for this repo. ci-success passes by design."

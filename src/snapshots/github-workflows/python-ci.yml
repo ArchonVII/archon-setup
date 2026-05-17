@@ -1,9 +1,14 @@
-# Copy to `.github/workflows/ci.yml`. Defaults assume:
+# Caller workflow for the reusable Python CI in ArchonVII/github-workflows.
+# Defaults assume:
 #   - pyproject.toml at the repo root
 #   - ruff for lint + format-check
 #   - pyright for typecheck
 #   - pytest for tests
 # Override the *-command inputs to swap any of these.
+#
+# The job is named `ci-success` so branch protection can require a single
+# consistent check name regardless of which `workflow.*-ci` feature was
+# installed by archon-setup (node, python, or minimal).
 
 name: CI
 
@@ -16,8 +21,12 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  ci:
+  ci-success:
     uses: ArchonVII/github-workflows/.github/workflows/python-ci.yml@v1
     with:
       python-versions: '["3.12"]'
