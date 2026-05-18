@@ -1,5 +1,10 @@
-# Copy to `.github/workflows/ci.yml`. Assumes package.json has `lint`,
-# `typecheck`, and `test` scripts. Pass empty strings to skip any of them.
+# Caller workflow for the reusable Node CI in ArchonVII/github-workflows.
+# Assumes package.json has `lint`, `typecheck`, and `test` scripts. Pass
+# empty strings to skip any of them.
+#
+# The job is named `ci-success` so branch protection can require a single
+# consistent check name regardless of which `workflow.*-ci` template was
+# installed (node, python, or minimal).
 
 name: CI
 
@@ -13,8 +18,12 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  ci:
+  ci-success:
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     uses: ArchonVII/github-workflows/.github/workflows/node-ci.yml@v1
     with:

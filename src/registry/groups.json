@@ -43,11 +43,10 @@
   },
   {
     "id": "workflows.ci",
-    "label": "CI (v0.2)",
-    "description": "node-ci.yml, python-ci.yml.",
+    "label": "Language CI",
+    "description": "Caller workflow that wires this repo into the ArchonVII reusable CI. Pick exactly one: node, python, or minimal (docs/snapshot-only repos). All three install a job named `ci-success` so branch protection can require a single consistent check name.",
     "order": 50,
-    "requires": ["remote.github"],
-    "disabled": true
+    "requires": ["remote.github"]
   },
   {
     "id": "workflows.hygiene",

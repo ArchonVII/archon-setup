@@ -311,6 +311,20 @@ function renderReview() {
     card.append(pcUl);
   }
 
+  // Warnings block selection issues that must be fixed before Execute
+  // (e.g. missing/duplicate language-CI choice per issue #17 / F1).
+  const blockingWarnings = (state.plan.warnings || []).filter(
+    (w) => w.feature === "workflows.ci" || /conflicts with/.test(w.message)
+  );
+  if (state.plan.warnings?.length) {
+    card.append(h("h3", { class: "mt-4 font-medium" }, "Warnings"));
+    const wUl = h("ul", { class: "mt-1 text-sm space-y-0.5" });
+    for (const w of state.plan.warnings) {
+      wUl.append(h("li", { class: "text-rose-700" }, "⚠ " + w.feature + ": " + w.message));
+    }
+    card.append(wUl);
+  }
+
   const row = h("div", { class: "mt-6 flex gap-2" });
   row.append(
     h("button", {
@@ -318,8 +332,13 @@ function renderReview() {
       onClick: () => { state.screen = "features"; render(); },
     }, "← Back"),
     h("button", {
-      class: "rounded bg-emerald-700 text-white px-4 py-2 hover:bg-emerald-800",
-      onClick: () => { state.screen = "execute"; render(); },
+      class: blockingWarnings.length
+        ? "rounded bg-slate-300 text-slate-500 px-4 py-2 cursor-not-allowed"
+        : "rounded bg-emerald-700 text-white px-4 py-2 hover:bg-emerald-800",
+      disabled: blockingWarnings.length ? "" : undefined,
+      onClick: blockingWarnings.length
+        ? () => alert("Fix selection warnings before executing: " + blockingWarnings.map((w) => w.message).join("; "))
+        : () => { state.screen = "execute"; render(); },
     }, "Execute →")
   );
   card.append(row);

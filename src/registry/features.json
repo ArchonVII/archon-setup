@@ -216,5 +216,54 @@
     "validations": ["workflowReferencesPinnedV1"],
     "beginnerDescription": "Blocks branch names that don't match the agreed convention (e.g. `agent/claude/12-foo`).",
     "advancedDescription": "Default regex covers the conventions documented in repo-template/AGENTS.md."
+  },
+
+  {
+    "id": "workflow.node-ci",
+    "label": "Node CI (ci.yml)",
+    "group": "workflows.ci",
+    "default": false,
+    "requires": ["remote.github"],
+    "conflictsWith": ["workflow.python-ci", "workflow.minimal-ci"],
+    "creates": [".github/workflows/node-ci.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "node-ci" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "Runs lint, typecheck, and tests on every PR. Pick this if your repo has a package.json.",
+    "advancedDescription": "Caller to github-workflows/.github/workflows/node-ci.yml@v1. Detects npm/pnpm/yarn from the lockfile. Job is named `ci-success` so branch protection can require a single check across all `workflow.*-ci` choices."
+  },
+  {
+    "id": "workflow.python-ci",
+    "label": "Python CI (ci.yml)",
+    "group": "workflows.ci",
+    "default": false,
+    "requires": ["remote.github"],
+    "conflictsWith": ["workflow.node-ci", "workflow.minimal-ci"],
+    "creates": [".github/workflows/python-ci.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "python-ci" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "Runs ruff lint, ruff format-check, pyright, and pytest on every PR. Pick this if your repo has a pyproject.toml or requirements.txt.",
+    "advancedDescription": "Caller to github-workflows/.github/workflows/python-ci.yml@v1. Uses uv when pyproject.toml is present; falls back to pip. Job is named `ci-success` so branch protection can require a single check across all `workflow.*-ci` choices."
+  },
+  {
+    "id": "workflow.minimal-ci",
+    "label": "Minimal CI (no build/test)",
+    "group": "workflows.ci",
+    "default": false,
+    "requires": ["remote.github"],
+    "conflictsWith": ["workflow.node-ci", "workflow.python-ci"],
+    "creates": [".github/workflows/minimal-ci.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "minimal-ci" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "A no-op check that always passes. Pick this for docs-only or snapshot repos that have no build or test.",
+    "advancedDescription": "Installs a `ci-success` no-op job so branch protection has a stable required check name regardless of repo type. Pairs with `actionlint.yml` (issue #16 / F3) for workflow-syntax coverage even when there is no language CI."
   }
 ]
