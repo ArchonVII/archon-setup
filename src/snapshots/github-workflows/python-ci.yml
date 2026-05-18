@@ -7,8 +7,8 @@
 # Override the *-command inputs to swap any of these.
 #
 # The job is named `ci-success` so branch protection can require a single
-# consistent check name regardless of which `workflow.*-ci` feature was
-# installed by archon-setup (node, python, or minimal).
+# consistent check name regardless of which `workflow.*-ci` template was
+# installed (node, python, or minimal).
 
 name: CI
 

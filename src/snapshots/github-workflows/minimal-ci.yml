@@ -3,11 +3,12 @@
 # protection can require a single check regardless of repo type.
 #
 # Paired (via the archon-setup `workflow.minimal-ci` feature) with the
-# upstream `actionlint.yml` reusable workflow tracked in issue #16 (F3).
+# upstream `actionlint.yml` reusable workflow tracked in issue #16 (F3) and
+# installed alongside this file.
 #
-# Pins the upstream reusable workflow at @v1 to satisfy the
-# `workflowReferencesPinnedV1` validation in archon-setup's installWorkflow
-# task; the placeholder no-op job below is the actual gate.
+# The reference below pins the upstream reusable workflow at @v1 to satisfy
+# the `workflowReferencesPinnedV1` validation in archon-setup's
+# installWorkflow task; the placeholder no-op job is the actual gate.
 
 name: CI
 
