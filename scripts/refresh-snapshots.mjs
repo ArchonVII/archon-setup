@@ -27,7 +27,7 @@ const SOURCES = [
     key: "repoTemplate",
     source: "ArchonVII/repo-template",
     localPath: process.env.ARCHON_REPO_TEMPLATE || "C:/github/repo-template",
-    copyFiles: ["AGENTS.md", "docs/repo-update-log.md"],
+    copyFiles: ["AGENTS.md", "docs/repo-update-log.md", ".agent/check-map.yml"],
     snapshotDir: "repo-template",
     ref: "main",
   },

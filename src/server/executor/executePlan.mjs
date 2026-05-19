@@ -5,6 +5,7 @@ import * as writeGitignore from "../tasks/writeGitignore.mjs";
 import * as writeAgentsMd from "../tasks/writeAgentsMd.mjs";
 import * as writeClaudeMd from "../tasks/writeClaudeMd.mjs";
 import * as writeGeminiMd from "../tasks/writeGeminiMd.mjs";
+import * as writeCheckMap from "../tasks/writeCheckMap.mjs";
 import * as initGitAndCommit from "../tasks/initGitAndCommit.mjs";
 import * as ghRepoCreateAndPush from "../tasks/ghRepoCreateAndPush.mjs";
 import * as applyLabels from "../tasks/applyLabels.mjs";
@@ -19,6 +20,7 @@ const TASKS = {
   writeAgentsMd,
   writeClaudeMd,
   writeGeminiMd,
+  writeCheckMap,
   initGitAndCommit,
   ghRepoCreateAndPush,
   applyLabels,

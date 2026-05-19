@@ -126,7 +126,7 @@ test("planner warns when remote.github is selected without a language CI", async
     context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: { "gh.repoCreateAllowed": true } },
   });
   assert.ok(
-    plan.warnings.some((w) => w.feature === "workflows.ci" && /no language CI selected/.test(w.message)),
+    plan.warnings.some((w) => w.feature === "workflows.ci" && /no required gate/.test(w.message)),
     "expected missing-CI warning"
   );
 });
@@ -175,4 +175,53 @@ test("language-CI features point at existing snapshot files", async () => {
     assert.ok(body.includes("ci-success:"), `${name}.yml should define a ci-success job`);
     assert.ok(body.includes("@v1"), `${name}.yml must reference @v1 for installWorkflow validator`);
   }
+});
+
+// --- issue #16 / required gate + check map ---
+
+test("required-gate feature is the default CI contract", async () => {
+  const { features } = await loadRegistry();
+  const gate = features.find((f) => f.id === "workflow.required-gate");
+
+  assert.ok(gate, "workflow.required-gate feature missing");
+  assert.equal(gate.group, "workflows.ci");
+  assert.equal(gate.default, true);
+  assert.ok(gate.requires.includes("remote.github"));
+  assert.ok(gate.creates.includes(".github/workflows/repo-required-gate.yml"));
+  assert.equal(gate.tasks[0], "installWorkflow");
+  assert.equal(gate.options.workflowName.value, "repo-required-gate");
+});
+
+test("check-map feature is installed with agent foundations", async () => {
+  const { features } = await loadRegistry();
+  const checkMap = features.find((f) => f.id === "agent-workflow.check-map");
+
+  assert.ok(checkMap, "agent-workflow.check-map feature missing");
+  assert.equal(checkMap.group, "agent-workflow");
+  assert.equal(checkMap.default, true);
+  assert.ok(checkMap.creates.includes(".agent/check-map.yml"));
+  assert.equal(checkMap.tasks[0], "writeCheckMap");
+});
+
+test("planning the required gate also plans the check map and avoids legacy CI warning", async () => {
+  const plan = await buildPlan({
+    selection: ["workflow.required-gate"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: { "gh.repoCreateAllowed": true } },
+  });
+
+  assert.ok(plan.selectedFeatureIds.includes("remote.github"));
+  assert.ok(plan.selectedFeatureIds.includes("agent-workflow.check-map"));
+  assert.ok(
+    plan.files.some((f) => f.path === ".github/workflows/repo-required-gate.yml"),
+    "required gate workflow should be planned"
+  );
+  assert.ok(
+    plan.files.some((f) => f.path === ".agent/check-map.yml"),
+    "check map should be planned"
+  );
+  assert.ok(
+    !plan.warnings.some((w) => w.feature === "workflows.ci"),
+    "required gate should satisfy the CI contract"
+  );
 });
