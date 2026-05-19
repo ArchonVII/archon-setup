@@ -94,7 +94,7 @@ export async function buildPlan({ selection, options = {}, context }) {
       plan.warnings.push({
         feature: "workflows.ci",
         message:
-          "no language CI selected — pick one of workflow.node-ci, workflow.python-ci, or workflow.minimal-ci so branch protection can require ci-success.",
+          "no required gate or language CI selected — keep workflow.required-gate for the stable repo-required-gate / decision branch-protection check.",
       });
     } else if (ciSelected.length > 1) {
       plan.warnings.push({
@@ -134,7 +134,7 @@ export async function buildPlan({ selection, options = {}, context }) {
     plan.postChecks.push({
       type: "branchProtection.tightenRequiredChecks",
       deferUntil: "firstCheckRun",
-      reason: "GitHub requires a check to have run within 7 days before it can be marked required.",
+      reason: "After the first PR run, require repo-required-gate / decision. GitHub requires a check to have run within 7 days before it can be marked required.",
     });
   }
 

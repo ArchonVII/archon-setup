@@ -143,10 +143,20 @@
   },
 
   {
+    "id": "agent-workflow.check-map",
+    "label": ".agent/check-map.yml",
+    "group": "agent-workflow",
+    "default": true,
+    "creates": [".agent/check-map.yml"],
+    "tasks": ["writeCheckMap"],
+    "beginnerDescription": "Records which local paths require which checks so agents and the required gate share one policy map.",
+    "advancedDescription": "Copied from the repo-template baseline. The single required gate remains the branch-protection contract; this file documents and customizes the path-to-check matrix."
+  },
+  {
     "id": "agent-workflow.anomaly-triage",
     "label": "Anomaly triage",
     "group": "agent-workflow",
-    "default": true,
+    "default": false,
     "requires": ["remote.github"],
     "creates": [".github/workflows/anomaly-triage.yml"],
     "tasks": ["installWorkflow"],
@@ -161,7 +171,7 @@
     "id": "workflow.pr-policy",
     "label": "pr-policy.yml",
     "group": "workflows.pr-contract",
-    "default": true,
+    "default": false,
     "requires": ["remote.github"],
     "creates": [".github/workflows/pr-policy.yml"],
     "tasks": ["installWorkflow"],
@@ -176,7 +186,7 @@
     "id": "workflow.semantic-pr-title",
     "label": "semantic-pr-title.yml",
     "group": "workflows.pr-contract",
-    "default": true,
+    "default": false,
     "requires": ["remote.github"],
     "creates": [".github/workflows/semantic-pr-title.yml"],
     "tasks": ["installWorkflow"],
@@ -219,12 +229,28 @@
   },
 
   {
+    "id": "workflow.required-gate",
+    "label": "Repo Required Gate",
+    "group": "workflows.ci",
+    "default": true,
+    "requires": ["remote.github", "agent-workflow.check-map"],
+    "conflictsWith": ["workflow.node-ci", "workflow.python-ci", "workflow.minimal-ci"],
+    "creates": [".github/workflows/repo-required-gate.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "repo-required-gate" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "Installs one always-reporting required branch-protection gate. Configure branch protection to require `repo-required-gate / decision`.",
+    "advancedDescription": "Caller to github-workflows/.github/workflows/repo-required-gate.yml@v1. It detects changed paths, runs only relevant checks, and exposes a stable decision job for branch protection."
+  },
+  {
     "id": "workflow.node-ci",
     "label": "Node CI (ci.yml)",
     "group": "workflows.ci",
     "default": false,
     "requires": ["remote.github"],
-    "conflictsWith": ["workflow.python-ci", "workflow.minimal-ci"],
+    "conflictsWith": ["workflow.required-gate", "workflow.python-ci", "workflow.minimal-ci"],
     "creates": [".github/workflows/node-ci.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -240,7 +266,7 @@
     "group": "workflows.ci",
     "default": false,
     "requires": ["remote.github"],
-    "conflictsWith": ["workflow.node-ci", "workflow.minimal-ci"],
+    "conflictsWith": ["workflow.required-gate", "workflow.node-ci", "workflow.minimal-ci"],
     "creates": [".github/workflows/python-ci.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -256,7 +282,7 @@
     "group": "workflows.ci",
     "default": false,
     "requires": ["remote.github"],
-    "conflictsWith": ["workflow.node-ci", "workflow.python-ci"],
+    "conflictsWith": ["workflow.required-gate", "workflow.node-ci", "workflow.python-ci"],
     "creates": [".github/workflows/minimal-ci.yml"],
     "tasks": ["installWorkflow"],
     "options": {

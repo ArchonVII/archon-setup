@@ -1,0 +1,30 @@
+# Caller workflow for the single required branch-protection gate.
+# Branch protection should require only: repo-required-gate / decision
+# Do not add path filters to this caller.
+
+name: Repo Required Gate
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  merge_group:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: repo-required-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  repo-required-gate:
+    uses: ArchonVII/github-workflows/.github/workflows/repo-required-gate.yml@v1
+    with:
+      stack: minimal
+      # stack: node
+      # stack: python
+      # working-directory: "."
+      # node-versions: '["22"]'
+      # python-versions: '["3.12"]'

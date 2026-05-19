@@ -55,7 +55,7 @@ export async function apply(ctx) {
   ctx.manifest.remoteActions.push({
     type: "branchProtection.applyBaseline",
     result: "ok",
-    note: "Named required checks deferred — see postChecks.",
+    note: "Named required check deferred — require repo-required-gate / decision after the first PR run.",
   });
   return { result: "applied" };
 }
