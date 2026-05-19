@@ -48,6 +48,10 @@ This repo treats those three as read-only sources of truth. Snapshots live under
 Before marking a PR ready:
 
 - Run `node --test test/` and record the exact command output in `### Verification Notes`.
+- For workflow file changes, run scoped validation with `actionlint <workflow-files>`.
+  Do not search the whole filesystem for the binary. Use `actionlint` on `PATH`,
+  or on Windows install it at `C:\Tools\actionlint\actionlint.exe` and add
+  `C:\Tools\actionlint` to `PATH`.
 - For UI changes, launch `npm run dev`, exercise the wizard end-to-end with `ARCHON_SETUP_E2E=1`, and record what you exercised.
 - Tick a `- [x]` box **only after** the command actually passed.
 - Adversarial check: re-run the same plan twice — assert no duplicate state.

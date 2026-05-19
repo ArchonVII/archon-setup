@@ -12,7 +12,7 @@ npx @archonvii/archon-setup
 
 Your default browser opens to a local URL. The wizard walks you through:
 
-0. **Doctor** — confirms `git`, `gh`, network, and write permissions are good.
+0. **Doctor** — confirms `git`, `gh`, optional `actionlint`, network, and write permissions are good.
 1. **Location** — where to scaffold, repo name, public/private.
 2. **Features** — checkbox tree (Foundations, GitHub remote, PR contract, …).
 3. **Review** — exactly what files will be created and commands run.
@@ -34,6 +34,34 @@ The updater only changes workflow callers that already reference
 `ArchonVII/github-workflows@v1`, and preserves repo-specific inputs such as Node
 versions and script names. Bespoke local workflows, hooks, and repo-specific
 `AGENTS.md` sections are skipped unless they gain an explicit managed sync path.
+
+## Local Workflow Validation
+
+For PRs that change GitHub Actions workflow files, use scoped local validation:
+
+```bash
+actionlint .github/workflows/<workflow>.yml
+```
+
+`archon-setup` Doctor reports whether `actionlint` is available. It checks
+`actionlint` on `PATH` first, then the standard Windows location
+`C:\Tools\actionlint\actionlint.exe`. Avoid broad filesystem searches for the
+binary; install it at that path or add its directory to `PATH`.
+
+Windows setup:
+
+```powershell
+New-Item -ItemType Directory -Force C:\Tools\actionlint
+# Place actionlint.exe from https://github.com/rhysd/actionlint/releases in C:\Tools\actionlint
+[Environment]::SetEnvironmentVariable(
+  "Path",
+  [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\Tools\actionlint",
+  "User"
+)
+```
+
+Open a new terminal after changing `PATH`, then confirm with
+`actionlint -version`.
 
 ## What this is
 

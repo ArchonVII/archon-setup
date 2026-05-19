@@ -1,3 +1,4 @@
+import { checkActionlint } from "./checkActionlint.mjs";
 import { checkGit } from "./checkGit.mjs";
 import { checkGh } from "./checkGh.mjs";
 import { checkGhAuth } from "./checkGhAuth.mjs";
@@ -16,13 +17,14 @@ export async function runPreflight({ target } = {}) {
       const auth = await checkGhAuth();
       return [gh, auth];
     }),
+    checkActionlint(),
     checkNetwork(),
     target ? checkTargetPath(target) : Promise.resolve(null),
   ];
 
-  const [node, git, ghPair, network, targetCheck] = await Promise.all(tasks);
+  const [node, git, ghPair, actionlint, network, targetCheck] = await Promise.all(tasks);
   const [gh, ghAuth] = Array.isArray(ghPair) ? ghPair : [ghPair, null];
-  const checks = [node, git, gh, ghAuth, network, targetCheck].filter(Boolean);
+  const checks = [node, git, gh, ghAuth, actionlint, network, targetCheck].filter(Boolean);
 
   const summary = checks.reduce(
     (acc, c) => {
