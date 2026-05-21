@@ -7,7 +7,16 @@ name: Repo Required Gate
 on:
   pull_request:
     branches: [main]
-    types: [opened, edited, synchronize, reopened, ready_for_review]
+    types:
+      [
+        opened,
+        edited,
+        synchronize,
+        reopened,
+        ready_for_review,
+        labeled,
+        unlabeled,
+      ]
   merge_group:
 
 permissions:
@@ -19,12 +28,59 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # -------------------------------------------------------------------------
+  # Pick ONE of the call shapes below for your consumer's CI. Comment the
+  # others. The gate auto-routes PRs to the smallest lane that still gives
+  # real signal: docs-only / workflow-only / policy-only / snapshot-refresh /
+  # code (node|python|polyglot) / forced-full (via the `ci:full` label).
+  # -------------------------------------------------------------------------
   repo-required-gate:
     uses: ArchonVII/github-workflows/.github/workflows/repo-required-gate.yml@v1
     with:
+      # ------ Minimal (docs / config repos with no language CI) -----------
       stack: minimal
+
+      # ------ Node-only stack ---------------------------------------------
       # stack: node
+      # node-versions: '["22"]'
+      # npm-test-script: test
+      # npm-build-script: build
+
+      # ------ Python-only stack -------------------------------------------
       # stack: python
-      # working-directory: "."
+      # python-versions: '["3.12"]'
+      # python-use-uv: true
+
+      # ------ Polyglot (Node + Python in one repo) ------------------------
+      # When stack=polyglot, you MUST declare at least one of node-paths or
+      # python-paths. Files are matched with `path/**` (prefix), `path/`
+      # (prefix), or exact filename. node-ci runs only when a node-path file
+      # changed; python-ci runs only when a python-path file changed.
+      #
+      # stack: polyglot
       # node-versions: '["22"]'
       # python-versions: '["3.12"]'
+      # node-paths: |
+      #   server/**
+      #   web/**
+      #   electron/**
+      #   package.json
+      #   package-lock.json
+      # python-paths: |
+      #   analysis-service/**
+
+      # ------ Snapshot-refresh lane (any stack) ---------------------------
+      # PRs that touch ONLY paths matching snapshot-paths skip language CI
+      # and instead run snapshot-test-command. ALL changed files must match
+      # (one non-matching file falls through to the normal lane).
+      #
+      # snapshot-paths: |
+      #   src/snapshots/
+      # snapshot-test-command: npm run test:snapshots
+
+      # ------ Force-full escape hatch (any stack) -------------------------
+      # Default label is `ci:full`. Apply it to a PR to bypass path-based
+      # routing and run the full language CI surface — e.g. a workflow-only
+      # change that semantically affects CI.
+      #
+      # force-full-ci-label: ci:full
