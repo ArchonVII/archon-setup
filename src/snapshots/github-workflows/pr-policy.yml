@@ -9,9 +9,21 @@ on:
   pull_request:
     types: [opened, edited, reopened, synchronize]
 
+# `permissions:` here scopes the GITHUB_TOKEN passed into the reusable
+# workflow. The reusable workflow itself sets a stricter job-level block,
+# but a reusable workflow can never grant itself MORE than the caller
+# grants — so every scope the reusable workflow needs must also be
+# present here:
+#   - pull-requests: read   → read PR body / files / draft state
+#   - contents: read        → checkout + `git.getCommit` for head commit time
+#   - checks: read          → required by the F2/F10 evidence parser to look
+#                             up CI check-runs for `location: ci` evidence
+#                             rows via `checks.listForRef`. Source: PR #19
+#                             adversarial review (2026-05-20), finding C2.
 permissions:
   pull-requests: read
   contents: read
+  checks: read
 
 jobs:
   policy:
