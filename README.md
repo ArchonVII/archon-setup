@@ -6,9 +6,26 @@ A local browser wizard that scaffolds a new repository — files, git init, `gh`
 
 ## Quickstart
 
+Current source checkout command:
+
+```bash
+npm start
+```
+
+Equivalent direct command:
+
+```bash
+node bin/archon-setup.mjs
+```
+
+The intended published command is:
+
 ```bash
 npx @archonvii/archon-setup
 ```
+
+As of 2026-05-28, the package is still pre-release and is not published to npm,
+so use the source checkout commands above.
 
 Your default browser opens to a local URL. The wizard walks you through:
 
@@ -19,6 +36,60 @@ Your default browser opens to a local URL. The wizard walks you through:
 4. **Execute** — streaming progress.
 
 Nothing leaves your machine except the `git` / `gh` calls you approve.
+
+## Canonical New-Repo Setup
+
+Use `archon-setup` as the canonical path for new ArchonVII repos. It wraps the
+older manual recipe from `repo-template` and `github-workflows`:
+
+1. Run `node bin/archon-setup.mjs` from this repo.
+2. Pass Doctor checks for `git`, `gh`, optional `actionlint`, network access,
+   and write permissions.
+3. Choose the target location, repo name, visibility, and feature set.
+4. Review the exact files, commands, remote mutations, and deferred post-checks.
+5. Execute the plan, then follow the generated manifest's post-checks.
+
+The manual fallback remains:
+
+1. Create from `ArchonVII/repo-template`.
+2. Customize README, license, `.gitignore`, `CODEOWNERS`, `AGENTS.md`, CI mode,
+   Dependabot, and changelog mode.
+3. Run `node scripts/setup-repo.mjs ArchonVII/<repo> --solo` from a
+   `github-workflows` checkout.
+4. Install `.githooks/` in every clone.
+5. After the first PR run, set branch protection's required check to
+   `repo-required-gate / decision`.
+
+## Agent Authority Files
+
+Generated agent-touched repos get:
+
+- `AGENTS.md` - the cross-tool contract for Claude, Codex, Gemini, Copilot, and
+  future agents.
+- `CLAUDE.md` - a short Claude-specific addendum that tells Claude to read
+  `AGENTS.md` first.
+- `GEMINI.md` - the same pointer pattern for Gemini.
+
+Do not put shared workflow rules only in `CLAUDE.md`. If every agent must obey a
+rule, put it in `AGENTS.md`; tool-specific quirks belong in the tool addendum.
+
+## Common Pitfalls
+
+- `npx @archonvii/archon-setup` is the target launch command after npm
+  publication. Until then, run from a source checkout.
+- `src/snapshots/` files are read-only copies. Change upstream provider repos
+  first, then refresh snapshots with `npm run refresh-snapshots`.
+- The existing-repo updater intentionally updates only managed workflow callers
+  that already reference `ArchonVII/github-workflows@v1`. It does not rewrite
+  repo-specific `AGENTS.md` content.
+- Baseline branch protection can require PRs immediately, but named required
+  checks must wait until the check has run at least once.
+- Use the repo-owned `npm test` script for verification. Invoking
+  `node --test test/` directly can fail on this checkout because the tests are
+  matched by the package script's `test/*.test.mjs` glob.
+- `docs/FEATURE_REGISTRY.md` mentions `test/golden/`; the current suite uses
+  `test/*.test.mjs`. Add tests in the existing pattern unless golden fixtures
+  are introduced in the same change.
 
 ## Updating Existing Repos
 
@@ -74,7 +145,11 @@ Today, bootstrapping an ArchonVII repo is a 5-step manual recipe (clone template
 
 ## Status
 
-Pre-v0.1, scaffolding in progress. Not yet `npx`-runnable.
+`0.1.0-pre`. Source-runnable local wizard and update command exist. Public npm
+publication and the final `npx` path are still pending.
+
+See [ROADMAP.md](./ROADMAP.md) for what is already built and what remains in
+progress.
 
 ## Architecture
 

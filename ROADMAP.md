@@ -1,0 +1,78 @@
+# Roadmap
+
+Last updated: 2026-05-28.
+
+This roadmap tracks the `archon-setup` product surface: the local wizard and
+update tooling that scaffold ArchonVII repositories.
+
+## Built
+
+- **Source-runnable CLI** - `node bin/archon-setup.mjs`, `npm start`, and
+  `npm run dev` launch the local server from a checkout.
+- **Update command** - `node bin/archon-setup.mjs update --target <repo>`
+  refreshes managed workflow callers that reference
+  `ArchonVII/github-workflows@v1`.
+- **Token-gated local server** - binds to `127.0.0.1`, generates a per-launch
+  session token, validates RPC Origin/Host, and requires POST for
+  state-changing RPCs.
+- **Browser wizard skeleton** - Doctor, Location, Features, Review, and Execute
+  screens are wired through the local UI.
+- **Preflight checks** - git, GitHub CLI, GitHub auth, Node, network,
+  `actionlint`, and target path checks are implemented.
+- **Feature registry** - `src/registry/features.json` is the single source of
+  truth for installable features, dependencies, conflicts, created files, and
+  task mapping.
+- **Planner and executor split** - the Review screen and Execute screen consume
+  the same normalized plan; task execution streams progress events.
+- **Foundation file tasks** - README, LICENSE, `.gitignore`, `AGENTS.md`,
+  `CLAUDE.md`, `GEMINI.md`, `.agent/check-map.yml`, and
+  `.github/archon-setup.json` can be generated.
+- **Remote setup tasks** - git init, initial commit, GitHub repo creation,
+  initial push, standard labels, and baseline branch protection are implemented.
+- **Workflow installation tasks** - managed caller workflows can be installed
+  from snapshots of `ArchonVII/github-workflows`.
+- **Snapshot refresh** - `npm run refresh-snapshots` refreshes provider snapshots
+  from `.github`, `github-workflows`, and `repo-template`.
+- **Tests** - Node tests cover registry invariants, safe paths, actionlint
+  preflight discovery, managed-file updates, and AGENTS generation.
+
+## In Progress
+
+- **npm publication** - `npx @archonvii/archon-setup` is the intended launch
+  command, but the package is not published to npm yet.
+- **End-to-end wizard hardening** - the app is source-runnable, but real repo
+  creation should keep receiving full dry-run, execute, and rerun coverage.
+- **Required-check tightening** - generated repos record a deferred post-check
+  because GitHub cannot require a named check until that check has run.
+- **Existing-repo update scope** - the updater handles managed workflow callers;
+  broader managed sync for AGENTS sections, hooks, and repo-specific policy is
+  intentionally not automatic yet.
+- **Roadmap/status reconciliation** - `docs/ecosystem-status.md` remains the
+  cross-repo ecosystem status file; this roadmap is the product roadmap for this
+  repo.
+- **Test guidance cleanup** - `docs/FEATURE_REGISTRY.md` still references a
+  future `test/golden/` pattern while current tests live under `test/*.test.mjs`.
+
+## Planned / Deferred
+
+- **Audit existing repo mode** - read `.github/archon-setup.json` and compare an
+  existing repo against the selected baseline.
+- **Workflow drift upgrades** - use recorded snapshot SHAs to identify and
+  upgrade stale managed workflows.
+- **Managed AGENTS sync path** - provide an explicit, reviewable way to update
+  shared AGENTS content without clobbering repo-specific sections.
+- **Events stream support** - add `.archon/events.jsonl` conventions and a
+  status-board view once real events accumulate.
+- **Copilot and secret setup** - deferred until the v0.4 path; secrets must go
+  directly to `gh secret set` and never touch disk or logs.
+- **Packaged distribution** - publish the npm package and then make `npx` the
+  primary quickstart.
+- **Windows installer** - explicitly deferred beyond the initial `npx` releases.
+
+## Operating Rules
+
+- Provider artifacts stay upstream: workflows in `github-workflows`, AGENTS
+  template content in `repo-template`, and org defaults in `.github`.
+- `archon-setup` consumes provider snapshots; do not hand-edit snapshot copies.
+- `AGENTS.md` is the generated cross-tool authority. `CLAUDE.md` and `GEMINI.md`
+  are pointer addenda, not independent policy sources.
