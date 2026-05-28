@@ -47,7 +47,7 @@ This repo treats those three as read-only sources of truth. Snapshots live under
 
 Before marking a PR ready:
 
-- Run `node --test test/` and record the exact command output in `### Verification Notes`.
+- Run `npm test` and record the exact command output in `### Verification Notes`.
 - For workflow file changes, run scoped validation with `actionlint <workflow-files>`.
   Do not search the whole filesystem for the binary. Use `actionlint` on `PATH`,
   or on Windows install it at `C:\Tools\actionlint\actionlint.exe` and add
