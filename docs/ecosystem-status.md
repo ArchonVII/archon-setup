@@ -49,7 +49,7 @@ Notes:
 | Repo               | Status        | Detail                                                                                                                                             |
 | ------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `github-workflows` | Clean on main | `v1` now points at `007ad49`, carrying F14 lane routing plus the F7 role-separation warning/opt-in hard gate.                                      |
-| `archon-setup`     | PR #29 draft  | Snapshot refresh for #28: records `github-workflows` `007ad49`, `repo-template` `9192c3a`, and `.github` `0717902`.                               |
+| `archon-setup`     | PR #29 ready  | Snapshot refresh for #28: records `github-workflows` `007ad49`, `repo-template` `9192c3a`, and `.github` `0717902`.                               |
 | `repo-template`    | Clean on main | Owner Maintenance Lane docs/hooks shipped in #22; propagation to generated repos is covered by `archon-setup` #29.                                |
 | `.github`          | Clean on main | Defaults snapshot is current at `0717902`; no separate provider PR is active.                                                                       |
 
@@ -57,7 +57,7 @@ Notes:
 
 | Repo           | PR                                                      | Title                                                   | Branch                                                   | State              |
 | -------------- | ------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------- | ------------------ |
-| `archon-setup` | [#29](https://github.com/ArchonVII/archon-setup/pull/29) | Refresh workflow and template snapshots after v1 move   | `agent/codex/28-refresh-snapshots-workflow-template`     | Draft; local tests green |
+| `archon-setup` | [#29](https://github.com/ArchonVII/archon-setup/pull/29) | Refresh workflow and template snapshots after v1 move   | `agent/codex/28-refresh-snapshots-workflow-template`     | Ready; local tests green |
 
 ## F-roadmap
 
