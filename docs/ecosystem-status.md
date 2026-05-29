@@ -49,15 +49,13 @@ Notes:
 | Repo               | Status        | Detail                                                                                                                                             |
 | ------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `github-workflows` | Clean on main | `v1` now points at `007ad49`, carrying F14 lane routing plus the F7 role-separation warning/opt-in hard gate.                                      |
-| `archon-setup`     | PR #29 ready  | Snapshot refresh for #28: records `github-workflows` `007ad49`, `repo-template` `9192c3a`, and `.github` `0717902`.                               |
+| `archon-setup`     | Clean on main | Snapshot refresh #29 landed for #28: records `github-workflows` `007ad49`, `repo-template` `9192c3a`, and `.github` `0717902`.                     |
 | `repo-template`    | Clean on main | Owner Maintenance Lane docs/hooks shipped in #22; propagation to generated repos is covered by `archon-setup` #29.                                |
 | `.github`          | Clean on main | Defaults snapshot is current at `0717902`; no separate provider PR is active.                                                                       |
 
 ## In-flight PRs
 
-| Repo           | PR                                                      | Title                                                   | Branch                                                   | State              |
-| -------------- | ------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------- | ------------------ |
-| `archon-setup` | [#29](https://github.com/ArchonVII/archon-setup/pull/29) | Refresh workflow and template snapshots after v1 move   | `agent/codex/28-refresh-snapshots-workflow-template`     | Ready; local tests green |
+None.
 
 ## F-roadmap
 
@@ -93,7 +91,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Recently completed
 
-- **2026-05-29** — Moved `github-workflows` `v1` to `007ad49` after the F14/F7 workflow merges and opened `archon-setup` #29 to refresh snapshots for #28.
+- **2026-05-29** — Moved `github-workflows` `v1` to `007ad49` after the F14/F7 workflow merges and shipped `archon-setup` #29 to refresh snapshots for #28.
 - **2026-05-28** — `github-workflows` role-separation PR #27 and `repo-template` Owner Maintenance Lane PR #22 merged.
 - **2026-05-21** — `github-workflows` F14 targeted-gate lanes PR #23 merged.
 - **2026-05-20** — `github-workflows` F2/F10 Phase 1 evidence parser work entered review.
