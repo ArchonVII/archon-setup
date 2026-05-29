@@ -34,3 +34,20 @@ jobs:
     #   require-verification-section: true
     #   require-checked-box: true
     #   run-actionlint: true
+    #   # Warning-only by default. Set true to hard-fail agent-managed PRs
+    #   # touching protected paths unless an independent approval or
+    #   # non-author `Release-Admiral: @name` marker is present.
+    #   enforce-role-separation: false
+    #   # Override only if this repo's protected agent-policy surface differs
+    #   # from the default .github/.githooks/.agent/authority/code/script set.
+    #   role-protected-paths: |
+    #     .github/**
+    #     .githooks/**
+    #     .agent/**
+    #     AGENTS.md
+    #     CLAUDE.md
+    #     GEMINI.md
+    #     package.json
+    #     package-lock.json
+    #     src/**
+    #     scripts/**

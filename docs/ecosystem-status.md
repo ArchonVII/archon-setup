@@ -1,6 +1,6 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-05-20 by Manager_
+_Last updated: 2026-05-29 by Codex_
 
 The canonical "what is the ecosystem doing right now?" document for the four ArchonVII sibling repos. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
 
@@ -46,18 +46,16 @@ Notes:
 
 ## Active workstreams
 
-| Repo               | Status                                | Detail                                                                                                                    |
-| ------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `github-workflows` | **PR #19 draft, CI green, mergeable** | F2/F10 evidence parser + warning-only pr-policy wiring. One checkbox flip away from ready-for-review.                     |
-| `archon-setup`     | Clean on `main`                       | Recent burst: required-gate scaffold, F1 repo-ci.\* features, F3 actionlint snapshot caller, managed-repo update command. |
-| `repo-template`    | Clean on `main`                       | Recent: `.githooks/` baseline (F18), F3 actionlint workflow-syntax check, required-gate baseline.                         |
-| `.github`          | Clean on `main`                       | Untouched since 2026-05-09.                                                                                               |
+| Repo               | Status        | Detail                                                                                                                                             |
+| ------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `github-workflows` | Clean on main | `v1` now points at `007ad49`, carrying F14 lane routing plus the F7 role-separation warning/opt-in hard gate.                                      |
+| `archon-setup`     | Clean on main | Snapshot refresh #29 landed for #28: records `github-workflows` `007ad49`, `repo-template` `9192c3a`, and `.github` `0717902`.                     |
+| `repo-template`    | Clean on main | Owner Maintenance Lane docs/hooks shipped in #22; propagation to generated repos is covered by `archon-setup` #29.                                |
+| `.github`          | Clean on main | Defaults snapshot is current at `0717902`; no separate provider PR is active.                                                                       |
 
 ## In-flight PRs
 
-| Repo               | PR                                                           | Title                                                  | Branch                                | State                      |
-| ------------------ | ------------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------- | -------------------------- |
-| `github-workflows` | [#19](https://github.com/ArchonVII/github-workflows/pull/19) | F2/F10 evidence parser + warning-only pr-policy wiring | `agent/claude/f2-f10-evidence-parser` | Draft, CI green, mergeable |
+None.
 
 ## F-roadmap
 
@@ -66,18 +64,18 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 | ID  | Title                                          | Status                                         | Severity | Tracking issue                      |
 | --- | ---------------------------------------------- | ---------------------------------------------- | -------- | ----------------------------------- |
 | F1  | `repo-ci.*` features in registry               | **Shipped**                                    | —        | archon-setup #19 (`0510307`)        |
-| F2  | `pr-policy` evidence enforcement               | **In flight (Phase 1)**                        | high     | github-workflows #10; PR #19        |
+| F2  | `pr-policy` evidence enforcement               | **Shipped (Phase 1 warning/evidence path)**     | high     | github-workflows #10; PR #19/#22    |
 | F3  | actionlint workflow + caller                   | **Shipped**                                    | medium   | repo-template #17, archon-setup #18 |
 | F4  | Format-on-edit authority duplication           | Open                                           | medium   | `.github` #11                       |
 | F5  | Demote lint-on-edit to advisory                | Open                                           | medium   | `.github` #12                       |
 | F6  | Close-scan marker semantics                    | Open                                           | medium   | `.github` #13                       |
-| F7  | Agent role separation / Owner Maintenance Lane | **Decided 2026-05-17, implementation pending** | high     | `.github` #14                       |
+| F7  | Agent role separation / Owner Maintenance Lane | **Partially shipped; `.github` scoped policy remains** | high     | `.github` #14; github-workflows #26; repo-template #21 |
 | F8  | Worktree-per-task discipline                   | Open                                           | medium   | `.github` #15                       |
 | F9  | Extended claim schema baseline                 | Open                                           | medium   | repo-template #14                   |
-| F10 | Verification evidence format                   | **In flight (paired with F2)**                 | medium   | github-workflows #12; PR #19        |
+| F10 | Verification evidence format                   | **Shipped (paired with F2 Phase 1)**           | medium   | github-workflows #12; PR #19/#22    |
 | F11 | Release-Admiral "finish it" merge contract     | Open                                           | medium   | `.github` #16                       |
 | F13 | `.agent/check-map.yml` + recommender           | Open                                           | medium   | repo-template #12                   |
-| F14 | Single targeted-ci-gate required check         | Open                                           | medium   | github-workflows #8                 |
+| F14 | Single targeted-ci-gate required check         | **Shipped; `v1` moved 2026-05-29**             | medium   | github-workflows #8/#23             |
 | F15 | Actions hardening (least-priv, SHA-pin, …)     | Open                                           | medium   | github-workflows #14                |
 | F16 | Per-PR durable history records                 | Open                                           | low      | `.github` #17                       |
 | F18 | `.githooks/` baseline                          | **Shipped**                                    | —        | repo-template #16/#18               |
@@ -85,15 +83,18 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Backlog (prioritized)
 
-1. **Ship PR #19** → force-move `v1` → refresh snapshots. Unblocks Phase 2 (flipping `enforce-evidence: true`).
+1. **Finish `archon-setup` #29** — merge the snapshot refresh so generated repos get the current `@v1` workflow callers and Owner Maintenance Lane contract.
 2. **Template walkthrough** — refresh PR template + issue forms + AGENTS.md against the new F2/F10 evidence shape and F7 owner-lane semantics. Single coordinated three-PR pass.
-3. **F7 implementation** — `.github` #14 scoped policy, hook updates in `repo-template` (`commit-msg` accepts `docs(owner):` / `chore(owner):`; `pre-commit` allows add-only safe main commits), AGENTS.md owner-lane section in `repo-template`.
+3. **F7 `.github` policy work** — finish `.github` #14 scoped policy now that the reusable workflow and template pieces are shipped.
 4. **Branch-protection 400 anomaly** — file via the anomaly-triage workflow on next `archon-setup` PR. Reference fix already exists in `archon-setup/src/server/tasks/applyBaselineBranchProtection.mjs`.
 5. **Events-stream rollout** — `.archon/events.jsonl` schema in `repo-template` AGENTS.md + `agent-workflow.events-stream` feature in `archon-setup`. Same three-PR pattern as anomaly-triage; renderer (status board UI inside archon-setup's local server) deferred to v0.2.
 
 ## Recently completed
 
-- **2026-05-20** — Opened `github-workflows` PR #19 (F2/F10 evidence parser, Phase 1, warning-only).
+- **2026-05-29** — Moved `github-workflows` `v1` to `007ad49` after the F14/F7 workflow merges and shipped `archon-setup` #29 to refresh snapshots for #28.
+- **2026-05-28** — `github-workflows` role-separation PR #27 and `repo-template` Owner Maintenance Lane PR #22 merged.
+- **2026-05-21** — `github-workflows` F14 targeted-gate lanes PR #23 merged.
+- **2026-05-20** — `github-workflows` F2/F10 Phase 1 evidence parser work entered review.
 - **2026-05-19** — Required-gate baseline landed in `repo-template` (PR #15) and `archon-setup` (`9efb514`).
 - **2026-05-19** — `.githooks/` baseline (commit-msg + main guard) merged in `repo-template` (#16/#18). F18 shipped.
 - **2026-05-19** — F3 actionlint workflow-syntax check merged in `repo-template` (#17) + archon-setup snapshot caller (#18).
@@ -106,6 +107,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 | Date       | Decision                                                                                                                                                                                                                                                             | Why                                                                                                                                                      |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-29 | Move `github-workflows` `v1` to `007ad49` after F14 and F7 because the changes are additive/default-warning-only and current snapshot callers depend on new reusable-workflow inputs and helper scripts.                                                             | Keeps `@v1` callers and helper-script checkout refs version-aligned; avoids generating callers that pass inputs unsupported by the old tag.              |
 | 2026-05-20 | This `ecosystem-status.md` is the canonical "what's the ecosystem doing" doc. Lives in `archon-setup/docs/` because that repo is the integration hub.                                                                                                                | Resolves where ecosystem-wide coordination state belongs. No fifth "master" repo.                                                                        |
 | 2026-05-17 | **Owner Maintenance Lane (F7).** Solo-dev policy of three lanes (Owner / Agent-managed / Default), enforced by path scope, not author identity. Owner lane allows direct `main` commits for add-only safe docs/images; agent-managed code PRs hard-block self-merge. | A universal self-merge block would prevent legitimate GitHub Desktop maintenance and can't distinguish agent from human commits under the same identity. |
 | 2026-05-14 | Phase 2 review findings tracked as `phase2`-labeled issues, F-numbered from `docs/phase2/findings.md`.                                                                                                                                                               | Single numbering scheme across `.github` + `github-workflows` + `repo-template`.                                                                         |
