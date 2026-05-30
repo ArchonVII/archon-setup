@@ -48,6 +48,9 @@ const state = {
   executionEvents: [],
 };
 
+// Land directly on the dashboard when launched with #ecosystem (the desktop launcher uses this).
+if (typeof location !== "undefined" && location.hash === "#ecosystem") state.screen = "ecosystem";
+
 const app = document.getElementById("app");
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
@@ -81,15 +84,30 @@ function pill(status) {
   return h("span", { class: cls }, status);
 }
 
+const WIZARD_SCREENS = ["doctor", "location", "features", "review", "execute"];
+
+function navLink(label, screen) {
+  const active = state.screen === screen || (screen === "doctor" && WIZARD_SCREENS.includes(state.screen));
+  return h("button", {
+    class: active
+      ? "rounded bg-slate-900 text-white px-3 py-1.5 text-sm"
+      : "rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100",
+    onClick: () => { state.screen = screen; render(); },
+  }, label);
+}
+
 function render() {
   app.innerHTML = "";
   app.append(
-    h("header", { class: "mb-6" },
-      h("h1", { class: "text-3xl font-bold" }, "archon-setup"),
-      h("p", { class: "text-slate-600 mt-1" }, "Plug-and-play repo bootstrapper.")
+    h("header", { class: "mb-6 flex items-start justify-between gap-4" },
+      h("div", {},
+        h("h1", { class: "text-3xl font-bold" }, "archon-setup"),
+        h("p", { class: "text-slate-600 mt-1" }, "Plug-and-play repo bootstrapper.")
+      ),
+      h("nav", { class: "flex gap-2 shrink-0" }, navLink("Wizard", "doctor"), navLink("Ecosystem", "ecosystem"))
     )
   );
-  const screens = { doctor: renderDoctor, location: renderLocation, features: renderFeatures, review: renderReview, execute: renderExecute };
+  const screens = { doctor: renderDoctor, location: renderLocation, features: renderFeatures, review: renderReview, execute: renderExecute, ecosystem: renderEcosystem };
   app.append(screens[state.screen]());
 }
 
@@ -437,6 +455,111 @@ function renderExecute() {
     }
   })();
 
+  return card;
+}
+
+function dotEl(ok) {
+  return h("span", { class: "inline-block h-2.5 w-2.5 rounded-full shrink-0 " + (ok ? "bg-emerald-500" : "bg-rose-500") });
+}
+
+function renderSnapshot(snap) {
+  const wrap = h("div", {});
+
+  wrap.append(
+    h("div", { class: "flex flex-wrap items-center gap-3 text-sm" },
+      pill("green"), h("span", { class: "text-slate-600 -ml-1" }, String(snap.summary.green)),
+      pill("yellow"), h("span", { class: "text-slate-600 -ml-1" }, String(snap.summary.yellow)),
+      pill("red"), h("span", { class: "text-slate-600 -ml-1" }, String(snap.summary.red)),
+      h("span", { class: "text-slate-400" }, "· generated " + new Date(snap.generatedAt).toLocaleString())
+    ),
+    h("div", { class: "mt-3 flex items-center gap-2 text-sm" },
+      dotEl(snap.amber.online),
+      h("span", { class: "font-medium" }, "Amber:"),
+      h("span", { class: "text-slate-600" }, snap.amber.detail || (snap.amber.online ? "online" : "offline"))
+    )
+  );
+
+  wrap.append(
+    h("h3", { class: "mt-5 font-medium" }, "Ports ", h("span", { class: "text-xs font-normal text-slate-500" }, "— timestamped, not authoritative"))
+  );
+  const portsUl = h("ul", { class: "mt-2 space-y-1" });
+  if (!snap.ports.length) portsUl.append(h("li", { class: "text-sm text-slate-500" }, "none recorded"));
+  for (const p of snap.ports) {
+    portsUl.append(
+      h("li", { class: "flex items-center gap-2 text-sm" },
+        dotEl(p.live),
+        h("a", { href: "http://127.0.0.1:" + p.port, target: "_blank", class: "font-mono text-blue-700 hover:underline" }, ":" + p.port),
+        h("code", { class: "min-w-0 truncate text-xs text-slate-600", title: p.command }, p.command || "")
+      )
+    );
+  }
+  wrap.append(portsUl);
+
+  wrap.append(h("h3", { class: "mt-5 font-medium" }, "Repos"));
+  const reposUl = h("ul", { class: "mt-2 space-y-1" });
+  if (!snap.repos.length) reposUl.append(h("li", { class: "text-sm text-slate-500" }, "none"));
+  for (const r of snap.repos) {
+    const wt = r.worktrees?.length ?? 0;
+    reposUl.append(
+      h("li", { class: "flex items-center gap-2 text-sm" },
+        dotEl(!r.dirty),
+        h("span", { class: "font-medium" }, r.name),
+        h("span", { class: "text-slate-500" }, "@" + (r.branch || "?")),
+        r.dirty ? h("span", { class: "text-xs text-amber-700" }, "dirty") : null,
+        wt > 1 ? h("span", { class: "text-xs text-slate-400" }, "· " + wt + " worktrees") : null
+      )
+    );
+  }
+  wrap.append(reposUl);
+
+  wrap.append(
+    h("h3", { class: "mt-5 font-medium" }, "Recent signals ",
+      h("span", { class: "text-xs font-normal text-slate-500" }, "— " + snap.signals.anomalies + " anomalies, " + snap.signals.noticed + " noticed"))
+  );
+  const sigUl = h("ul", { class: "mt-2 space-y-1 text-sm" });
+  const recent = snap.signals.recent || [];
+  if (!recent.length) sigUl.append(h("li", { class: "text-slate-500" }, "none"));
+  for (const s of recent) sigUl.append(h("li", { class: "text-slate-700" }, s));
+  wrap.append(sigUl);
+
+  return wrap;
+}
+
+function renderEcosystem() {
+  const card = h("section", { class: "card p-6" });
+  const refreshBtn = h("button", {
+    class: "shrink-0 rounded bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-700",
+    onClick: () => load(),
+  }, "↻ Refresh");
+  card.append(
+    h("div", { class: "flex items-start justify-between gap-4" },
+      h("div", {},
+        h("h2", { class: "text-xl font-semibold" }, "AI Ecosystem"),
+        h("p", { class: "text-sm text-slate-600 mt-1" }, "Read-only snapshot — ports, repos, Amber, signals.")
+      ),
+      refreshBtn
+    )
+  );
+
+  const body = h("div", { class: "mt-4" });
+  card.append(body);
+
+  async function load() {
+    refreshBtn.disabled = true;
+    body.innerHTML = "";
+    body.append(h("p", { class: "text-slate-500 text-sm" }, "Loading…"));
+    try {
+      const snap = await rpcGet("ecosystem.snapshot");
+      body.innerHTML = "";
+      body.append(renderSnapshot(snap));
+    } catch (err) {
+      body.innerHTML = "";
+      body.append(h("p", { class: "text-rose-700 text-sm" }, "Snapshot failed: " + err.message));
+    } finally {
+      refreshBtn.disabled = false;
+    }
+  }
+  load();
   return card;
 }
 
