@@ -64,6 +64,18 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
+let toastTimer = null;
+function showToast(message) {
+  document.getElementById("toast")?.remove();
+  const toast = h("div", {
+    id: "toast",
+    class: "fixed bottom-4 right-4 max-w-sm rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 shadow",
+  }, message);
+  document.body.append(toast);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.remove(), 5000);
+}
+
 function pill(status) {
   const cls = status === "green" ? "pill pill-green" : status === "yellow" ? "pill pill-yellow" : "pill pill-red";
   return h("span", { class: cls }, status);
@@ -138,12 +150,42 @@ function renderLocation() {
   card.append(h("h2", { class: "text-xl font-semibold" }, "Where should this live?"));
 
   const targetIn = h("input", {
-    class: "mt-2 w-full rounded border border-slate-300 px-3 py-2 font-mono text-sm",
+    class: "min-w-0 flex-1 rounded border border-slate-300 px-3 py-2 font-mono text-sm",
     type: "text",
     placeholder: "C:\\github\\my-new-repo",
     value: state.context.targetPath,
   });
   targetIn.addEventListener("input", (e) => (state.context.targetPath = e.target.value));
+  const browseBtn = h("button", {
+    class: "shrink-0 rounded border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100",
+    type: "button",
+    onClick: async () => {
+      browseBtn.disabled = true;
+      try {
+        const result = await rpc("folder.pick");
+        if (result.path) {
+          state.context.targetPath = result.path;
+          render();
+          return;
+        }
+        if (result.cancelled) {
+          targetIn.focus();
+          return;
+        }
+        showToast(
+          result.unsupported
+            ? "Folder picker is unavailable here. Type the folder path instead."
+            : `Folder picker failed: ${result.error || "unknown error"}. Type the folder path instead.`
+        );
+        targetIn.focus();
+      } catch (err) {
+        showToast(`Folder picker failed: ${err.message}. Type the folder path instead.`);
+        targetIn.focus();
+      } finally {
+        browseBtn.disabled = false;
+      }
+    },
+  }, "Browse…");
 
   const ownerIn = h("input", {
     class: "mt-1 w-full rounded border border-slate-300 px-3 py-2",
@@ -169,7 +211,7 @@ function renderLocation() {
 
   card.append(
     h("label", { class: "mt-4 block text-sm font-medium" }, "Target folder"),
-    targetIn,
+    h("div", { class: "mt-2 flex gap-2" }, targetIn, browseBtn),
     h("label", { class: "mt-4 block text-sm font-medium" }, "GitHub owner"),
     ownerIn,
     h("label", { class: "mt-4 block text-sm font-medium" }, "Repo name"),

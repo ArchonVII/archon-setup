@@ -14,6 +14,16 @@ Returns the contents of `src/snapshots/manifest.json` — source repo / ref / SH
 
 ## State-changing (POST)
 
+### `folder.pick`
+
+Body: `{}`.
+Returns one of `{ path }`, `{ cancelled: true }`, `{ unsupported: true }`, or
+`{ error }`.
+
+Opens the native OS folder picker on supported desktop platforms. The returned
+path is only copied into the Location screen; target validation remains in
+`preflight.run` / `checkTargetPath`.
+
 ### `preflight.run`
 
 Body: `{ target?: string }`.
