@@ -1,5 +1,6 @@
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 
@@ -34,7 +35,7 @@ export async function apply(ctx) {
     body = await fetchGitignore(lang);
   }
   const res = await safeWriteFile(ctx.targetPath, ".gitignore", body);
-  ctx.manifest.createdFiles.push({ path: ".gitignore", source: `github:gitignore/${lang}` });
+  recordCreatedFile(ctx, res, { path: ".gitignore", source: `github:gitignore/${lang}` });
   return res;
 }
 

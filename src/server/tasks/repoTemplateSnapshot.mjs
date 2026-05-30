@@ -3,6 +3,7 @@ import { constants } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 
 export const REPO_TEMPLATE_SNAPSHOT = join(
@@ -42,8 +43,6 @@ export async function writeSnapshotFile(ctx, relativePath, {
 } = {}) {
   const body = transform(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8"));
   const result = await safeWriteFile(ctx.targetPath, relativePath, body);
-  if (result.status !== "already-exists") {
-    ctx.manifest.createdFiles.push({ path: relativePath, source });
-  }
+  recordCreatedFile(ctx, result, { path: relativePath, source });
   return result;
 }

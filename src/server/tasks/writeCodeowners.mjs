@@ -2,6 +2,7 @@ import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 
 const PATH = ".github/CODEOWNERS";
 const SKIP_REASON = "owner unknown";
@@ -34,9 +35,7 @@ export async function apply(ctx) {
     return { status: "skipped", path: PATH, reason: SKIP_REASON };
   }
   const result = await safeWriteFile(ctx.targetPath, PATH, `* @${owner}\n`);
-  if (result.status !== "already-exists") {
-    ctx.manifest.createdFiles.push({ path: PATH, source: "template:owner" });
-  }
+  recordCreatedFile(ctx, result, { path: PATH, source: "template:owner" });
   return result;
 }
 

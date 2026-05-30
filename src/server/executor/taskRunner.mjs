@@ -36,8 +36,11 @@ export async function runTask(taskModule, ctx) {
       push("done", { result: "verify-failed" });
       return { ok: false, status: "verify-failed", verified, events };
     }
-    push("done", { result: "applied" });
-    return { ok: true, status: "applied", applied, events };
+    const skipped = Array.isArray(applied)
+      ? applied.length > 0 && applied.every((result) => result?.status === "skipped")
+      : applied?.status === "skipped";
+    push("done", { result: skipped ? "skipped" : "applied" });
+    return { ok: true, status: skipped ? "skipped" : "applied", applied, events };
   } catch (err) {
     log.error("task failed", { taskId: id, error: err.message });
     push("error", { error: err.message });

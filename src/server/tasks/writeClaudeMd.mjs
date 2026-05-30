@@ -1,5 +1,6 @@
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 
@@ -24,7 +25,7 @@ export async function check(ctx) {
 
 export async function apply(ctx) {
   const res = await safeWriteFile(ctx.targetPath, "CLAUDE.md", TEMPLATE);
-  ctx.manifest.createdFiles.push({ path: "CLAUDE.md", source: "template:claude-md" });
+  recordCreatedFile(ctx, res, { path: "CLAUDE.md", source: "template:claude-md" });
   return res;
 }
 

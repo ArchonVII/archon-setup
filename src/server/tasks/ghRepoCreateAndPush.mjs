@@ -1,4 +1,5 @@
 import { runCommand } from "../lib/commandRunner.mjs";
+import { waitForGitHubRepo } from "../lib/githubRepoReady.mjs";
 
 async function repoExists(owner, repo) {
   const { code } = await runCommand("gh", ["repo", "view", `${owner}/${repo}`], { timeoutMs: 10_000 });
@@ -17,15 +18,22 @@ export async function apply(ctx) {
     "create",
     `${ctx.owner}/${ctx.repo}`,
     visibilityFlag,
-    "--source=.",
+    `--source=${ctx.targetPath}`,
     "--remote=origin",
     "--push",
   ];
+  const manifestArgs = args.map((arg) =>
+    arg === `--source=${ctx.targetPath}` ? "--source=<targetPath>" : arg
+  );
   const res = await runCommand("gh", args, { cwd: ctx.targetPath, timeoutMs: 60_000 });
   if (res.code !== 0) throw new Error(`gh repo create failed: ${res.stderr || res.stdout}`);
+  const ready = await waitForGitHubRepo(ctx.owner, ctx.repo);
+  if (!ready.ok) {
+    throw new Error(`created repo was not readable through the GitHub REST API: ${ready.error}`);
+  }
   ctx.manifest.remoteActions.push({
     type: "repo.create",
-    args,
+    args: manifestArgs,
     result: "ok",
   });
   return { result: "created", stdout: res.stdout.trim() };

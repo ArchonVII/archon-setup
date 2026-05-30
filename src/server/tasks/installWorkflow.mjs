@@ -3,6 +3,7 @@ import { constants } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 
 const SNAPSHOT_DIR = join(
@@ -59,12 +60,10 @@ export async function apply(ctx) {
     throw new Error(`workflow snapshot ${name}.yml does not pin @v1 — refusing to install`);
   }
   const res = await safeWriteFile(ctx.targetPath, relPath(name), body);
-  if (res.status !== "already-exists") {
-    ctx.manifest.createdFiles.push({
-      path: relPath(name),
-      source: src.source,
-    });
-  }
+  recordCreatedFile(ctx, res, {
+    path: relPath(name),
+    source: src.source,
+  });
   return res;
 }
 

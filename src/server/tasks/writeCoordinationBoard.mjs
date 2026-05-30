@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 
 const BOARD_SNAPSHOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -29,7 +30,7 @@ export async function check(ctx) {
 export async function apply(ctx) {
   const body = await readFile(BOARD_SNAPSHOT, "utf8");
   const result = await safeWriteFile(ctx.targetPath, ".agent/coordination/board.md", body);
-  ctx.manifest.createdFiles.push({
+  recordCreatedFile(ctx, result, {
     path: ".agent/coordination/board.md",
     source: "snapshot:repo-template/.agent/coordination/board.md",
   });

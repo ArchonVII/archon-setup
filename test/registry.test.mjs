@@ -259,6 +259,35 @@ test("coordination contract is ordered before the initial commit", async () => {
   assert.ok(readmeIdx < commitIdx, "the coordination contract must land in the initial commit");
 });
 
+test("all local file-writing tasks are ordered before the initial push", async () => {
+  const { features } = await loadRegistry();
+  const selection = features.filter((feature) => feature.default).map((feature) => feature.id);
+  if (!selection.includes("remote.github")) selection.push("remote.github");
+
+  const plan = await buildPlan({
+    selection,
+    context: {
+      targetPath: "X",
+      owner: "ArchonVII",
+      repo: "r",
+      visibility: "private",
+      capabilities: {
+        "gh.repoCreateAllowed": true,
+        "gh.branchProtectionAllowed": true,
+      },
+    },
+  });
+
+  const tasks = plan.ordered.map((unit) => unit.taskId);
+  const initIndex = tasks.indexOf("initGitAndCommit");
+  const pushIndex = tasks.indexOf("ghRepoCreateAndPush");
+  assert.ok(initIndex > tasks.indexOf("writeCheckMap"));
+  assert.ok(initIndex > tasks.lastIndexOf("installWorkflow"));
+  assert.ok(pushIndex > initIndex);
+  assert.ok(tasks.indexOf("applyLabels") > pushIndex);
+  assert.ok(tasks.indexOf("applyBaselineBranchProtection") > tasks.indexOf("applyLabels"));
+});
+
 test("planning the required gate also plans the check map and avoids legacy CI warning", async () => {
   const plan = await buildPlan({
     selection: ["workflow.required-gate"],

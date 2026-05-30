@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 
 const AGENTS_SNAPSHOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -50,11 +51,11 @@ export async function apply(ctx) {
     "docs/repo-update-log.md",
     updateLog
   );
-  ctx.manifest.createdFiles.push({
+  recordCreatedFile(ctx, agentsResult, {
     path: "AGENTS.md",
     source: "snapshot:repo-template/AGENTS.md",
   });
-  ctx.manifest.createdFiles.push({
+  recordCreatedFile(ctx, updateLogResult, {
     path: "docs/repo-update-log.md",
     source: "snapshot:repo-template/docs/repo-update-log.md",
   });
