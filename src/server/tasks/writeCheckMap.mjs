@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 
 const CHECK_MAP_SNAPSHOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -28,7 +29,7 @@ export async function check(ctx) {
 export async function apply(ctx) {
   const body = await readFile(CHECK_MAP_SNAPSHOT, "utf8");
   const result = await safeWriteFile(ctx.targetPath, ".agent/check-map.yml", body);
-  ctx.manifest.createdFiles.push({
+  recordCreatedFile(ctx, result, {
     path: ".agent/check-map.yml",
     source: "snapshot:repo-template/.agent/check-map.yml",
   });

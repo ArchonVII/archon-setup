@@ -46,6 +46,14 @@ function defaultOptionsFor(feature) {
   return resolved;
 }
 
+function taskPhase(unit) {
+  if (unit.taskId === "initGitAndCommit") return 10;
+  if (unit.taskId === "ghRepoCreateAndPush") return 20;
+  if (unit.taskId === "applyLabels") return 30;
+  if (unit.taskId === "applyBaselineBranchProtection") return 40;
+  return 0;
+}
+
 // Build a normalized plan from a user selection + options + context.
 //
 // input:
@@ -146,6 +154,11 @@ export async function buildPlan({ selection, options = {}, context }) {
       plan.commands.push({ ...cmd, feature: f.id });
     }
   }
+
+  plan.ordered = plan.ordered
+    .map((unit, index) => ({ ...unit, index }))
+    .sort((a, b) => taskPhase(a) - taskPhase(b) || a.index - b.index)
+    .map(({ index, ...unit }) => unit);
 
   // Special-case post-checks for branch protection.
   if (plan.ordered.some((t) => t.taskId === "applyBaselineBranchProtection")) {

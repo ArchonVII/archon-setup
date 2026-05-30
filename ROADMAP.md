@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-28.
+Last updated: 2026-05-30.
 
 This roadmap tracks the `archon-setup` product surface: the local wizard and
 update tooling that scaffold ArchonVII repositories.
@@ -17,6 +17,8 @@ update tooling that scaffold ArchonVII repositories.
   state-changing RPCs.
 - **Browser wizard skeleton** - Doctor, Location, Features, Review, and Execute
   screens are wired through the local UI.
+- **Native folder picker** - the Location screen can open a Windows folder
+  dialog while keeping the text field as the canonical fallback.
 - **Preflight checks** - git, GitHub CLI, GitHub auth, Node, network,
   `actionlint`, and target path checks are implemented.
 - **Feature registry** - `src/registry/features.json` is the single source of
@@ -27,12 +29,18 @@ update tooling that scaffold ArchonVII repositories.
 - **Foundation file tasks** - README, LICENSE, `.gitignore`, `AGENTS.md`,
   `CLAUDE.md`, `GEMINI.md`, `.agent/check-map.yml`, and
   `.github/archon-setup.json` can be generated.
+- **Fresh-repo baseline parity** - the default foundation set also installs
+  repo-template parity files: `.githooks/`, `.gitattributes`, changelog
+  fragments, CODEOWNERS when an owner is known, Dependabot, PR template, and
+  actionlint.
 - **Remote setup tasks** - git init, initial commit, GitHub repo creation,
   initial push, standard labels, and baseline branch protection are implemented.
 - **Workflow installation tasks** - managed caller workflows can be installed
   from snapshots of `ArchonVII/github-workflows`.
 - **Snapshot refresh** - `npm run refresh-snapshots` refreshes provider snapshots
   from `.github`, `github-workflows`, and `repo-template`.
+- **Self-CI** - `.github/workflows/node-ci.yml` runs the package test suite on
+  PRs and `main` through `ArchonVII/github-workflows@v1`.
 - **Tests** - Node tests cover registry invariants, safe paths, actionlint
   preflight discovery, managed-file updates, and AGENTS generation.
 
@@ -40,8 +48,9 @@ update tooling that scaffold ArchonVII repositories.
 
 - **npm publication** - `npx @archonvii/archon-setup` is the intended launch
   command, but the package is not published to npm yet.
-- **End-to-end wizard hardening** - the app is source-runnable, but real repo
-  creation should keep receiving full dry-run, execute, and rerun coverage.
+- **End-to-end wizard hardening** - real repo creation now has smoke-test
+  coverage for the fresh-repo path, but future remote changes should keep
+  receiving full dry-run, execute, and rerun coverage.
 - **Required-check tightening** - generated repos record a deferred post-check
   because GitHub cannot require a named check until that check has run.
 - **Existing-repo update scope** - the updater handles managed workflow callers;

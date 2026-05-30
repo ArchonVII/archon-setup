@@ -51,7 +51,9 @@ only missing files; existing ones report `already-exists` and are left intact.
 
 - New files typically: `LICENSE`, `GEMINI.md`, `.agent/check-map.yml`,
   `docs/repo-update-log.md`, `.agent/coordination/{README,board}.md`, a setup manifest.
-- ⚠️ The manifest currently over-reports skipped files as `created` — see [#34].
+- The fresh-repo path records generated files honestly: existing files stay out of
+  `createdFiles`, and intentionally skipped files are listed in `skippedFiles`.
+  Existing-repo audit/plan/apply reporting remains tracked by [#34].
 
 ### 3. Reconcile AGENTS.md / CLAUDE.md (by hand)
 
@@ -77,14 +79,16 @@ Install the caller workflows into `.github/workflows/`: `repo-required-gate` + `
   no-create path, copy the caller YAMLs from `src/snapshots/github-workflows/<name>.yml`
   (each must reference `@v1`); take `actionlint.yml` from repo-template.
 
-### 5. Hooks (by hand — no feature yet, see [#34])
+### 5. Hooks (by hand for existing repos, see [#34])
 
-Copy repo-template `.githooks/` (`pre-commit` main-guard + owner-maintenance, `commit-msg`,
-`scripts/install-githooks.sh`, `owner-maintenance.sh`). **Scrub repo-template-internal
-references** (`F18`, `repo-template#16`, `docs/phase2/hook-authority.md`) so the hooks are
-agnostic. Activation is per-clone: `bash .githooks/scripts/install-githooks.sh` sets
-`core.hooksPath`. In a shared/worktree setup with a concurrent agent, commit the hooks but
-let each clone activate (don't flip the shared `core.hooksPath` out from under them).
+The fresh-repo wizard now has `foundation.hooks`, writes the scrubbed repo-template
+`.githooks/` baseline, and activates `core.hooksPath=.githooks` when it is safe to do so.
+For existing repos, copy repo-template `.githooks/` (`pre-commit` main-guard +
+owner-maintenance, `commit-msg`, `scripts/install-githooks.sh`,
+`owner-maintenance.sh`) by hand until [#34] adds the no-clobber audit/apply flow.
+Activation is per-clone: `bash .githooks/scripts/install-githooks.sh` sets
+`core.hooksPath`. In a shared/worktree setup with a concurrent agent, commit the hooks
+but let each clone activate (don't flip the shared `core.hooksPath` out from under them).
 
 ### 6. Branch protection (two-step)
 
@@ -105,9 +109,10 @@ let each clone activate (don't flip the shared `core.hooksPath` out from under t
 
 ## Known gaps
 
-Tracked in [#34]: existing-repo audit/plan/apply mode, `foundation.hooks`, manifest
-accuracy, workflows-without-repo-create, an AGENTS/CLAUDE reconcile step, and a
-branch-protection two-step helper. When those land, this runbook collapses into "run the
-wizard."
+Fresh-repo gaps addressed by the wizard: `foundation.hooks` and manifest created/skipped
+file accuracy. Still tracked in [#34]: existing-repo audit/plan/apply mode,
+AGENTS/CLAUDE reconcile, workflows-without-repo-create, existing-repo no-clobber
+planning, and a branch-protection two-step helper. When those land, this runbook
+collapses into "run the wizard."
 
 [#34]: https://github.com/ArchonVII/archon-setup/issues/34

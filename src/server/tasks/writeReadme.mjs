@@ -1,5 +1,6 @@
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 
@@ -44,7 +45,7 @@ export async function check(ctx) {
 export async function apply(ctx) {
   const content = template({ repo: ctx.repo, owner: ctx.owner });
   const res = await safeWriteFile(ctx.targetPath, "README.md", content);
-  ctx.manifest.createdFiles.push({ path: "README.md", source: "template:readme" });
+  recordCreatedFile(ctx, res, { path: "README.md", source: "template:readme" });
   return res;
 }
 

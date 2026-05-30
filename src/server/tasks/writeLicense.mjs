@@ -1,5 +1,6 @@
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { recordCreatedFile } from "../lib/manifest.mjs";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 
@@ -31,7 +32,7 @@ export async function apply(ctx) {
     .replace(/\[year\]/g, String(new Date().getFullYear()))
     .replace(/\[fullname\]/g, ctx.account || ctx.owner || "Copyright holder");
   const res = await safeWriteFile(ctx.targetPath, "LICENSE", body);
-  ctx.manifest.createdFiles.push({ path: "LICENSE", source: `github:licenses/${spdx}`, spdx });
+  recordCreatedFile(ctx, res, { path: "LICENSE", source: `github:licenses/${spdx}`, spdx });
   return res;
 }
 

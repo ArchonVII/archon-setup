@@ -1,4 +1,5 @@
 import { runCommand } from "../lib/commandRunner.mjs";
+import { waitForGitHubRepo } from "../lib/githubRepoReady.mjs";
 import { existsSync } from "node:fs";
 
 // Tries to locate setup-repo.mjs in the user's github-workflows checkout.
@@ -29,6 +30,10 @@ export async function apply(ctx) {
       reason: "setup-repo.mjs not found locally; install ArchonVII/github-workflows or set ARCHON_GITHUB_WORKFLOWS",
     });
     return { result: "skipped" };
+  }
+  const ready = await waitForGitHubRepo(ctx.owner, ctx.repo);
+  if (!ready.ok) {
+    throw new Error(`repo was not readable through the GitHub REST API before labels: ${ready.error}`);
   }
   const args = [script, `${ctx.owner}/${ctx.repo}`, "--no-protection"];
   if (ctx.solo) args.push("--solo");
