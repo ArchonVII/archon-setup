@@ -7,7 +7,7 @@ export function renderHtml(snap) {
     `<li>${dot(p.live)} <a href="http://127.0.0.1:${p.port}">:${p.port}</a> <code>${esc(p.command)}</code> <small>${esc(p.recordedAt)}</small></li>`
   ).join("");
   const repos = snap.repos.map((r) =>
-    `<li>${dot(!r.dirty)} <b>${esc(r.name)}</b> @${esc(r.branch)}${r.dirty ? " (dirty)" : ""}${r.worktrees.length > 1 ? ` · ${r.worktrees.length} worktrees` : ""}</li>`
+    `<li>${dot(!r.dirty)} <b>${esc(r.name)}</b> @${esc(r.branch)}${r.dirty ? " (dirty)" : ""}${(r.worktrees?.length ?? 0) > 1 ? ` · ${r.worktrees.length} worktrees` : ""}</li>`
   ).join("");
   const recent = (snap.signals.recent || []).map((s) => `<li>${esc(s)}</li>`).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
