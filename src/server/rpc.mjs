@@ -2,9 +2,12 @@ import { runPreflight, deriveCapabilities } from "./preflight/index.mjs";
 import { loadRegistry, buildPlan } from "./planner/buildPlan.mjs";
 import { executePlan } from "./executor/executePlan.mjs";
 import { pickFolder } from "./lib/pickFolder.mjs";
+import { buildSnapshot } from "./ecosystem/snapshot.mjs";
+import { redactDeep } from "./ecosystem/redact.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { homedir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_MANIFEST = join(__dirname, "..", "snapshots", "manifest.json");
@@ -17,6 +20,18 @@ export const RPC = {
   },
   async "snapshots.manifest"() {
     return JSON.parse(await readFile(SNAPSHOT_MANIFEST, "utf8"));
+  },
+  // Read-only ecosystem snapshot for the dashboard screen. Defaults mirror
+  // bin/ecosystem-snapshot.mjs. Redacted before returning — no raw secrets to the browser.
+  async "ecosystem.snapshot"() {
+    const home = homedir();
+    const snap = await buildSnapshot({
+      portRegistryPath: join(home, ".claude", "port-registry.json"),
+      githubRoot: "C:\\GitHub",
+      amberNode: /amber/i,
+      anomaliesPath: join(home, ".claude", "anomalies.md"),
+    });
+    return redactDeep(snap);
   },
 
   // POST
