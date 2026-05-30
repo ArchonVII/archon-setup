@@ -91,6 +91,94 @@
     "advancedDescription": "Copied from snapshots of ArchonVII/repo-template/.agent/coordination/README.md. Locked neutral contract; the active board (.agent/coordination/board.md) is the separate opt-in coordination-board feature. Ordered before git-init so the contract lands in the initial commit."
   },
   {
+    "id": "foundation.hooks",
+    "label": ".githooks/",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": [
+      ".githooks/commit-msg",
+      ".githooks/pre-commit",
+      ".githooks/scripts/install-githooks.sh",
+      ".githooks/scripts/owner-maintenance.sh",
+      ".githooks/scripts/test-owner-maintenance.sh"
+    ],
+    "tasks": ["writeGithooks"],
+    "beginnerDescription": "Installs the standard local git hooks for commit-message and protected-branch guardrails.",
+    "advancedDescription": "Copied from repo-template snapshots with repo-template-internal references scrubbed. core.hooksPath is activated by git-init when safe."
+  },
+  {
+    "id": "foundation.gitattributes",
+    "label": ".gitattributes",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": [".gitattributes"],
+    "tasks": ["writeGitattributes"],
+    "beginnerDescription": "Keeps shell hooks and scripts on LF endings.",
+    "advancedDescription": "Copied from the repo-template baseline."
+  },
+  {
+    "id": "foundation.changelog",
+    "label": "CHANGELOG.md + fragments",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": ["CHANGELOG.md", ".changelog/unreleased/README.md"],
+    "tasks": ["writeChangelog"],
+    "beginnerDescription": "Adds a Keep a Changelog file and unreleased-fragment folder.",
+    "advancedDescription": "Mode 2 changelog-fragment baseline copied from repo-template snapshots."
+  },
+  {
+    "id": "foundation.actionlint",
+    "label": "actionlint workflow",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": [".github/workflows/actionlint.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "actionlint" },
+      "snapshotSource": { "type": "constant", "value": "repo-template" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "Adds workflow syntax checking for any repo that has GitHub Actions files.",
+    "advancedDescription": "Thin caller to ArchonVII/github-workflows/.github/workflows/actionlint.yml@v1. No language or stack assumption."
+  },
+  {
+    "id": "foundation.codeowners",
+    "label": "CODEOWNERS",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": [".github/CODEOWNERS"],
+    "tasks": ["writeCodeowners"],
+    "beginnerDescription": "Adds a top-level CODEOWNERS file when the GitHub owner is known.",
+    "advancedDescription": "Writes '* @<owner>'. If no owner is known, records an intentional skip instead of writing junk ownership."
+  },
+  {
+    "id": "foundation.dependabot",
+    "label": "Dependabot",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": [".github/dependabot.yml"],
+    "tasks": ["writeDependabot"],
+    "beginnerDescription": "Adds weekly GitHub Actions dependency updates.",
+    "advancedDescription": "Copied from the repo-template baseline. Inert until the repo is pushed."
+  },
+  {
+    "id": "foundation.pr-template",
+    "label": "Pull request template",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": [".github/PULL_REQUEST_TEMPLATE.md"],
+    "tasks": ["writePrTemplate"],
+    "beginnerDescription": "Adds the standard ArchonVII PR body structure and verification checklist.",
+    "advancedDescription": "Copied from the repo-template baseline."
+  },
+  {
     "id": "foundation.git-init",
     "label": "git init + initial commit on main",
     "group": "foundations",
@@ -99,7 +187,14 @@
     "requires": [
       "foundation.readme",
       "foundation.license",
-      "foundation.gitignore"
+      "foundation.gitignore",
+      "foundation.hooks",
+      "foundation.gitattributes",
+      "foundation.changelog",
+      "foundation.actionlint",
+      "foundation.codeowners",
+      "foundation.dependabot",
+      "foundation.pr-template"
     ],
     "tasks": ["initGitAndCommit"],
     "beginnerDescription": "Sets up version control and saves the first snapshot of the repo.",
