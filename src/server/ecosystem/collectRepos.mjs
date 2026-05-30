@@ -25,8 +25,12 @@ export function isDirty(porcelain) {
 }
 
 async function git(repoPath, args) {
-  const { code, stdout } = await runCommand("git", ["-C", repoPath, ...args], { timeoutMs: 15_000 });
-  return code === 0 ? stdout : "";
+  try {
+    const { code, stdout } = await runCommand("git", ["-C", repoPath, ...args], { timeoutMs: 15_000 });
+    return code === 0 ? stdout : "";
+  } catch {
+    return ""; // git missing / timed out / locked index — degrade gracefully
+  }
 }
 
 async function collectOneRepo(name, repoPath) {
@@ -54,7 +58,8 @@ export async function collectRepos(githubRoot) {
   } catch {
     return { id: "repos", status: "yellow", detail: `no repo root at ${githubRoot}`, repos: [] };
   }
-  const candidates = entries.filter((e) => e.isDirectory());
+  // Skip worktree-pool / scratch dirs (e.g. _worktrees). Keep dot-repos like .github.
+  const candidates = entries.filter((e) => e.isDirectory() && !e.name.startsWith("_"));
   const repos = [];
   for (const e of candidates) {
     const repoPath = join(githubRoot, e.name);
