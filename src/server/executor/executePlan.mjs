@@ -8,6 +8,12 @@ import * as writeGeminiMd from "../tasks/writeGeminiMd.mjs";
 import * as writeCheckMap from "../tasks/writeCheckMap.mjs";
 import * as writeCoordinationReadme from "../tasks/writeCoordinationReadme.mjs";
 import * as writeCoordinationBoard from "../tasks/writeCoordinationBoard.mjs";
+import * as writeGithooks from "../tasks/writeGithooks.mjs";
+import * as writeGitattributes from "../tasks/writeGitattributes.mjs";
+import * as writeChangelog from "../tasks/writeChangelog.mjs";
+import * as writeCodeowners from "../tasks/writeCodeowners.mjs";
+import * as writeDependabot from "../tasks/writeDependabot.mjs";
+import * as writePrTemplate from "../tasks/writePrTemplate.mjs";
 import * as initGitAndCommit from "../tasks/initGitAndCommit.mjs";
 import * as ghRepoCreateAndPush from "../tasks/ghRepoCreateAndPush.mjs";
 import * as applyLabels from "../tasks/applyLabels.mjs";
@@ -25,6 +31,12 @@ const TASKS = {
   writeCheckMap,
   writeCoordinationReadme,
   writeCoordinationBoard,
+  writeGithooks,
+  writeGitattributes,
+  writeChangelog,
+  writeCodeowners,
+  writeDependabot,
+  writePrTemplate,
   initGitAndCommit,
   ghRepoCreateAndPush,
   applyLabels,
@@ -47,6 +59,7 @@ export async function executePlan(plan, { onEvent } = {}) {
     sourceSnapshots: plan.context.sourceSnapshots || {},
     selectedFeatures: plan.selectedFeatureIds,
     createdFiles: [],
+    skippedFiles: [],
     remoteActions: [],
     postChecks: plan.postChecks,
   };

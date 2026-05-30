@@ -17,6 +17,24 @@ async function hasCommits(path) {
   return code === 0;
 }
 
+async function currentHooksPath(path) {
+  const { code, stdout } = await runCommand("git", ["-C", path, "config", "--get", "core.hooksPath"], { timeoutMs: 5000 });
+  if (code !== 0) return "";
+  return stdout.trim();
+}
+
+async function activateHooksPath(path, { allowOverwrite = false } = {}) {
+  const existing = await currentHooksPath(path);
+  const normalized = existing.replace(/\\/g, "/");
+  if (normalized === ".githooks") return { status: "already-set", hooksPath: ".githooks" };
+  if (existing && !allowOverwrite) {
+    return { status: "preserved", hooksPath: existing };
+  }
+  const config = await runCommand("git", ["-C", path, "config", "core.hooksPath", ".githooks"], { timeoutMs: 5000 });
+  if (config.code !== 0) throw new Error(`git config core.hooksPath failed: ${config.stderr}`);
+  return { status: existing ? "overwrote" : "configured", hooksPath: ".githooks" };
+}
+
 export async function check(ctx) {
   if (await isGitRepo(ctx.targetPath)) {
     if (await hasCommits(ctx.targetPath)) return "already-done";
@@ -38,7 +56,10 @@ export async function apply(ctx) {
     { timeoutMs: 15_000 }
   );
   if (commit.code !== 0) throw new Error(`git commit failed: ${commit.stderr}`);
-  return { result: "committed" };
+  const hooksPath = await activateHooksPath(cwd, {
+    allowOverwrite: ctx.taskOptions?.overwriteHooksPath === true || ctx.allowHooksPathOverwrite === true,
+  });
+  return { result: "committed", hooksPath };
 }
 
 export async function verify(ctx) {

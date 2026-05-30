@@ -5,6 +5,7 @@ import { checkGhAuth } from "./checkGhAuth.mjs";
 import { checkNode } from "./checkNode.mjs";
 import { checkNetwork } from "./checkNetwork.mjs";
 import { checkTargetPath } from "./checkTargetPath.mjs";
+import { checkHooksPath } from "./checkHooksPath.mjs";
 
 // Runs all preflight checks in parallel where possible.
 // `target` is optional; if provided, target-path validation is included.
@@ -20,11 +21,12 @@ export async function runPreflight({ target } = {}) {
     checkActionlint(),
     checkNetwork(),
     target ? checkTargetPath(target) : Promise.resolve(null),
+    target ? checkHooksPath(target) : Promise.resolve(null),
   ];
 
-  const [node, git, ghPair, actionlint, network, targetCheck] = await Promise.all(tasks);
+  const [node, git, ghPair, actionlint, network, targetCheck, hooksPathCheck] = await Promise.all(tasks);
   const [gh, ghAuth] = Array.isArray(ghPair) ? ghPair : [ghPair, null];
-  const checks = [node, git, gh, ghAuth, actionlint, network, targetCheck].filter(Boolean);
+  const checks = [node, git, gh, ghAuth, actionlint, network, targetCheck, hooksPathCheck].filter(Boolean);
 
   const summary = checks.reduce(
     (acc, c) => {

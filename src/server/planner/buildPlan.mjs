@@ -33,6 +33,19 @@ function resolveSelection(features, selection) {
   return [...out].map((id) => byId.get(id));
 }
 
+function codeownersOwner(context) {
+  return (context.owner || context.account || "").trim();
+}
+
+function defaultOptionsFor(feature) {
+  const resolved = {};
+  for (const [key, option] of Object.entries(feature.options || {})) {
+    if (option.type === "constant") resolved[key] = option.value;
+    else if (Object.hasOwn(option, "default")) resolved[key] = option.default;
+  }
+  return resolved;
+}
+
 // Build a normalized plan from a user selection + options + context.
 //
 // input:
@@ -49,6 +62,7 @@ export async function buildPlan({ selection, options = {}, context }) {
     context: { ...context },
     selectedFeatureIds: resolved.map((f) => f.id),
     files: [],
+    skippedFiles: [],
     commands: [],
     remoteMutations: [],
     postChecks: [],
@@ -114,10 +128,14 @@ export async function buildPlan({ selection, options = {}, context }) {
       plan.ordered.push({
         featureId: f.id,
         taskId,
-        options: options[f.id] || {},
+        options: { ...defaultOptionsFor(f), ...(options[f.id] || {}) },
       });
     }
     for (const c of f.creates || []) {
+      if (f.id === "foundation.codeowners" && !codeownersOwner(context)) {
+        plan.skippedFiles.push({ path: c, reason: "owner unknown" });
+        continue;
+      }
       plan.files.push({
         action: "create",
         path: c,

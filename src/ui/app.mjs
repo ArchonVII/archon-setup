@@ -337,6 +337,15 @@ function renderReview() {
   }
   card.append(filesUl);
 
+  if (state.plan.skippedFiles?.length) {
+    card.append(h("h3", { class: "mt-4 font-medium" }, "Intentionally skipped"));
+    const skippedUl = h("ul", { class: "mt-1 text-sm font-mono space-y-0.5" });
+    for (const f of state.plan.skippedFiles) {
+      skippedUl.append(h("li", { class: "text-amber-700" }, "skip " + f.path + " — " + f.reason));
+    }
+    card.append(skippedUl);
+  }
+
   card.append(h("h3", { class: "mt-4 font-medium" }, "Tasks to run"));
   const tasksUl = h("ul", { class: "mt-1 text-sm font-mono space-y-0.5" });
   for (const t of state.plan.ordered) {

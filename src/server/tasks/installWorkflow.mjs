@@ -12,9 +12,31 @@ const SNAPSHOT_DIR = join(
   "snapshots",
   "github-workflows"
 );
+const REPO_TEMPLATE_WORKFLOW_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "snapshots",
+  "repo-template",
+  ".github",
+  "workflows"
+);
 
 function relPath(name) {
   return `.github/workflows/${name}.yml`;
+}
+
+function snapshotPath(ctx, name) {
+  if (ctx.taskOptions?.snapshotSource === "repo-template") {
+    return {
+      full: join(REPO_TEMPLATE_WORKFLOW_DIR, `${name}.yml`),
+      source: `snapshot:repo-template/.github/workflows/${name}.yml`,
+    };
+  }
+  return {
+    full: join(SNAPSHOT_DIR, `${name}.yml`),
+    source: `snapshot:github-workflows/${name}.yml`,
+  };
 }
 
 export async function check(ctx) {
@@ -31,16 +53,18 @@ export async function check(ctx) {
 
 export async function apply(ctx) {
   const name = ctx.taskOptions?.workflowName;
-  const src = join(SNAPSHOT_DIR, `${name}.yml`);
-  const body = await readFile(src, "utf8");
+  const src = snapshotPath(ctx, name);
+  const body = await readFile(src.full, "utf8");
   if (!body.includes("@v1")) {
     throw new Error(`workflow snapshot ${name}.yml does not pin @v1 — refusing to install`);
   }
   const res = await safeWriteFile(ctx.targetPath, relPath(name), body);
-  ctx.manifest.createdFiles.push({
-    path: relPath(name),
-    source: `snapshot:github-workflows/${name}.yml`,
-  });
+  if (res.status !== "already-exists") {
+    ctx.manifest.createdFiles.push({
+      path: relPath(name),
+      source: src.source,
+    });
+  }
   return res;
 }
 
