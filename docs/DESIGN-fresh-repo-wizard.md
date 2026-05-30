@@ -1,6 +1,6 @@
 # Design: Finish the fresh-repo wizard (folder picker + baseline parity)
 
-> **Status:** Implemented in PRs #37, #38, and #39. Pre-implementation design
+> **Status:** Implemented in PRs #37, #38, and #41. Pre-implementation design
 > produced via structured brainstorming. Cross-references issue [#34].
 > **Author:** Claude (Opus 4.8), 2026-05-30.
 
