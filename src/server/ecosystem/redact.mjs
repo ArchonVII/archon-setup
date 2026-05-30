@@ -7,7 +7,7 @@ const PATTERNS = [
   [/gh[posru]_[A-Za-z0-9]{20,}/g, (m) => `${m.slice(0, 4)}[redacted]`],
   [/\bAKIA[0-9A-Z]{16}\b/g, "AKIA[redacted]"],
   [/(Bearer\s+)[A-Za-z0-9._-]{8,}/gi, "$1[redacted]"],
-  [/((?:token|secret|password|passwd|api[_-]?key)\s*[=:]\s*)("?)[^"\s&]+\2/gi, "$1[redacted]"],
+  [/((?:token|secret|password|passwd|api[_-]?key)"?\s*[=:]\s*)("?)[^"\s&]+\2/gi, "$1[redacted]"],
 ];
 
 export function redactString(value) {

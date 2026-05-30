@@ -21,3 +21,9 @@ test("redactDeep walks objects and arrays, preserving structure", () => {
   assert.match(out.nested[1], /password: \[redacted\]/i);
   assert.equal(input.command, "vite --token=secretXYZ"); // original untouched (pure)
 });
+
+test("redacts JSON-quoted secret values", () => {
+  assert.match(redactString('{"password":"hunter2"}'), /\[redacted\]/);
+  assert.doesNotMatch(redactString('{"password":"hunter2"}'), /hunter2/);
+  assert.match(redactString('{"token": "abc123def456"}'), /\[redacted\]/);
+});
