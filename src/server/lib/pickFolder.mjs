@@ -56,7 +56,6 @@ export async function pickFolder({
       child.kill?.("SIGKILL");
       finish({ error: "dialog timed out" });
     }, timeoutMs);
-    timer.unref?.();
 
     function finish(result) {
       if (settled) return;
