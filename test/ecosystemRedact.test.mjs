@@ -27,3 +27,11 @@ test("redacts JSON-quoted secret values", () => {
   assert.doesNotMatch(redactString('{"password":"hunter2"}'), /hunter2/);
   assert.match(redactString('{"token": "abc123def456"}'), /\[redacted\]/);
 });
+
+test("redacts connection-string passwords without touching plain URLs", () => {
+  const out = redactString("postgres://user:hunter2@localhost:5432/db");
+  assert.doesNotMatch(out, /hunter2/);
+  assert.match(out, /\[redacted\]/);
+  // a normal localhost URL with no credentials must be untouched (no false positive)
+  assert.equal(redactString("http://127.0.0.1:5174"), "http://127.0.0.1:5174");
+});

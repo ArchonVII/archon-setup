@@ -6,6 +6,8 @@ const PATTERNS = [
   [/github_pat_[A-Za-z0-9_]{20,}/g, "github_pat_[redacted]"],
   [/gh[posru]_[A-Za-z0-9]{20,}/g, (m) => `${m.slice(0, 4)}[redacted]`],
   [/\bAKIA[0-9A-Z]{16}\b/g, "AKIA[redacted]"],
+  // user:password@host in connection strings (postgres://, redis://, etc.) — requires the @host to avoid matching plain URLs like http://127.0.0.1:5174
+  [/(\/\/[^:@\s]{0,64}:)([^@\s]+)(@)/g, "$1[redacted]$3"],
   [/(Bearer\s+)[A-Za-z0-9._-]{8,}/gi, "$1[redacted]"],
   [/((?:token|secret|password|passwd|api[_-]?key)"?\s*[=:]\s*)("?)[^"\s&]+\2/gi, "$1[redacted]"],
 ];
