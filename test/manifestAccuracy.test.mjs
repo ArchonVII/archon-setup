@@ -62,6 +62,23 @@ async function withFetchStub(fn) {
   }
 }
 
+async function withGitIdentity(fn) {
+  const keys = ["GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  process.env.GIT_AUTHOR_NAME = "Archon Setup Test";
+  process.env.GIT_AUTHOR_EMAIL = "archon-setup-test@example.invalid";
+  process.env.GIT_COMMITTER_NAME = "Archon Setup Test";
+  process.env.GIT_COMMITTER_EMAIL = "archon-setup-test@example.invalid";
+  try {
+    return await fn();
+  } finally {
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  }
+}
+
 test("tasks do not record existing files as created during apply", async () => {
   const cases = [
     { name: "writeReadme", task: writeReadme, files: ["README.md"] },
@@ -159,7 +176,7 @@ test("executing the same local setup plan twice reports existing files as alread
     },
   };
 
-  await withFetchStub(async () => {
+  await withFetchStub(() => withGitIdentity(async () => {
     const firstPlan = await buildPlan(planInput);
     const first = await executePlan(firstPlan);
     assert.equal(first.ok, true);
@@ -173,5 +190,5 @@ test("executing the same local setup plan twice reports existing files as alread
     assert.deepEqual(second.manifest.skippedFiles, [
       { path: ".github/CODEOWNERS", reason: "owner unknown" },
     ]);
-  });
+  }));
 });
