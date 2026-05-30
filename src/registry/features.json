@@ -80,6 +80,17 @@
     "advancedDescription": "5-line stub pointing at AGENTS.md."
   },
   {
+    "id": "foundation.coordination",
+    "label": ".agent/coordination/ contract",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "creates": [".agent/coordination/README.md"],
+    "tasks": ["writeCoordinationReadme"],
+    "beginnerDescription": "A short contract telling agents this repo coordinates only itself — no shared boards, no assumptions about other repos.",
+    "advancedDescription": "Copied from snapshots of ArchonVII/repo-template/.agent/coordination/README.md. Locked neutral contract; the active board (.agent/coordination/board.md) is the separate opt-in coordination-board feature. Ordered before git-init so the contract lands in the initial commit."
+  },
+  {
     "id": "foundation.git-init",
     "label": "git init + initial commit on main",
     "group": "foundations",
@@ -151,6 +162,16 @@
     "tasks": ["writeCheckMap"],
     "beginnerDescription": "Records which local paths require which checks so agents and the required gate share one policy map.",
     "advancedDescription": "Copied from the repo-template baseline. The single required gate remains the branch-protection contract; this file documents and customizes the path-to-check matrix."
+  },
+  {
+    "id": "agent-workflow.coordination-board",
+    "label": "Coordination board (active)",
+    "group": "agent-workflow",
+    "default": false,
+    "creates": [".agent/coordination/board.md"],
+    "tasks": ["writeCoordinationBoard"],
+    "beginnerDescription": "Adds an active multi-agent coordination board for repos where several agents or people work concurrently. Skip it if you don't need active coordination.",
+    "advancedDescription": "Copied from the repo-template baseline at .agent/coordination/board.md. Opt-in companion to the locked foundation.coordination contract. Names no other repo or machine path; the repo decides whether live board state is tracked."
   },
   {
     "id": "agent-workflow.anomaly-triage",
@@ -234,7 +255,11 @@
     "group": "workflows.ci",
     "default": true,
     "requires": ["remote.github", "agent-workflow.check-map"],
-    "conflictsWith": ["workflow.node-ci", "workflow.python-ci", "workflow.minimal-ci"],
+    "conflictsWith": [
+      "workflow.node-ci",
+      "workflow.python-ci",
+      "workflow.minimal-ci"
+    ],
     "creates": [".github/workflows/repo-required-gate.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -250,7 +275,11 @@
     "group": "workflows.ci",
     "default": false,
     "requires": ["remote.github"],
-    "conflictsWith": ["workflow.required-gate", "workflow.python-ci", "workflow.minimal-ci"],
+    "conflictsWith": [
+      "workflow.required-gate",
+      "workflow.python-ci",
+      "workflow.minimal-ci"
+    ],
     "creates": [".github/workflows/node-ci.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -266,7 +295,11 @@
     "group": "workflows.ci",
     "default": false,
     "requires": ["remote.github"],
-    "conflictsWith": ["workflow.required-gate", "workflow.node-ci", "workflow.minimal-ci"],
+    "conflictsWith": [
+      "workflow.required-gate",
+      "workflow.node-ci",
+      "workflow.minimal-ci"
+    ],
     "creates": [".github/workflows/python-ci.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -282,7 +315,11 @@
     "group": "workflows.ci",
     "default": false,
     "requires": ["remote.github"],
-    "conflictsWith": ["workflow.required-gate", "workflow.node-ci", "workflow.python-ci"],
+    "conflictsWith": [
+      "workflow.required-gate",
+      "workflow.node-ci",
+      "workflow.python-ci"
+    ],
     "creates": [".github/workflows/minimal-ci.yml"],
     "tasks": ["installWorkflow"],
     "options": {
