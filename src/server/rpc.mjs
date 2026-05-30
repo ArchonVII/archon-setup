@@ -1,6 +1,7 @@
 import { runPreflight, deriveCapabilities } from "./preflight/index.mjs";
 import { loadRegistry, buildPlan } from "./planner/buildPlan.mjs";
 import { executePlan } from "./executor/executePlan.mjs";
+import { pickFolder } from "./lib/pickFolder.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -29,6 +30,9 @@ export const RPC = {
   async "plan.execute"({ plan }, { onEvent }) {
     return executePlan(plan, { onEvent });
   },
+  async "folder.pick"(_params, { pickFolderOptions } = {}) {
+    return pickFolder(pickFolderOptions);
+  },
 };
 
-export const STATE_CHANGING = new Set(["preflight.run", "plan.build", "plan.execute"]);
+export const STATE_CHANGING = new Set(["preflight.run", "plan.build", "plan.execute", "folder.pick"]);
