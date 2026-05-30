@@ -203,6 +203,62 @@ test("check-map feature is installed with agent foundations", async () => {
   assert.equal(checkMap.tasks[0], "writeCheckMap");
 });
 
+// --- issue #32 / repo-local coordination standard ---
+
+test("coordination contract is a locked foundation that creates the README", async () => {
+  const { features } = await loadRegistry();
+  const coord = features.find((f) => f.id === "foundation.coordination");
+
+  assert.ok(coord, "foundation.coordination feature missing");
+  assert.equal(coord.group, "foundations");
+  assert.equal(coord.locked, true);
+  assert.equal(coord.default, true);
+  assert.ok(coord.creates.includes(".agent/coordination/README.md"));
+  assert.equal(coord.tasks[0], "writeCoordinationReadme");
+});
+
+test("coordination board is an opt-in agent-workflow feature", async () => {
+  const { features } = await loadRegistry();
+  const board = features.find((f) => f.id === "agent-workflow.coordination-board");
+
+  assert.ok(board, "agent-workflow.coordination-board feature missing");
+  assert.equal(board.group, "agent-workflow");
+  assert.equal(board.default, false);
+  assert.ok(!board.locked, "active board must not be locked on");
+  assert.ok(board.creates.includes(".agent/coordination/board.md"));
+  assert.equal(board.tasks[0], "writeCoordinationBoard");
+});
+
+test("coordination features point at existing snapshot files", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const snapDir = join(here, "..", "src", "snapshots", "repo-template", ".agent", "coordination");
+
+  const readme = await readFile(join(snapDir, "README.md"), "utf8");
+  assert.ok(readme.includes("coordination-isolated"), "README must state coordination-isolated");
+  assert.ok(!/pigafetta/i.test(readme), "README must not name another repo");
+
+  const board = await readFile(join(snapDir, "board.md"), "utf8");
+  assert.ok(board.includes("Active claims"), "board must have an Active claims section");
+  assert.ok(!/pigafetta/i.test(board), "board must not name another repo");
+});
+
+test("coordination contract is ordered before the initial commit", async () => {
+  const plan = await buildPlan({
+    selection: ["foundation.coordination", "foundation.git-init"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: {} },
+  });
+  const tasks = plan.ordered.map((u) => u.taskId);
+  const readmeIdx = tasks.indexOf("writeCoordinationReadme");
+  const commitIdx = tasks.indexOf("initGitAndCommit");
+  assert.ok(readmeIdx !== -1, "writeCoordinationReadme should be planned");
+  assert.ok(commitIdx !== -1, "initGitAndCommit should be planned");
+  assert.ok(readmeIdx < commitIdx, "the coordination contract must land in the initial commit");
+});
+
 test("planning the required gate also plans the check map and avoids legacy CI warning", async () => {
   const plan = await buildPlan({
     selection: ["workflow.required-gate"],

@@ -28,7 +28,7 @@ permissions:
 jobs:
   policy:
     uses: ArchonVII/github-workflows/.github/workflows/pr-policy.yml@v1
-    # All inputs are optional; defaults match the original Pigafetta workflow.
+    # All inputs are optional; the defaults enforce the standard PR contract.
     # with:
     #   require-linked-issue: true
     #   require-verification-section: true
