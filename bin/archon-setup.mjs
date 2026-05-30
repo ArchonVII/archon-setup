@@ -28,8 +28,9 @@ if (argv[0] === "update") {
 const args = new Set(argv);
 const dev = args.has("--dev");
 const noOpen = args.has("--no-open");
+const dashboard = args.has("--dashboard"); // open straight to the ecosystem dashboard screen
 
-startServer({ port: 0, openBrowser: !noOpen }).then(({ url }) => {
+startServer({ port: 0, openBrowser: !noOpen, openHash: dashboard ? "#ecosystem" : "" }).then(({ url }) => {
   if (dev) console.log(`[dev] hot reload not yet wired; reload the browser to pick up changes.`);
   console.log(`Press Ctrl+C to stop.\n`);
 });

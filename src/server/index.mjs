@@ -124,7 +124,7 @@ async function handleRpc(req, res, host) {
   }
 }
 
-export function startServer({ port = 0, openBrowser = true } = {}) {
+export function startServer({ port = 0, openBrowser = true, openHash = "" } = {}) {
   const token = generateSessionToken();
 
   const server = createServer(async (req, res) => {
@@ -154,7 +154,7 @@ export function startServer({ port = 0, openBrowser = true } = {}) {
       const url = `http://127.0.0.1:${actualPort}/?token=${token}`;
       log.info("server started", { url: `http://127.0.0.1:${actualPort}/` });
       console.log(`\n  archon-setup ready: ${url}\n`);
-      if (openBrowser) openInBrowser(url);
+      if (openBrowser) openInBrowser(url + openHash);
       resolveP({ server, port: actualPort, token, url });
     });
   });
