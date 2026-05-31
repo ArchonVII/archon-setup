@@ -76,6 +76,13 @@ writes the same baseline — including the F19-scrubbed `.githooks/`. This is th
 first-class version of the one-off script used to onboard existing repos during
 the F19 rollout.
 
+**Existing repos.** Point `onboard` at a repo that already has a github `origin`
+and select GitHub features without `remote.github` — workflow callers are
+written locally, and `remote.labels` / `remote.branch-protection` target the
+detected `owner/repo`. No new repo is created. Pass `--owner`/`--repo` to target
+a specific repo (e.g. an upstream instead of a fork); explicit values win over
+the detected origin.
+
 ## Canonical New-Repo Setup
 
 Use `archon-setup` as the canonical path for new ArchonVII repos. It wraps the
