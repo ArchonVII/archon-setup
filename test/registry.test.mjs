@@ -144,8 +144,10 @@ test("planner does not warn about CI when a language-CI feature is selected", as
 });
 
 test("planner warns and flags conflict when two language-CI features are selected", async () => {
+  // remote.github gives the plan a github target so the CI-contract block runs;
+  // the conflictsWith warning fires regardless, the duplicate-CI warning needs a target.
   const plan = await buildPlan({
-    selection: ["workflow.node-ci", "workflow.python-ci"],
+    selection: ["remote.github", "workflow.node-ci", "workflow.python-ci"],
     options: {},
     context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: { "gh.repoCreateAllowed": true } },
   });

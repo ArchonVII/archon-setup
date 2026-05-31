@@ -37,6 +37,11 @@
       "items": { "type": "string" },
       "description": "Preflight capabilities required for this feature to be enable-able."
     },
+    "remoteRequirement": {
+      "type": "string",
+      "enum": ["runtime", "api-target"],
+      "description": "How the feature depends on a GitHub repo: 'runtime' writes a local caller that runs once on GitHub (no auth); 'api-target' mutates a live repo via the API (needs auth + a resolved target). Absent = local-only."
+    },
     "creates": {
       "type": "array",
       "items": { "type": "string" },

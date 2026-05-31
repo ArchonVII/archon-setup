@@ -234,7 +234,8 @@
     "label": "Apply standard labels",
     "group": "remote",
     "default": true,
-    "requires": ["remote.github"],
+    "remoteRequirement": "api-target",
+    "capabilitiesNeeded": ["gh.authenticated"],
     "tasks": ["applyLabels"],
     "beginnerDescription": "Adds ~30 standard labels (type / severity / priority / effort / status / workflow).",
     "advancedDescription": "Invokes ArchonVII/github-workflows/scripts/setup-repo.mjs --solo for label application."
@@ -244,7 +245,7 @@
     "label": "Apply baseline branch protection",
     "group": "remote",
     "default": true,
-    "requires": ["remote.github"],
+    "remoteRequirement": "api-target",
     "capabilitiesNeeded": ["gh.branchProtectionAllowed"],
     "tasks": ["applyBaselineBranchProtection"],
     "beginnerDescription": "Protects main: require PRs, no force-push, conversations must resolve. Named required checks come later.",
@@ -276,7 +277,7 @@
     "label": "Anomaly triage",
     "group": "agent-workflow",
     "default": false,
-    "requires": ["remote.github"],
+    "remoteRequirement": "runtime",
     "creates": [".github/workflows/anomaly-triage.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -291,7 +292,7 @@
     "label": "pr-policy.yml",
     "group": "workflows.pr-contract",
     "default": false,
-    "requires": ["remote.github"],
+    "remoteRequirement": "runtime",
     "creates": [".github/workflows/pr-policy.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -306,7 +307,7 @@
     "label": "semantic-pr-title.yml",
     "group": "workflows.pr-contract",
     "default": false,
-    "requires": ["remote.github"],
+    "remoteRequirement": "runtime",
     "creates": [".github/workflows/semantic-pr-title.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -321,7 +322,7 @@
     "label": "pr-body-autoinject.yml",
     "group": "workflows.pr-contract",
     "default": false,
-    "requires": ["remote.github"],
+    "remoteRequirement": "runtime",
     "creates": [".github/workflows/pr-body-autoinject.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -336,7 +337,7 @@
     "label": "branch-naming.yml",
     "group": "workflows.pr-contract",
     "default": false,
-    "requires": ["remote.github"],
+    "remoteRequirement": "runtime",
     "creates": [".github/workflows/branch-naming.yml"],
     "tasks": ["installWorkflow"],
     "options": {
@@ -352,7 +353,8 @@
     "label": "Repo Required Gate",
     "group": "workflows.ci",
     "default": true,
-    "requires": ["remote.github", "agent-workflow.check-map"],
+    "requires": ["agent-workflow.check-map"],
+    "remoteRequirement": "runtime",
     "conflictsWith": [
       "workflow.node-ci",
       "workflow.python-ci",
@@ -372,7 +374,7 @@
     "label": "Node CI (ci.yml)",
     "group": "workflows.ci",
     "default": false,
-    "requires": ["remote.github"],
+    "remoteRequirement": "runtime",
     "conflictsWith": [
       "workflow.required-gate",
       "workflow.python-ci",
@@ -392,7 +394,7 @@
     "label": "Python CI (ci.yml)",
     "group": "workflows.ci",
     "default": false,
-    "requires": ["remote.github"],
+    "remoteRequirement": "runtime",
     "conflictsWith": [
       "workflow.required-gate",
       "workflow.node-ci",
@@ -412,7 +414,7 @@
     "label": "Minimal CI (no build/test)",
     "group": "workflows.ci",
     "default": false,
-    "requires": ["remote.github"],
+    "remoteRequirement": "runtime",
     "conflictsWith": [
       "workflow.required-gate",
       "workflow.node-ci",
