@@ -100,7 +100,7 @@ test("new foundation features are locked local defaults and plan the repo-templa
   }
 
   const localDefaultSelection = features
-    .filter((feature) => feature.default && !(feature.requires || []).includes("remote.github"))
+    .filter((feature) => feature.default && !feature.remoteRequirement)
     .map((feature) => feature.id);
 
   const planWithoutOwner = await buildPlan({

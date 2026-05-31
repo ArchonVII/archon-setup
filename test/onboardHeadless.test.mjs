@@ -79,14 +79,13 @@ async function withGitIdentity(fn) {
   }
 }
 
-test("defaultLocalSelection is every default feature that needs no remote", async () => {
+test("defaultLocalSelection is every default feature with no remoteRequirement", async () => {
   const { features } = await loadRegistry();
-  const expected = features
-    .filter((f) => f.default && !(f.requires || []).includes("remote.github"))
-    .map((f) => f.id);
+  const expected = features.filter((f) => f.default && !f.remoteRequirement).map((f) => f.id);
   assert.deepEqual(defaultLocalSelection(features), expected);
   assert.ok(expected.includes("foundation.hooks"));
-  assert.ok(!expected.includes("remote.github"));
+  assert.ok(!expected.includes("remote.labels"), "api-target features are not in the local baseline");
+  assert.ok(!expected.includes("workflow.required-gate"), "runtime features are not in the local baseline");
 });
 
 test("isBlockingWarning mirrors the wizard's Execute gate", () => {
