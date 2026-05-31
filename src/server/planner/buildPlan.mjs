@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { resolveRepoTarget, applyResolvedRepoTarget, isBlockingWarning } from "./repoTarget.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REGISTRY_DIR = join(__dirname, "..", "..", "registry");
@@ -66,8 +67,16 @@ export async function buildPlan({ selection, options = {}, context }) {
   const { features } = await loadRegistry();
   const resolved = resolveSelection(features, selection);
 
+  const explicit = context.owner && context.repo ? { owner: context.owner, repo: context.repo } : null;
+  const resolvedTarget = resolveRepoTarget({
+    explicit,
+    originDetected: context.originDetected || null,
+    selection: resolved.map((f) => f.id),
+  });
+  const planContext = applyResolvedRepoTarget(context, resolvedTarget);
+
   const plan = {
-    context: { ...context },
+    context: { ...planContext },
     selectedFeatureIds: resolved.map((f) => f.id),
     files: [],
     skippedFiles: [],
@@ -78,16 +87,48 @@ export async function buildPlan({ selection, options = {}, context }) {
     warnings: [],
   };
 
-  // Capability gate
+  // Capability gate (non-blocking warnings)
   for (const f of resolved) {
     for (const cap of f.capabilitiesNeeded || []) {
-      if (!context.capabilities?.[cap]) {
+      if (!planContext.capabilities?.[cap]) {
+        plan.warnings.push({ feature: f.id, message: `missing capability: ${cap}`, severity: "warn" });
+      }
+    }
+  }
+
+  // remoteRequirement gate (spec section 3). runtime -> warn (deduped); api-target -> error.
+  const targetKnown = resolvedTarget.status === "known";
+  const willCreate = resolvedTarget.status === "will-create";
+  const haveCreateIdentity = Boolean(planContext.owner && planContext.repo);
+  let runtimeNeedsTarget = false;
+  for (const f of resolved) {
+    if (f.remoteRequirement === "runtime") {
+      if (!targetKnown && !willCreate) runtimeNeedsTarget = true;
+    } else if (f.remoteRequirement === "api-target") {
+      if (resolvedTarget.status === "none") {
         plan.warnings.push({
           feature: f.id,
-          message: `missing capability: ${cap}`,
+          message: `needs a GitHub repo target — point at an existing repo or select "Create GitHub repo".`,
+          severity: "error",
+        });
+      } else if (willCreate && !haveCreateIdentity) {
+        plan.warnings.push({
+          feature: f.id,
+          message: `cannot run: "Create GitHub repo" is selected but owner/repo are not set.`,
+          severity: "error",
         });
       }
     }
+  }
+  if (runtimeNeedsTarget) {
+    plan.warnings.push({
+      feature: "remote.runtime",
+      message:
+        `GitHub workflow files will be installed locally, but they will not run until ` +
+        `this directory is pushed to GitHub. To create and push a new GitHub repo now, ` +
+        `also select "Create GitHub repo."`,
+      severity: "warn",
+    });
   }
 
   // Conflicts: a feature may declare `conflictsWith` to mark mutual exclusion
@@ -110,7 +151,8 @@ export async function buildPlan({ selection, options = {}, context }) {
   // `ci-success` check to require (F1 / issue #17). Surfaced as a warning
   // rather than a hard error so the planner stays pure; the UI / CLI is
   // responsible for blocking Execute when this warning is present.
-  if (resolvedIds.has("remote.github")) {
+  const hasRemoteIntent = resolved.some((f) => f.remoteRequirement || f.group === "remote");
+  if (resolvedTarget.status !== "none" && hasRemoteIntent) {
     const ciSelected = resolved.filter((f) => f.group === "workflows.ci");
     if (ciSelected.length === 0) {
       plan.warnings.push({
@@ -140,7 +182,7 @@ export async function buildPlan({ selection, options = {}, context }) {
       });
     }
     for (const c of f.creates || []) {
-      if (f.id === "foundation.codeowners" && !codeownersOwner(context)) {
+      if (f.id === "foundation.codeowners" && !codeownersOwner(planContext)) {
         plan.skippedFiles.push({ path: c, reason: "owner unknown" });
         continue;
       }
@@ -168,6 +210,8 @@ export async function buildPlan({ selection, options = {}, context }) {
       reason: "After the first PR run, require repo-required-gate / decision. GitHub requires a check to have run within 7 days before it can be marked required.",
     });
   }
+
+  for (const w of plan.warnings) w.blocking = isBlockingWarning(w);
 
   return plan;
 }
