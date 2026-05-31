@@ -165,7 +165,7 @@ test("executing the same local setup plan twice reports existing files as alread
   const root = await tempRoot();
   const { features } = await loadRegistry();
   const selection = features
-    .filter((feature) => feature.default && !(feature.requires || []).includes("remote.github"))
+    .filter((feature) => feature.default && !feature.remoteRequirement)
     .map((feature) => feature.id);
   const planInput = {
     selection,

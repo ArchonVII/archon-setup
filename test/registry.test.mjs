@@ -27,21 +27,24 @@ test("every feature.requires points at a real feature id", async () => {
   }
 });
 
-test("plan.build closes over required features transitively", async () => {
+test("plan.build closes over feature-id requires transitively", async () => {
+  // required-gate requires the check-map feature (a real feature-id dependency)
   const plan = await buildPlan({
-    selection: ["workflow.pr-policy"],
+    selection: ["workflow.required-gate"],
     options: {},
-    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: { "gh.repoCreateAllowed": true } },
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: {} },
   });
-  assert.ok(plan.selectedFeatureIds.includes("remote.github"));
+  assert.ok(plan.selectedFeatureIds.includes("agent-workflow.check-map"));
+  assert.ok(!plan.selectedFeatureIds.includes("remote.github"), "must NOT pull in repo-create");
 });
 
-test("agent-workflow.anomaly-triage feature loads and depends on remote.github", async () => {
+test("agent-workflow.anomaly-triage is a runtime feature, not coupled to repo-create", async () => {
   const { features, groups } = await loadRegistry();
   const triage = features.find((f) => f.id === "agent-workflow.anomaly-triage");
   assert.ok(triage, "anomaly-triage feature missing");
   assert.equal(triage.group, "agent-workflow");
-  assert.ok(triage.requires.includes("remote.github"));
+  assert.equal(triage.remoteRequirement, "runtime");
+  assert.ok(!(triage.requires || []).includes("remote.github"));
   assert.ok(triage.creates.includes(".github/workflows/anomaly-triage.yml"));
   const group = groups.find((g) => g.id === "agent-workflow");
   assert.ok(group, "agent-workflow group missing from groups.json");
@@ -56,19 +59,14 @@ test("foundation.agents plans the repo update log with AGENTS.md", async () => {
   assert.ok(agents.creates.includes("docs/repo-update-log.md"));
 });
 
-test("planning anomaly-triage pulls in remote.github transitively", async () => {
+test("planning anomaly-triage plans the workflow without repo-create", async () => {
   const plan = await buildPlan({
     selection: ["agent-workflow.anomaly-triage"],
     options: {},
-    context: {
-      targetPath: "X",
-      owner: "o",
-      repo: "r",
-      visibility: "private",
-      capabilities: { "gh.repoCreateAllowed": true },
-    },
+    context: { targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {} },
   });
-  assert.ok(plan.selectedFeatureIds.includes("remote.github"));
+  assert.ok(!plan.selectedFeatureIds.includes("remote.github"));
+  assert.ok(!plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
   assert.ok(
     plan.files.some((f) => f.path === ".github/workflows/anomaly-triage.yml"),
     "anomaly-triage workflow should be planned for creation"
@@ -99,7 +97,8 @@ test("workflows.ci group is enabled and contains node/python/minimal CI features
     const f = features.find((x) => x.id === id);
     assert.ok(f, `${id} feature missing`);
     assert.equal(f.group, "workflows.ci");
-    assert.ok(f.requires.includes("remote.github"));
+    assert.equal(f.remoteRequirement, "runtime");
+    assert.ok(!(f.requires || []).includes("remote.github"));
     assert.equal(f.tasks[0], "installWorkflow");
   }
 });
@@ -138,7 +137,6 @@ test("planner does not warn about CI when a language-CI feature is selected", as
     context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: { "gh.repoCreateAllowed": true } },
   });
   assert.ok(plan.selectedFeatureIds.includes("workflow.node-ci"));
-  assert.ok(plan.selectedFeatureIds.includes("remote.github"), "transitive remote.github");
   assert.ok(
     !plan.warnings.some((w) => w.feature === "workflows.ci"),
     "should not warn about CI when one is selected"
@@ -186,7 +184,9 @@ test("required-gate feature is the default CI contract", async () => {
   assert.ok(gate, "workflow.required-gate feature missing");
   assert.equal(gate.group, "workflows.ci");
   assert.equal(gate.default, true);
-  assert.ok(gate.requires.includes("remote.github"));
+  assert.equal(gate.remoteRequirement, "runtime");
+  assert.ok(gate.requires.includes("agent-workflow.check-map"));
+  assert.ok(!gate.requires.includes("remote.github"));
   assert.ok(gate.creates.includes(".github/workflows/repo-required-gate.yml"));
   assert.equal(gate.tasks[0], "installWorkflow");
   assert.equal(gate.options.workflowName.value, "repo-required-gate");
@@ -295,7 +295,7 @@ test("planning the required gate also plans the check map and avoids legacy CI w
     context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: { "gh.repoCreateAllowed": true } },
   });
 
-  assert.ok(plan.selectedFeatureIds.includes("remote.github"));
+  assert.ok(!plan.selectedFeatureIds.includes("remote.github"), "required gate alone does not create a repo");
   assert.ok(plan.selectedFeatureIds.includes("agent-workflow.check-map"));
   assert.ok(
     plan.files.some((f) => f.path === ".github/workflows/repo-required-gate.yml"),
