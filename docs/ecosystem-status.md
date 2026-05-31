@@ -48,10 +48,10 @@ Notes:
 
 | Repo               | Status        | Detail                                                                                                                                             |
 | ------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `github-workflows` | Clean on main | `v1` now points at `00fbaab`, carrying node-ci cache manager auto-detection from PR #33 plus the prior F14/F7 workflow updates.                     |
-| `archon-setup`     | In progress   | Snapshot refresh #59 records `github-workflows` `00fbaab`, `repo-template` `7aa1e91`, and `.github` `0717902`.                                    |
-| `repo-template`    | Clean on main | Owner Maintenance Lane docs/hooks shipped in #22; propagation to generated repos is covered by the current `archon-setup` snapshots.               |
-| `.github`          | Clean on main | Defaults snapshot is current at `0717902`; no separate provider PR is active.                                                                       |
+| `github-workflows` | In progress   | PR #35 is ready for review and documents the current release/agent lifecycle gaps; no lifecycle commands implemented yet.                           |
+| `archon-setup`     | Clean on main | Snapshot refresh PR #60 merged; manifest records `github-workflows@v1` `00fbaab`, `repo-template` `7aa1e91`, and `.github` `0717902`.             |
+| `repo-template`    | Clean on main | Baseline AGENTS/hooks/check-map exist; lifecycle commands/claims schema remain planned work.                                                       |
+| `.github`          | Clean on main | Role/lane policy exists; executable-vs-marker taxonomy still needs clarification.                                                                   |
 
 ## In-flight PRs
 
@@ -83,7 +83,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Backlog (prioritized)
 
-1. **Complete `archon-setup` issue #59** — land the snapshot refresh for `github-workflows` PR #33 so generated repos record the current `@v1` provider SHA.
+1. **Land `github-workflows` PR #35** — preserve the lifecycle accounting, then open implementation issues for the missing lifecycle command surface.
 2. **Template walkthrough** — refresh PR template + issue forms + AGENTS.md against the new F2/F10 evidence shape and F7 owner-lane semantics. Single coordinated three-PR pass.
 3. **F7 `.github` policy work** — finish `.github` #14 scoped policy now that the reusable workflow and template pieces are shipped.
 4. **Branch-protection 400 anomaly** — file via the anomaly-triage workflow on next `archon-setup` PR. Reference fix already exists in `archon-setup/src/server/tasks/applyBaselineBranchProtection.mjs`.
@@ -91,7 +91,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Recently completed
 
-- **2026-05-31** — Moved `github-workflows` `v1` to `00fbaab` after node-ci cache manager auto-detection PR #33 and started `archon-setup` #59 to refresh snapshots.
+- **2026-05-31** — `archon-setup` issue #59 completed through merged PR #60; snapshot manifest now records `github-workflows@v1` `00fbaab`, `repo-template` `7aa1e91`, and `.github` `0717902`.
 - **2026-05-29** — Moved `github-workflows` `v1` to `007ad49` after the F14/F7 workflow merges and shipped `archon-setup` #29 to refresh snapshots for #28.
 - **2026-05-28** — `github-workflows` role-separation PR #27 and `repo-template` Owner Maintenance Lane PR #22 merged.
 - **2026-05-21** — `github-workflows` F14 targeted-gate lanes PR #23 merged.
