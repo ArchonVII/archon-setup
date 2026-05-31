@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node bin/archon-setup.mjs",
     "dev": "node bin/archon-setup.mjs --dev",
+    "onboard": "node bin/onboard.mjs",
     "refresh-snapshots": "node scripts/refresh-snapshots.mjs",
     "snapshot": "node bin/ecosystem-snapshot.mjs",
     "test": "node --test \"test/*.test.mjs\""
