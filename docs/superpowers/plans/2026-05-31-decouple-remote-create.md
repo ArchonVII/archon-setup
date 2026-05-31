@@ -409,6 +409,49 @@ test("planning anomaly-triage plans the workflow without repo-create", async () 
   assert.ok(!plan.selectedFeatureIds.includes("remote.github"), "required gate alone does not create a repo");
 ```
 
+**Local-baseline filter migration.** Removing `requires: remote.github` means the
+"local baseline" can no longer be defined as "default features that don't require
+remote.github" — those features (e.g. `remote.labels`) would now leak into the
+baseline. Redefine it as "default features with no `remoteRequirement`". Update
+every place that computes it, so the full suite stays green:
+
+(h) In `test/foundationParity.test.mjs`, replace:
+
+```js
+    .filter((feature) => feature.default && !(feature.requires || []).includes("remote.github"))
+```
+
+with:
+
+```js
+    .filter((feature) => feature.default && !feature.remoteRequirement)
+```
+
+(i) In `test/manifestAccuracy.test.mjs`, replace:
+
+```js
+    .filter((feature) => feature.default && !(feature.requires || []).includes("remote.github"))
+```
+
+with:
+
+```js
+    .filter((feature) => feature.default && !feature.remoteRequirement)
+```
+
+(j) In `test/onboardHeadless.test.mjs`, replace the entire "defaultLocalSelection is every default feature that needs no remote" test with:
+
+```js
+test("defaultLocalSelection is every default feature with no remoteRequirement", async () => {
+  const { features } = await loadRegistry();
+  const expected = features.filter((f) => f.default && !f.remoteRequirement).map((f) => f.id);
+  assert.deepEqual(defaultLocalSelection(features), expected);
+  assert.ok(expected.includes("foundation.hooks"));
+  assert.ok(!expected.includes("remote.labels"), "api-target features are not in the local baseline");
+  assert.ok(!expected.includes("workflow.required-gate"), "runtime features are not in the local baseline");
+});
+```
+
 - [ ] **Step 2: Run the registry tests to verify they now fail**
 
 Run: `node --test "test/registry.test.mjs"`
@@ -426,6 +469,30 @@ For each of the feature objects below, make exactly these field changes (leave a
 
 Leave `remote.github` itself unchanged.
 
+- [ ] **Step 3b: Update `defaultLocalSelection` to filter by `remoteRequirement`**
+
+In `src/server/onboard/headlessOnboard.mjs`, replace:
+
+```js
+export function defaultLocalSelection(features) {
+  return features
+    .filter((f) => f.default && !(f.requires || []).includes("remote.github"))
+    .map((f) => f.id);
+}
+```
+
+with:
+
+```js
+export function defaultLocalSelection(features) {
+  return features.filter((f) => f.default && !f.remoteRequirement).map((f) => f.id);
+}
+```
+
+This keeps the headless local baseline identical to before (foundations +
+check-map): api-target and runtime features are excluded because they now carry a
+`remoteRequirement`.
+
 - [ ] **Step 4: Document the field in `src/registry/schema.json`**
 
 Add this property inside `properties` (after `capabilitiesNeeded`):
@@ -438,19 +505,23 @@ Add this property inside `properties` (after `capabilitiesNeeded`):
     },
 ```
 
-- [ ] **Step 5: Run the registry tests to verify they pass**
+- [ ] **Step 5: Run the FULL suite to verify green**
 
-Run: `node --test "test/registry.test.mjs"`
-Expected: PASS (all tests in the file).
+Run: `npm test`
+Expected: PASS, 0 fail. The registry assertions now match; the filter migration
+(h/i/j/3b) keeps the headless + foundation-parity + manifest-accuracy tests green
+because the local baseline is unchanged.
 
 Note: the "every feature.requires points at a real feature id" test still passes
 because the remaining `requires` entries (e.g. `agent-workflow.check-map`,
-`foundation.git-init`) are real feature ids.
+`foundation.git-init`) are real feature ids. `buildPlan` is NOT modified in this
+task — the new `remoteRequirement` field is simply ignored by it for now (the
+gate arrives in Task 5).
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/registry/features.json src/registry/schema.json test/registry.test.mjs
+git add src/registry/features.json src/registry/schema.json src/server/onboard/headlessOnboard.mjs test/registry.test.mjs test/foundationParity.test.mjs test/manifestAccuracy.test.mjs test/onboardHeadless.test.mjs
 git commit -m "feat(registry): remoteRequirement enum; drop repo-create coupling (#48)"
 ```
 
@@ -707,53 +778,51 @@ git commit -m "feat(planner): apply repo target + remoteRequirement gate + block
 
 ---
 
-## Task 6: Headless onboard — local-default by requirement, origin detect, validation
+## Task 6: Headless onboard — origin auto-detect + blocking consistency
 
 **Files:**
 - Modify: `src/server/onboard/headlessOnboard.mjs`
 - Modify: `test/onboardHeadless.test.mjs`
 
-- [ ] **Step 1: Update existing headless tests to the new contract**
+Note: `defaultLocalSelection` was already migrated to filter by `remoteRequirement`
+in Task 4 (step 3b), and its test rewritten there (edit j). This task adds origin
+auto-detection + `--owner/--repo` validation, and aligns the CLI's blocking gate
+with the `w.blocking` flag `buildPlan` now stamps (Task 5).
 
-In `test/onboardHeadless.test.mjs`:
+- [ ] **Step 1: Write the failing existing-repo test**
 
-(a) Replace the `defaultLocalSelection` expectation test body (it filtered by `requires`):
+Append to `test/onboardHeadless.test.mjs`:
 
 ```js
-test("defaultLocalSelection is every default feature with no remoteRequirement", async () => {
-  const { features } = await loadRegistry();
-  const expected = features.filter((f) => f.default && !f.remoteRequirement).map((f) => f.id);
-  assert.deepEqual(defaultLocalSelection(features), expected);
-  assert.ok(expected.includes("foundation.hooks"));
-  assert.ok(!expected.includes("remote.labels"), "api-target features are not in the local baseline");
-  assert.ok(!expected.includes("workflow.required-gate"), "runtime features are not in the local baseline");
+test("onboarding an existing-origin repo installs a workflow without repo-create", async () => {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const execFileP = promisify(execFile);
+  const root = await tempRoot();
+  await execFileP("git", ["-C", root, "init", "-b", "main"]);
+  await execFileP("git", ["-C", root, "remote", "add", "origin", "git@github.com:ArchonVII/example.git"]);
+
+  const result = await runOnboard({ targetPath: root, features: ["workflow.pr-policy"], dryRun: true });
+
+  assert.equal(result.ok, true);
+  assert.ok(!result.plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
+  assert.ok(result.plan.files.some((f) => f.path === ".github/workflows/pr-policy.yml"));
+  assert.equal(result.plan.context.githubRepoTarget.status, "known");
+  assert.equal(result.plan.context.owner, "ArchonVII");
 });
 ```
 
-(b) Replace the "isBlockingWarning mirrors the wizard's Execute gate" test:
-
-```js
-test("isBlockingWarning checks the stamped blocking flag", () => {
-  assert.equal(isBlockingWarning({ blocking: true }), true);
-  assert.equal(isBlockingWarning({ blocking: false }), false);
-  assert.equal(isBlockingWarning({}), false);
-});
-```
-
-(c) The "blocking warnings halt execution and write nothing" test selects
-`["foundation.readme", "remote.github"]`. After Task 5, `remote.github` selected
-with no CI flavor still yields a blocking `workflows.ci` warning, so this test
-still passes as-is — no edit needed. (Confirm during Step 4.)
-
-- [ ] **Step 2: Run to verify the updated tests fail**
+- [ ] **Step 2: Run to verify it fails**
 
 Run: `node --test "test/onboardHeadless.test.mjs"`
-Expected: FAIL — `defaultLocalSelection` still filters by `requires`; `isBlockingWarning` still uses feature/message.
+Expected: FAIL — `runOnboard` does not detect origin yet, so `githubRepoTarget.status`
+is `"none"` (not `"known"`) and `context.owner` is `""`.
 
-- [ ] **Step 3: Edit `src/server/onboard/headlessOnboard.mjs`**
+- [ ] **Step 3: Add origin detection + `--owner/--repo` validation in `runOnboard`**
 
-3a. Replace the import of `buildPlan` region to also pull the shared classifier.
-Find:
+In `src/server/onboard/headlessOnboard.mjs`:
+
+3a. Add the `checkOriginRemote` import. Find:
 
 ```js
 import { loadRegistry, buildPlan } from "../planner/buildPlan.mjs";
@@ -765,31 +834,10 @@ Replace with:
 ```js
 import { loadRegistry, buildPlan } from "../planner/buildPlan.mjs";
 import { executePlan } from "../executor/executePlan.mjs";
-import { isBlockingWarning } from "../planner/repoTarget.mjs";
 import { checkOriginRemote } from "../preflight/checkOriginRemote.mjs";
-
-export { isBlockingWarning };
 ```
 
-3b. Replace `defaultLocalSelection`:
-
-```js
-export function defaultLocalSelection(features) {
-  return features.filter((f) => f.default && !f.remoteRequirement).map((f) => f.id);
-}
-```
-
-3c. Delete the old local `isBlockingWarning` function definition (now imported
-and re-exported). Find and remove:
-
-```js
-export function isBlockingWarning(w) {
-  return w.feature === "workflows.ci" || /conflicts with/.test(w.message);
-}
-```
-
-3d. In `runOnboard`, validate the `--owner/--repo` pair and detect origin.
-Find:
+3b. Validate the pair and detect origin. Find:
 
 ```js
   const known = new Set(allFeatures.map((f) => f.id));
@@ -832,48 +880,72 @@ Replace with:
   };
 ```
 
-3e. The block-on-warnings branch in `runOnboard` already uses
-`isBlockingWarning`. Confirm it reads:
+- [ ] **Step 4: Align the CLI blocking gate with the stamped `blocking` flag**
+
+`buildPlan` now stamps `w.blocking` (Task 5), computed by the single classifier
+`repoTarget.isBlockingWarning`. The CLI should consume the stamped flag directly,
+not re-classify. Remove the local classifier and its now-redundant unit test.
+
+4a. In `src/server/onboard/headlessOnboard.mjs`, delete the local function:
+
+```js
+export function isBlockingWarning(w) {
+  return w.feature === "workflows.ci" || /conflicts with/.test(w.message);
+}
+```
+
+4b. In `runOnboard`, change the blocking filter. Find:
 
 ```js
   const blockingWarnings = (plan.warnings || []).filter(isBlockingWarning);
 ```
 
-(No change needed — `isBlockingWarning` now checks `w.blocking`.)
-
-- [ ] **Step 4: Add the existing-repo headless test**
-
-Append to `test/onboardHeadless.test.mjs`:
+Replace with:
 
 ```js
-test("onboarding an existing-origin repo installs a workflow without repo-create", async () => {
-  const { execFile } = await import("node:child_process");
-  const { promisify } = await import("node:util");
-  const execFileP = promisify(execFile);
-  const root = await tempRoot();
-  await execFileP("git", ["-C", root, "init", "-b", "main"]);
-  await execFileP("git", ["-C", root, "remote", "add", "origin", "git@github.com:ArchonVII/example.git"]);
-
-  const result = await runOnboard({ targetPath: root, features: ["workflow.pr-policy"], dryRun: true });
-
-  assert.equal(result.ok, true);
-  assert.ok(!result.plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
-  assert.ok(result.plan.files.some((f) => f.path === ".github/workflows/pr-policy.yml"));
-  assert.equal(result.plan.context.githubRepoTarget.status, "known");
-  assert.equal(result.plan.context.owner, "ArchonVII");
-});
+  const blockingWarnings = (plan.warnings || []).filter((w) => w.blocking);
 ```
+
+4c. In `test/onboardHeadless.test.mjs`, remove `isBlockingWarning` from the import
+list (it is no longer exported here — its classifier logic is tested in
+`test/repoTarget.test.mjs`). Change:
+
+```js
+import {
+  runOnboard,
+  defaultLocalSelection,
+  isBlockingWarning,
+  loadSourceSnapshots,
+} from "../src/server/onboard/headlessOnboard.mjs";
+```
+
+to:
+
+```js
+import {
+  runOnboard,
+  defaultLocalSelection,
+  loadSourceSnapshots,
+} from "../src/server/onboard/headlessOnboard.mjs";
+```
+
+4d. In `test/onboardHeadless.test.mjs`, delete the entire test named
+`"isBlockingWarning mirrors the wizard's Execute gate"` (its behavior is now
+covered by `test/repoTarget.test.mjs`).
 
 - [ ] **Step 5: Run the full suite**
 
 Run: `npm test`
-Expected: PASS.
+Expected: PASS. The "blocking warnings halt execution and write nothing" test still
+passes: selecting `["foundation.readme", "remote.github"]` yields a blocking
+`workflows.ci` diagnostic (`blocking: true` after stamping), so `runOnboard`
+returns `ok: false` with `blockingWarnings.length > 0` and writes nothing.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add src/server/onboard/headlessOnboard.mjs test/onboardHeadless.test.mjs
-git commit -m "feat(onboard): origin auto-detect + requirement-based local baseline (#48)"
+git commit -m "feat(onboard): origin auto-detect + stamped-blocking gate (#48)"
 ```
 
 ---
