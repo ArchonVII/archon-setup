@@ -39,6 +39,7 @@ const state = {
   screen: "doctor",
   preflight: null,
   capabilities: null,
+  originDetected: null,
   registry: null,
   snapshots: null,
   context: { targetPath: "", owner: "", repo: "", visibility: "private" },
@@ -244,6 +245,7 @@ function renderLocation() {
       const pre = await rpc("preflight.run", { target: state.context.targetPath });
       state.preflight = pre;
       state.capabilities = pre.capabilities;
+      state.originDetected = pre.originDetected || null;
       const target = pre.checks.find((c) => c.id === "target");
       if (target && target.status === "red") {
         alert(target.detail);
@@ -331,6 +333,7 @@ function renderFeatures() {
           ...state.context,
           capabilities: state.capabilities,
           account: state.capabilities?.account,
+          originDetected: state.originDetected,
           sourceSnapshots: state.snapshots?.snapshots || {},
         },
       });
@@ -382,9 +385,7 @@ function renderReview() {
 
   // Warnings block selection issues that must be fixed before Execute
   // (e.g. missing/duplicate language-CI choice per issue #17 / F1).
-  const blockingWarnings = (state.plan.warnings || []).filter(
-    (w) => w.feature === "workflows.ci" || /conflicts with/.test(w.message)
-  );
+  const blockingWarnings = (state.plan.warnings || []).filter((w) => w.blocking);
   if (state.plan.warnings?.length) {
     card.append(h("h3", { class: "mt-4 font-medium" }, "Warnings"));
     const wUl = h("ul", { class: "mt-1 text-sm space-y-0.5" });
