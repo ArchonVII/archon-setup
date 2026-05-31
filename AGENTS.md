@@ -55,12 +55,17 @@ Before marking a PR ready:
 - For UI changes, launch `npm run dev`, exercise the wizard end-to-end with `ARCHON_SETUP_E2E=1`, and record what you exercised.
 - Tick a `- [x]` box **only after** the command actually passed.
 - Adversarial check: re-run the same plan twice — assert no duplicate state.
-- Do **not** run `gh pr ready` directly. Run the shared wrapper so malformed PRs cannot trigger paid or expensive ready-for-review checks:
+- Do **not** run `gh pr ready` directly. Run the blessed wrapper so
+  malformed PRs cannot trigger paid or expensive ready-for-review checks:
 
   ```powershell
-  node C:\GitHub\github-workflows\scripts\agent-close-preflight.mjs --repo ArchonVII/archon-setup --pr <number>
-  node C:\GitHub\github-workflows\scripts\agent-pr-ready.mjs --repo ArchonVII/archon-setup --pr <number>
+  npm run agent:close-preflight -- --repo ArchonVII/archon-setup --pr <number>
+  npm run agent:pr-ready -- --repo ArchonVII/archon-setup --pr <number>
   ```
+
+  If the npm wrapper scripts are missing, add this repo's portable wrapper
+  setup first. Do not substitute direct `gh pr ready` or machine-local
+  command paths.
 
 ## CHANGELOG
 
