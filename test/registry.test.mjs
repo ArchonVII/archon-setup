@@ -312,3 +312,85 @@ test("planning the required gate also plans the check map and avoids legacy CI w
     "required gate should satisfy the CI contract"
   );
 });
+
+// --- #48: remoteRequirement gate + repo target ---
+
+test("workflow alone: installs locally, no repo-create, non-blocking runtime warning", async () => {
+  const plan = await buildPlan({
+    selection: ["workflow.pr-policy"],
+    options: {},
+    context: { targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {} },
+  });
+  assert.ok(plan.ordered.some((u) => u.taskId === "installWorkflow"));
+  assert.ok(!plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
+  const runtimeWarn = plan.warnings.filter((w) => w.feature === "remote.runtime");
+  assert.equal(runtimeWarn.length, 1, "exactly one deduped runtime warning");
+  assert.equal(runtimeWarn[0].severity, "warn");
+  assert.equal(runtimeWarn[0].blocking, false);
+});
+
+test("workflow needs no gh.authenticated (no blocking auth warning)", async () => {
+  const plan = await buildPlan({
+    selection: ["workflow.pr-policy"],
+    options: {},
+    context: { targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {} },
+  });
+  assert.ok(!plan.warnings.some((w) => w.blocking && /capability/.test(w.message)));
+});
+
+test("multiple runtime features with no target -> one deduped runtime warning", async () => {
+  const plan = await buildPlan({
+    selection: ["workflow.pr-policy", "workflow.branch-naming", "agent-workflow.anomaly-triage"],
+    options: {},
+    context: { targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {} },
+  });
+  assert.equal(plan.warnings.filter((w) => w.feature === "remote.runtime").length, 1);
+});
+
+test("api-target with no target and no remote.github -> blocking error", async () => {
+  const plan = await buildPlan({
+    selection: ["remote.labels"],
+    options: {},
+    context: { targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {} },
+  });
+  const err = plan.warnings.find((w) => w.feature === "remote.labels" && w.severity === "error");
+  assert.ok(err, "expected blocking error diagnostic");
+  assert.equal(err.blocking, true);
+  assert.ok(!plan.warnings.some((w) => w.feature === "remote.runtime"), "no misleading runtime warning");
+});
+
+test("api-target with detected origin -> known target, no repo-create", async () => {
+  const plan = await buildPlan({
+    selection: ["remote.labels"],
+    options: {},
+    context: {
+      targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {},
+      originDetected: { owner: "ArchonVII", repo: "example" },
+    },
+  });
+  assert.ok(!plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
+  assert.equal(plan.context.owner, "ArchonVII");
+  assert.equal(plan.context.repo, "example");
+  assert.equal(plan.context.githubRepoTarget.status, "known");
+  assert.ok(!plan.warnings.some((w) => w.feature === "remote.labels" && w.severity === "error"));
+});
+
+test("remote.github + remote.labels: create present, labels phase-ordered after", async () => {
+  const plan = await buildPlan({
+    selection: ["remote.github", "remote.labels", "foundation.git-init"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: {} },
+  });
+  const tasks = plan.ordered.map((u) => u.taskId);
+  assert.ok(tasks.includes("ghRepoCreateAndPush"));
+  assert.ok(tasks.indexOf("applyLabels") > tasks.indexOf("ghRepoCreateAndPush"));
+});
+
+test("api-target + will-create with empty identity -> blocking error", async () => {
+  const plan = await buildPlan({
+    selection: ["remote.github", "remote.labels", "foundation.git-init"],
+    options: {},
+    context: { targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {} },
+  });
+  assert.ok(plan.warnings.some((w) => w.feature === "remote.labels" && w.severity === "error"));
+});
