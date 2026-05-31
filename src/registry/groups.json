@@ -23,37 +23,32 @@
     "id": "agent-workflow",
     "label": "Agent workflow",
     "description": "Capabilities that AI agents use during PR work. The check map is on by default; optional automation can be added per repo.",
-    "order": 25,
-    "requires": ["remote.github"]
+    "order": 25
   },
   {
     "id": "workflows.pr-contract",
     "label": "PR contract bundle",
     "description": "Optional standalone PR title/body/branch workflows. The default repo-required-gate already enforces the merge contract.",
-    "order": 30,
-    "requires": ["remote.github"]
+    "order": 30
   },
   {
     "id": "workflows.security",
     "label": "Security & dependencies (v0.2)",
     "description": "CodeQL, dependency review, Dependabot auto-merge.",
     "order": 40,
-    "requires": ["remote.github"],
     "disabled": true
   },
   {
     "id": "workflows.ci",
     "label": "Language CI",
     "description": "Default single required gate plus legacy standalone CI callers. New repos should keep repo-required-gate and set its stack to node, python, or minimal.",
-    "order": 50,
-    "requires": ["remote.github"]
+    "order": 50
   },
   {
     "id": "workflows.hygiene",
     "label": "Repo hygiene (v0.2)",
     "description": "stale.yml, lock-threads.yml, anomaly-to-issue.yml.",
     "order": 60,
-    "requires": ["remote.github"],
     "disabled": true
   },
   {
