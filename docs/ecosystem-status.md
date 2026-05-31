@@ -83,7 +83,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Backlog (prioritized)
 
-1. **Land `github-workflows` PR #35** — preserve the lifecycle accounting, then open implementation issues for the missing lifecycle command surface.
+1. **Land `github-workflows` PR #35** — preserve the lifecycle accounting, then execute the linked lifecycle implementation issues.
 2. **Template walkthrough** — refresh PR template + issue forms + AGENTS.md against the new F2/F10 evidence shape and F7 owner-lane semantics. Single coordinated three-PR pass.
 3. **F7 `.github` policy work** — finish `.github` #14 scoped policy now that the reusable workflow and template pieces are shipped.
 4. **Branch-protection 400 anomaly** — file via the anomaly-triage workflow on next `archon-setup` PR. Reference fix already exists in `archon-setup/src/server/tasks/applyBaselineBranchProtection.mjs`.
