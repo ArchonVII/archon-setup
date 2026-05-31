@@ -48,6 +48,30 @@
       "worktrees": [{ "path": "…", "branch": "…" }]
     }
   ],
+  "governance": {
+    "id": "governance",
+    "status": "green|yellow|red",
+    "detail": "4 hub repos; 0 red, 1 unknown or incomplete",
+    "repos": [
+      {
+        "owner": "ArchonVII",
+        "name": "archon-setup",
+        "fullName": "ArchonVII/archon-setup",
+        "status": "green|yellow|red",
+        "defaultBranch": "main",
+        "permissions": { "status": "available|unknown|unavailable" },
+        "classic": { "status": "present|absent|unavailable", "source": "classic" },
+        "rulesets": { "status": "present|absent|unavailable", "source": "rulesets", "items": [] },
+        "posture": {
+          "prRequired": "required|not-required|unknown",
+          "directPush": "blocked|restricted|allowed|unknown",
+          "forcePush": "blocked|allowed|unknown",
+          "deletion": "blocked|allowed|unknown",
+          "requiredGate": "required|missing|unknown"
+        }
+      }
+    ]
+  },
   "amber": {
     "id": "amber",
     "status": "green|yellow|red",
@@ -72,7 +96,15 @@
   `recordedAt` is when the registry entry was written — it may be stale. Treat port
   ownership as **timestamped evidence, not authority** (PIDs are reused; the registry
   can lag in both directions).
-- **`summary`** counts collector statuses (ports, repos, amber, signals), not items.
+- **`governance`** queries GitHub through read-only `gh api` calls for the four hub
+  repos: `ArchonVII/.github`, `ArchonVII/github-workflows`, `ArchonVII/repo-template`,
+  and `ArchonVII/archon-setup`. `classic` is the default branch protection endpoint;
+  `rulesets` is the repository rulesets endpoint. Missing permissions, missing
+  `permissions` fields, and unavailable API data are recorded as `unknown` or
+  `unavailable`; consumers must not infer a protected or unprotected state from those
+  values.
+- **`summary`** counts collector statuses (ports, repos, governance, amber, signals),
+  not items.
 - Regeneration is wired **outside this repo** (a `~/.claude` SessionStart hook or a
   Windows Task Scheduler entry calling `npm --prefix C:\GitHub\archon-setup run snapshot`),
   keeping `archon-setup` itself portable.
