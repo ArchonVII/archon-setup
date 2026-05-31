@@ -33,6 +33,7 @@ jobs:
     #   require-linked-issue: true
     #   require-verification-section: true
     #   require-checked-box: true
+    #   strict-body-contract: true
     #   run-actionlint: true
     #   # Warning-only by default. Set true to hard-fail agent-managed PRs
     #   # touching protected paths unless an independent approval or

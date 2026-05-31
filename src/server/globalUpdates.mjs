@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { collectRepos } from "./ecosystem/collectRepos.mjs";
 
 const BROWSER_BACKEND_UPDATE_ID = "2026-05-31-browser-backend-preflight";
+const STRICT_PR_READY_UPDATE_ID = "2026-05-31-strict-pr-ready-contract";
 
 const GLOBAL_UPDATES = [
   {
@@ -33,6 +34,45 @@ const GLOBAL_UPDATES = [
         "- If `iab` or `chrome` is unavailable, say that the current session lacks a connected browser backend. Do not describe it as a repo setup, dependency, or onboarding failure unless local evidence proves that.",
         "- When Browser is unavailable, use the best verification fallback for the task: repo tests, HTTP checks, standalone Playwright when installed, or launching the repo-owned dev server and giving the exact URL for manual review. Clearly mark any browser smoke test as not run.",
         "- Before distributing any global workflow fix across ecosystem repos, ask the user for explicit confirmation and record per-repo applied/skipped/failed results.",
+      ].join("\n"),
+    },
+  },
+  {
+    id: STRICT_PR_READY_UPDATE_ID,
+    date: "2026-05-31",
+    status: "ready",
+    title: "Strict PR ready-for-review contract",
+    summary:
+      "Requires agents to validate PR title/body/branch/files before ready-for-review and forbids direct gh pr ready promotion.",
+    source: [
+      "ArchonVII/github-workflows scripts/pr-contract.mjs",
+      "ArchonVII/github-workflows scripts/agent-pr-ready.mjs",
+      "ArchonVII/repo-template AGENTS.md",
+      "ArchonVII/.github .github/PULL_REQUEST_TEMPLATE.md",
+    ],
+    agentInstruction:
+      "Do not rely on agents remembering PR format. Use the shared contract wrapper before ready-for-review.",
+    confirmationPhrase: `DISTRIBUTE ${STRICT_PR_READY_UPDATE_ID}`,
+    distribution: {
+      kind: "agents-managed-block",
+      targetPath: "AGENTS.md",
+      protectedBranches: ["main", "master"],
+      heading: "Strict PR Ready Contract",
+      body: [
+        "## Strict PR Ready Contract",
+        "",
+        "- Do not run `gh pr ready` directly.",
+        "- Before ready-for-review, run the shared PR contract preflight and ready wrapper so malformed PRs cannot trigger paid or expensive checks:",
+        "",
+        "  ```powershell",
+        "  node C:\\GitHub\\github-workflows\\scripts\\agent-close-preflight.mjs --repo OWNER/REPO --pr <number>",
+        "  node C:\\GitHub\\github-workflows\\scripts\\agent-pr-ready.mjs --repo OWNER/REPO --pr <number>",
+        "  ```",
+        "",
+        "- Non-doc PR bodies must use this exact section order: `## Summary`, `## Verification`, `### Verification Notes`, `## Docs / Changelog`, plus an issue link (`Closes #N`, `Fixes #N`, or `Refs #N`).",
+        "- The PR title must use Conventional Commits. The branch must match the repo branch pattern.",
+        "- Remove placeholder text such as TODO, TBD, N/A, and unset issue markers before promotion.",
+        "- Check a verification box only after the command, CI check, or manual smoke test actually passed and is recorded in Verification Notes.",
       ].join("\n"),
     },
   },

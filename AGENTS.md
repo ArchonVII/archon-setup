@@ -41,7 +41,7 @@ This repo treats those three as read-only sources of truth. Snapshots live under
 2. **One issue → one branch → one PR.** Branch name: `agent/<tool>/<issue>-<slug>` (e.g. `agent/claude/12-doctor-screen`).
 3. **Never commit to `main`.** Branch protection enforces this once wired.
 4. **Conventional Commits.** `<type>(<scope>): <description>` where `<type>` is one of `feat fix refactor test docs style chore perf ci build revert`.
-5. **PR body must include** `## Verification` and `### Verification Notes`, at least one `- [x]` checkbox, and `Closes #N`. Doc-only PRs (every file matches `*.md`, `*.txt`, an image extension, or `.changelog/**`) skip the ceremony.
+5. **PR metadata must pass the shared contract before ready-for-review.** Non-doc PRs must use this exact body order: `## Summary`, `## Verification`, `### Verification Notes`, `## Docs / Changelog`, and an issue link (`Closes #N`, `Fixes #N`, or `Refs #N`). The PR title must use Conventional Commits. Each checked verification box must be backed by concrete command/check/manual evidence, and placeholders such as TODO/TBD/N/A must be gone. Doc-only PRs (every file matches `*.md`, `*.txt`, an image extension, or `.changelog/**`) skip the body ceremony but still need a valid title and branch.
 
 ## Verification
 
@@ -55,6 +55,12 @@ Before marking a PR ready:
 - For UI changes, launch `npm run dev`, exercise the wizard end-to-end with `ARCHON_SETUP_E2E=1`, and record what you exercised.
 - Tick a `- [x]` box **only after** the command actually passed.
 - Adversarial check: re-run the same plan twice — assert no duplicate state.
+- Do **not** run `gh pr ready` directly. Run the shared wrapper so malformed PRs cannot trigger paid or expensive ready-for-review checks:
+
+  ```powershell
+  node C:\GitHub\github-workflows\scripts\agent-close-preflight.mjs --repo ArchonVII/archon-setup --pr <number>
+  node C:\GitHub\github-workflows\scripts\agent-pr-ready.mjs --repo ArchonVII/archon-setup --pr <number>
+  ```
 
 ## CHANGELOG
 

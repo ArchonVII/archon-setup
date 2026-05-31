@@ -120,8 +120,10 @@ but let each clone activate (don't flip the shared `core.hooksPath` out from und
 ### 7. Close through the PR
 
 - Issue → branch → PR (the contract you just installed applies to this PR too).
-- The PR body must have `## Verification` **and** `### Verification Notes` headings, a
-  checked box, and `Closes #N` — or the `pr-contract` gate fails.
+- The PR title/body/branch must pass the shared strict contract before
+  ready-for-review: Conventional Commit title, canonical `## Summary` / `## Verification`
+  / `### Verification Notes` / `## Docs / Changelog` body order, concrete checked
+  verification evidence, and `Closes #N` / `Fixes #N` / `Refs #N`.
 - Get the gate green, squash-merge, fast-forward the default branch **only if** it has no
   conflicting tracked changes, remove the setup worktree, and **leave other agents'
   worktrees/branches untouched**.

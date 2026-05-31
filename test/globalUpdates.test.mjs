@@ -24,6 +24,18 @@ test("global update catalog records the browser backend workflow fix", () => {
   assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-05-31-browser-backend-preflight/);
 });
 
+test("global update catalog records the strict PR-ready contract", () => {
+  const updates = listGlobalUpdates();
+  const record = updates.find((entry) => entry.id === "2026-05-31-strict-pr-ready-contract");
+
+  assert.ok(record);
+  assert.equal(record.status, "ready");
+  assert.equal(record.distribution.kind, "agents-managed-block");
+  assert.match(record.distribution.body, /Do not run `gh pr ready` directly/);
+  assert.match(record.distribution.body, /## Summary.*## Verification.*### Verification Notes.*## Docs \/ Changelog/s);
+  assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-05-31-strict-pr-ready-contract/);
+});
+
 test("applyGlobalUpdateToAgents appends and refreshes a managed update block idempotently", () => {
   const record = getGlobalUpdate("2026-05-31-browser-backend-preflight");
   const initial = "# Agent Guide\n\nKeep local instructions.\n";
@@ -133,5 +145,6 @@ test("RPC exposes global update list and treats distribution as state-changing",
   const listed = await RPC["globalUpdates.list"]();
 
   assert.ok(listed.updates.some((entry) => entry.id === "2026-05-31-browser-backend-preflight"));
+  assert.ok(listed.updates.some((entry) => entry.id === "2026-05-31-strict-pr-ready-contract"));
   assert.equal(STATE_CHANGING.has("globalUpdates.distribute"), true);
 });
