@@ -52,6 +52,30 @@ Your default browser opens to a local URL. The wizard walks you through:
 
 Nothing leaves your machine except the `git` / `gh` calls you approve.
 
+### Headless onboarding
+
+For scripted / agent-driven onboarding (no browser), use the `onboard`
+entrypoint. It reuses the **same planner and executor** the wizard drives, so
+the two stay in lockstep:
+
+```bash
+npm run onboard -- <targetPath> [options]
+```
+
+| Option | Effect |
+| --- | --- |
+| `--features a,b,c` | Override the selection (default: the local baseline — every default feature that needs no GitHub remote) |
+| `--owner <name>` | GitHub owner/account; enables `CODEOWNERS` and the manifest owner |
+| `--repo <name>` | Repo name recorded in `.github/archon-setup.json` |
+| `--visibility <v>` | `private` (default) or `public` |
+| `--dry-run` | Print the plan and exit without writing |
+| `--json` | Emit the result as JSON instead of human-readable text |
+
+`--dry-run` shows exactly what the wizard's Review screen would, and onboarding
+writes the same baseline — including the F19-scrubbed `.githooks/`. This is the
+first-class version of the one-off script used to onboard existing repos during
+the F19 rollout.
+
 ## Canonical New-Repo Setup
 
 Use `archon-setup` as the canonical path for new ArchonVII repos. It wraps the
