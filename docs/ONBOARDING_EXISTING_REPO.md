@@ -105,7 +105,15 @@ but let each clone activate (don't flip the shared `core.hooksPath` out from und
   resolution, 0 required approvals for solo). Use a full PUT body via `gh api --input` —
   the partial-body form returns HTTP 400.
 - The named check `repo-required-gate / decision` can only be **required** after it has run
-  once (GitHub's 7-day rule), so mark it required **after the first PR's gate runs**.
+  once (GitHub's 7-day rule), so mark it required **after the first PR's gate runs**:
+
+  ```bash
+  node bin/archon-setup.mjs tighten-required-gate --target <repo>
+  ```
+
+  It is safe to run early: if GitHub rejects the required-check update because the gate has
+  not run yet, the command prints a pending message and exits successfully. Re-running after
+  the gate exists is idempotent and marks the setup manifest's post-check complete.
 
 ### 7. Close through the PR
 
@@ -121,7 +129,7 @@ but let each clone activate (don't flip the shared `core.hooksPath` out from und
 Fresh-repo gaps addressed by the wizard: `foundation.hooks` and manifest created/skipped
 file accuracy. Still tracked in [#34]: existing-repo audit/plan/apply mode,
 AGENTS/CLAUDE reconcile, workflows-without-repo-create, managed replacement
-planning, and a branch-protection two-step helper. When those land, this runbook
+planning, and a guided branch-protection two-step wizard path. When those land, this runbook
 collapses into "run the wizard."
 
 [#34]: https://github.com/ArchonVII/archon-setup/issues/34

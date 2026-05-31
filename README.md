@@ -108,7 +108,15 @@ The manual fallback remains:
    `github-workflows` checkout.
 4. Install `.githooks/` in every clone.
 5. After the first PR run, set branch protection's required check to
-   `repo-required-gate / decision`.
+   `repo-required-gate / decision`:
+
+   ```bash
+   node bin/archon-setup.mjs tighten-required-gate --target <repo-path>
+   ```
+
+   The command reads `.github/archon-setup.json` for `owner/repo` when present,
+   falls back to the GitHub `origin`, and exits successfully with a clear
+   pending message if GitHub has not seen the gate run yet.
 
 For the human-readable version of this process, including what to inspect in a
 lived-in repo before replacing old setup, read the
@@ -189,6 +197,9 @@ Planned agent-facing capabilities:
   repo-specific `AGENTS.md` content.
 - Baseline branch protection can require PRs immediately, but named required
   checks must wait until the check has run at least once.
+- Use `node bin/archon-setup.mjs tighten-required-gate --target <repo-path>`
+  after the first `repo-required-gate` run. Re-running it is safe; it leaves an
+  already-required gate in place and marks the manifest post-check complete.
 - Use the repo-owned `npm test` script for verification. Invoking
   `node --test test/` directly can fail on this checkout because the tests are
   matched by the package script's `test/*.test.mjs` glob.
