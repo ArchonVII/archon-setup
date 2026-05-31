@@ -27,3 +27,17 @@ test("git repo with a github origin -> detected owner/repo", async () => {
   await execFileP("git", ["-C", root, "remote", "add", "origin", "git@github.com:ArchonVII/example.git"]);
   assert.deepEqual(await checkOriginRemote(root), { originDetected: { owner: "ArchonVII", repo: "example" } });
 });
+
+test("runPreflight surfaces originDetected for a github target", async () => {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const execFileP = promisify(execFile);
+  const { runPreflight } = await import("../src/server/preflight/index.mjs");
+
+  const root = await tmp();
+  await execFileP("git", ["-C", root, "init", "-b", "main"]);
+  await execFileP("git", ["-C", root, "remote", "add", "origin", "https://github.com/ArchonVII/example.git"]);
+
+  const pre = await runPreflight({ target: root });
+  assert.deepEqual(pre.originDetected, { owner: "ArchonVII", repo: "example" });
+});

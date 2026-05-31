@@ -6,6 +6,7 @@ import { checkNode } from "./checkNode.mjs";
 import { checkNetwork } from "./checkNetwork.mjs";
 import { checkTargetPath } from "./checkTargetPath.mjs";
 import { checkHooksPath } from "./checkHooksPath.mjs";
+import { checkOriginRemote } from "./checkOriginRemote.mjs";
 
 // Runs all preflight checks in parallel where possible.
 // `target` is optional; if provided, target-path validation is included.
@@ -25,6 +26,7 @@ export async function runPreflight({ target } = {}) {
   ];
 
   const [node, git, ghPair, actionlint, network, targetCheck, hooksPathCheck] = await Promise.all(tasks);
+  const { originDetected } = target ? await checkOriginRemote(target) : { originDetected: null };
   const [gh, ghAuth] = Array.isArray(ghPair) ? ghPair : [ghPair, null];
   const checks = [node, git, gh, ghAuth, actionlint, network, targetCheck, hooksPathCheck].filter(Boolean);
 
@@ -36,7 +38,7 @@ export async function runPreflight({ target } = {}) {
     { green: 0, yellow: 0, red: 0 }
   );
 
-  return { checks, summary };
+  return { checks, summary, originDetected };
 }
 
 // Derive capability bits the planner / registry can consume.
