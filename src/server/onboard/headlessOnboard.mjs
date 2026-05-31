@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { loadRegistry, buildPlan } from "../planner/buildPlan.mjs";
 import { executePlan } from "../executor/executePlan.mjs";
 import { checkOriginRemote } from "../preflight/checkOriginRemote.mjs";
+import { auditPlan } from "./auditPlan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // src/server/onboard -> src/snapshots/manifest.json
@@ -39,10 +40,12 @@ export async function loadSourceSnapshots() {
 //   owner/repo/visibility   manifest + CODEOWNERS context
 //   options     per-feature option overrides (e.g. { foundation.license: { spdx } })
 //   capabilities  capability bits for remote features (default none)
+//   audit       build + return a read-only present/missing/drifted audit
 //   dryRun      build + return the plan without writing
 //   onEvent     forwarded to the executor for progress streaming
 //
 // returns:
+//   audit    -> { ok: true, mode: "audit", plan, audit, blockingWarnings }
 //   dry-run  -> { ok: true, dryRun: true, plan, blockingWarnings }
 //   blocked  -> { ok: false, plan, blockingWarnings }   (executor not run)
 //   executed -> { ok, plan, result, blockingWarnings }
@@ -54,6 +57,7 @@ export async function runOnboard({
   visibility = "private",
   options = {},
   capabilities = {},
+  audit = false,
   dryRun = false,
   onEvent = null,
 } = {}) {
@@ -86,6 +90,9 @@ export async function runOnboard({
   const plan = await buildPlan({ selection, options, context });
   const blockingWarnings = (plan.warnings || []).filter((w) => w.blocking);
 
+  if (audit) {
+    return { ok: true, mode: "audit", plan, audit: await auditPlan(plan), blockingWarnings };
+  }
   if (dryRun) {
     return { ok: true, dryRun: true, plan, blockingWarnings };
   }

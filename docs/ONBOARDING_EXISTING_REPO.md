@@ -2,8 +2,9 @@
 
 > **Status:** Interim runbook. The new-repo path is the wizard (`README` → "Canonical
 > New-Repo Setup"). Bringing an **existing** repo onto the baseline is the README's
-> "First End Goal" but is **not yet a guided wizard flow** — until [#34] closes, follow
-> the steps below. Each step notes where the tool helps vs. where you do it by hand.
+> "First End Goal" but is **not yet a guided wizard flow**. The headless CLI now has
+> read-only audit support; until [#34] closes, follow the steps below. Each step notes
+> where the tool helps vs. where you do it by hand.
 
 This is for a repo that **already exists** (has history, a remote, and likely its own
 `AGENTS.md`/`CLAUDE.md` and code) and needs to adopt the ArchonVII baseline: foundations,
@@ -32,6 +33,8 @@ For a plain-English explanation of the whole process, read
 
 ### 0. Audit (read-only)
 
+- Run `npm run onboard -- <repo> --audit` to report planned baseline files as
+  `present`, `missing`, or `drifted` without writing.
 - `git -C <repo> rev-parse --abbrev-ref HEAD`, `git remote get-url origin`, `git status --porcelain`.
 - Which foundations exist? (`README`, `LICENSE`, `.gitignore`, `AGENTS.md`, `CLAUDE.md`,
   `GEMINI.md`, `.agent/check-map.yml`, `.agent/coordination/README.md`.)
@@ -61,8 +64,7 @@ executor.
 - The fresh-repo path records generated files honestly: existing files stay out of
   `createdFiles`, and intentionally skipped files are listed in `skippedFiles`.
   After that, replace or reconcile stale existing files by hand so the setup PR still
-  lands the full baseline. Existing-repo audit/plan/apply reporting remains tracked by
-  [#34].
+  lands the full baseline.
 
 ### 3. Reconcile AGENTS.md / CLAUDE.md (by hand)
 
@@ -127,9 +129,10 @@ but let each clone activate (don't flip the shared `core.hooksPath` out from und
 ## Known gaps
 
 Fresh-repo gaps addressed by the wizard: `foundation.hooks` and manifest created/skipped
-file accuracy. Still tracked in [#34]: existing-repo audit/plan/apply mode,
-AGENTS/CLAUDE reconcile, workflows-without-repo-create, managed replacement
-planning, and a guided branch-protection two-step wizard path. When those land, this runbook
-collapses into "run the wizard."
+file accuracy. The headless CLI can now run a read-only existing-repo audit, while
+the remaining [#34] gaps are wizard surfacing, AGENTS/CLAUDE reconcile,
+workflows-without-repo-create, managed replacement planning, and a guided
+branch-protection two-step wizard path. When those land, this runbook collapses
+into "run the wizard."
 
 [#34]: https://github.com/ArchonVII/archon-setup/issues/34

@@ -10,7 +10,7 @@ import { checkOriginRemote } from "./checkOriginRemote.mjs";
 
 // Runs all preflight checks in parallel where possible.
 // `target` is optional; if provided, target-path validation is included.
-export async function runPreflight({ target } = {}) {
+export async function runPreflight({ target, targetMode = "new-repo" } = {}) {
   const tasks = [
     Promise.resolve(checkNode()),
     checkGit(),
@@ -21,7 +21,7 @@ export async function runPreflight({ target } = {}) {
     }),
     checkActionlint(),
     checkNetwork(),
-    target ? checkTargetPath(target) : Promise.resolve(null),
+    target ? checkTargetPath(target, { mode: targetMode }) : Promise.resolve(null),
     target ? checkHooksPath(target) : Promise.resolve(null),
   ];
 

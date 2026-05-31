@@ -5,7 +5,7 @@ import { access, readFile, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { hasCurrentManagedBlock, reconcileManagedBlock } from "./managedMarkdownBlock.mjs";
 
-const TEMPLATE = `# CLAUDE.md
+export const TEMPLATE = `# CLAUDE.md
 
 Read [\`AGENTS.md\`](./AGENTS.md) first. Claude-specific addenda below.
 
