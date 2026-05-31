@@ -10,14 +10,18 @@ The first product end goal is a safe ArchonVII repo upgrade path:
 
 > Given a fresh repository or an existing repository, `archon-setup` should be
 > able to bring it onto the ArchonVII ecosystem baseline for GitHub workflow,
-> CI, agent process, documentation, and repository governance while preserving
-> repo-specific edits, local skills, memory files, custom workflows, and existing
-> policy information unless the user explicitly approves a managed replacement.
+> CI, agent process, documentation, and repository governance by auditing what
+> exists, carrying forward real repo-specific decisions, and replacing weak or
+> stale setup with the managed baseline when the user asks for onboarding.
 
 That means the tool must be useful for both new projects and lived-in repos. It
 should audit first, explain what it found, show an exact plan, apply only the
 selected changes, and leave enough manifest/history data for a future agent or
 human to understand what was installed and what was intentionally skipped.
+
+For a plain-English explanation of what onboarding checks, confirms, adds,
+edits, and leaves for review, see
+[`docs/REPO_ONBOARDING_WALKTHROUGH.md`](./docs/REPO_ONBOARDING_WALKTHROUGH.md).
 
 ## Quickstart
 
@@ -106,6 +110,10 @@ The manual fallback remains:
 5. After the first PR run, set branch protection's required check to
    `repo-required-gate / decision`.
 
+For the human-readable version of this process, including what to inspect in a
+lived-in repo before replacing old setup, read the
+[repo onboarding walkthrough](./docs/REPO_ONBOARDING_WALKTHROUGH.md).
+
 ## Agent Authority Files
 
 Generated agent-touched repos get:
@@ -152,11 +160,11 @@ Planned agent-facing capabilities:
   protection, docs, hooks, manifests, skills, memory files, and local policy
   before proposing any changes.
 - **Managed merge planner** - classify every proposed update as create, refresh,
-  preserve, skip, or needs-human-review, with clear diffs for AGENTS sections,
-  workflows, check maps, and repo-local customizations.
+  replace, carry-forward, skip, or needs-human-review, with clear diffs for
+  AGENTS sections, workflows, check maps, and repo-local customizations.
 - **Skills and memory preservation** - detect `.claude`, `.codex`, `.gemini`,
-  skill directories, local memory/runbook files, and tool-specific notes; keep
-  them unless the user chooses a managed migration.
+  skill directories, local memory/runbook files, and tool-specific notes; carry
+  useful facts into tracked repo policy when setup is being replaced.
 - **Issue-Admiral / triage path** - formalize issue creation, dedupe, labeling,
   severity, and routing for new repos and upgraded repos.
 - **Release / close path** - encode the finish flow for verification evidence,
@@ -280,9 +288,9 @@ Next major milestone:
   protected docs, agent docs, skills, and memory/runbook files.
 - Compare the repo against the selected ArchonVII baseline and its recorded
   `.github/archon-setup.json` manifest when present.
-- Preserve bespoke workflows, local AGENTS sections, CLAUDE/GEMINI addenda,
-  `.claude`/`.codex`/`.gemini` state, local skills, and repo-specific process
-  notes by default.
+- Harvest useful repo-specific decisions from bespoke workflows, local AGENTS
+  sections, CLAUDE/GEMINI addenda, `.claude`/`.codex`/`.gemini` state, local
+  skills, and repo-specific process notes before applying a managed replacement.
 - Offer explicit managed sync paths for workflows, check maps, docs sections,
   hooks, labels, and branch protection instead of rewriting whole files.
 - Produce a dry-run plan that separates creates, updates, skipped files,
@@ -313,8 +321,8 @@ Planned expansion:
 - Support repo-specific process overlays without losing the tool-agnostic
   `AGENTS.md` contract.
 - Add managed sections for memory, skills, local runbooks, anomaly logs, and
-  update logs so agents can preserve existing context and avoid clobbering
-  human-written policy.
+  update logs so agents can carry forward existing context while replacing
+  weak or contradictory policy.
 - Surface which agent or automation owns each proposed change, including
   Claude, Codex, Gemini, Copilot, GitHub Actions, and future tools.
 
