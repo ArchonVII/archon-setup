@@ -53,6 +53,8 @@ Your default browser opens to a local URL. The wizard walks you through:
 2. **Features** — checkbox tree (Foundations, GitHub remote, PR contract, …).
 3. **Review** — exactly what files will be created and commands run.
 4. **Execute** — streaming progress.
+5. **Ecosystem** — current repo/port/signals snapshot plus recorded global
+   update fixes that can be dry-run or distributed with explicit confirmation.
 
 Nothing leaves your machine except the `git` / `gh` calls you approve.
 
@@ -159,6 +161,9 @@ Existing agent-facing capabilities:
 - **Repo update log** - generated repos receive `docs/repo-update-log.md` so
   agents can leave durable operational history separate from user-facing release
   notes.
+- **Global update records** - archon-setup records shared agent/workflow fixes
+  that may need ecosystem-wide dissemination, exposes them in the Ecosystem UI,
+  and logs per-repo distribution results.
 - **Owner / agent / default lanes** - the ecosystem policy distinguishes safe
   owner maintenance from agent-managed code changes and ordinary reviewed work.
 
@@ -221,6 +226,30 @@ The updater only changes workflow callers that already reference
 `ArchonVII/github-workflows@v1`, and preserves repo-specific inputs such as Node
 versions and script names. Bespoke local workflows, hooks, and repo-specific
 `AGENTS.md` sections are skipped unless they gain an explicit managed sync path.
+
+## Global Update Distribution
+
+Global/shared fixes, such as agent workflow rules or Codex capability guardrails,
+must be recorded before they are disseminated. Each record lives in the
+archon-setup global update catalog and should also be mentioned in this README
+and `CHANGELOG.md`.
+
+The Ecosystem screen now shows **Global Update Records**. Each record includes a
+confirmation phrase and a **Distribute Fix to Ecosystem** button. The button does
+not silently mutate repositories:
+
+- The user must type the exact confirmation phrase.
+- Dry-run and apply modes both return per-repo results.
+- Clean non-`main` lanes can be updated automatically.
+- Dirty repos, missing `AGENTS.md`, and protected `main`/`master` checkouts are
+  skipped with explicit reasons such as `dirty-worktree`, `missing-agents`, or
+  `protected-main`.
+- Runs are appended to
+  `C:\Users\<you>\.codex\archon-setup\global-update-runs.jsonl` so failures and
+  skipped repos remain visible after the browser session.
+
+Agents must ask before distributing any global fix across the full ecosystem.
+If the answer is no, record the local fix and leave distribution unrun.
 
 ## Local Workflow Validation
 

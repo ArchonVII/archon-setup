@@ -4,6 +4,7 @@ import { executePlan } from "./executor/executePlan.mjs";
 import { pickFolder } from "./lib/pickFolder.mjs";
 import { buildSnapshot } from "./ecosystem/snapshot.mjs";
 import { redactDeep } from "./ecosystem/redact.mjs";
+import { distributeGlobalUpdate, listGlobalUpdates } from "./globalUpdates.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -33,6 +34,9 @@ export const RPC = {
     });
     return redactDeep(snap);
   },
+  async "globalUpdates.list"() {
+    return { updates: listGlobalUpdates() };
+  },
 
   // POST
   async "preflight.run"({ target }) {
@@ -48,6 +52,22 @@ export const RPC = {
   async "folder.pick"(_params, { pickFolderOptions } = {}) {
     return pickFolder(pickFolderOptions);
   },
+  async "globalUpdates.distribute"({ updateId, confirmation, dryRun = true, githubRoot }) {
+    const home = homedir();
+    return distributeGlobalUpdate({
+      updateId,
+      confirmation,
+      dryRun,
+      githubRoot: githubRoot || "C:\\GitHub",
+      logPath: join(home, ".codex", "archon-setup", "global-update-runs.jsonl"),
+    });
+  },
 };
 
-export const STATE_CHANGING = new Set(["preflight.run", "plan.build", "plan.execute", "folder.pick"]);
+export const STATE_CHANGING = new Set([
+  "preflight.run",
+  "plan.build",
+  "plan.execute",
+  "folder.pick",
+  "globalUpdates.distribute",
+]);

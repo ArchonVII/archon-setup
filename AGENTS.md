@@ -60,6 +60,21 @@ Before marking a PR ready:
 
 Mode 1 (direct edit) until concurrent PRs cause merge conflicts on `CHANGELOG.md`. Then switch to Mode 2 (`.changelog/unreleased/`) and wire `changelog-fragment.yml` from `github-workflows`.
 
+## Global Workflow Updates
+
+- When changing global/shared agent, workflow, onboarding, skill, or ecosystem
+  policy, record the update in this repo's global update catalog, README, and
+  CHANGELOG in the same PR.
+- Ask the user explicitly before disseminating a global fix across the full
+  ecosystem. Do not assume a local/global config fix should be pushed into every
+  repo without confirmation.
+- Distribution must produce auditable per-repo results: applied, unchanged,
+  skipped, or failed with a concrete reason. Silent best-effort sync is not
+  acceptable.
+- Do not apply global update blocks directly to protected `main` checkouts.
+  Use clean branch/worktree lanes and normal PR review, or skip with an explicit
+  `protected-main` reason.
+
 ## Commit hygiene
 
 - One logical unit per commit. If the message needs "and," split it.

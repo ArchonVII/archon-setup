@@ -12,6 +12,16 @@ Returns `{ features, groups, schema }` from `src/registry/`.
 
 Returns the contents of `src/snapshots/manifest.json` — source repo / ref / SHA for every embedded artifact.
 
+### `ecosystem.snapshot`
+
+Returns the redacted Ecosystem dashboard snapshot: ports, repositories, Amber,
+and recent signal counts.
+
+### `globalUpdates.list`
+
+Returns `{ updates }` for recorded global/shared workflow fixes that can be
+reviewed or distributed from the Ecosystem screen.
+
 ## State-changing (POST)
 
 ### `folder.pick`
@@ -46,3 +56,16 @@ Per-task event shape:
 ```json
 { "taskId": "writeReadme", "kind": "start" | "checked" | "applied" | "verified" | "done" | "error", "at": 0, "...": "..." }
 ```
+
+### `globalUpdates.distribute`
+
+Body:
+
+```json
+{ "updateId": "2026-05-31-browser-backend-preflight", "confirmation": "DISTRIBUTE 2026-05-31-browser-backend-preflight", "dryRun": true }
+```
+
+Requires the exact confirmation phrase from `globalUpdates.list`. Returns an
+auditable result object with per-repo statuses: `applied`, `would-apply`,
+`unchanged`, `skipped`, or `failed`, plus reason codes such as
+`protected-main`, `dirty-worktree`, and `missing-agents`.
