@@ -4,7 +4,7 @@ import { recordCreatedFile } from "../lib/manifest.mjs";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 
-const TEMPLATE = `# GEMINI.md
+export const TEMPLATE = `# GEMINI.md
 
 Read [\`AGENTS.md\`](./AGENTS.md) first. Gemini-specific addenda below.
 

@@ -74,6 +74,7 @@ npm run onboard -- <targetPath> [options]
 | `--owner <name>` | GitHub owner/account; enables `CODEOWNERS` and the manifest owner |
 | `--repo <name>` | Repo name recorded in `.github/archon-setup.json` |
 | `--visibility <v>` | `private` (default) or `public` |
+| `--audit` | Report planned baseline items as `present`, `missing`, or `drifted` without writing |
 | `--dry-run` | Print the plan and exit without writing |
 | `--json` | Emit the result as JSON instead of human-readable text |
 
@@ -81,6 +82,11 @@ npm run onboard -- <targetPath> [options]
 writes the same baseline — including the F19-scrubbed `.githooks/`. This is the
 first-class version of the one-off script used to onboard existing repos during
 the F19 rollout.
+
+`--audit` is the read-only existing-repo entrypoint: it builds the same plan but
+checks each planned baseline file in the target repo, reporting `present` when
+it matches, `missing` when absent, and `drifted` when the existing content
+differs from the managed baseline.
 
 **Existing repos.** Point `onboard` at a repo that already has a github `origin`
 and select GitHub features without `remote.github` — workflow callers are

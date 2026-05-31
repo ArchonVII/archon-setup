@@ -11,7 +11,7 @@ const FILES = [
   ".githooks/scripts/test-checkout-role.sh",
 ];
 
-function scrubHookBody(body) {
+export function scrubHookBody(body) {
   return body
     .replace(/\s*\(F18, ArchonVII\/repo-template#16\)/g, "")
     .replace(/\s*\(F18, repo-template#16\)/g, "")

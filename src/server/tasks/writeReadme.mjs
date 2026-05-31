@@ -4,7 +4,7 @@ import { recordCreatedFile } from "../lib/manifest.mjs";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 
-function template({ repo, owner }) {
+export function template({ repo, owner }) {
   return `# ${repo}
 
 One-sentence description: what this is and who it's for.
