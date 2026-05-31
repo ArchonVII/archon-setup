@@ -257,6 +257,13 @@ not silently mutate repositories:
 Agents must ask before distributing any global fix across the full ecosystem.
 If the answer is no, record the local fix and leave distribution unrun.
 
+Current recorded global fixes include:
+
+- `2026-05-31-browser-backend-preflight` - separates Browser plugin availability
+  from live browser backend availability and requires browser preflight.
+- `2026-05-31-strict-pr-ready-contract` - forbids direct `gh pr ready` and
+  requires the shared PR contract wrapper before ready-for-review.
+
 ## Local Workflow Validation
 
 For PRs that change GitHub Actions workflow files, use scoped local validation:

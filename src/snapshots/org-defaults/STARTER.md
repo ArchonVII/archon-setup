@@ -208,6 +208,7 @@ If you keep a `TODO.md`:
 - Lane discipline / parallel agent rules if applicable
 - Commit convention
 - Verification expectations before claiming done
+- Ready-for-review preflight: agents must use the shared PR contract wrapper and must not run `gh pr ready` directly
 - Where the canonical state lives (`ARCHITECTURE.md`, `README.md`, etc.)
 
 **CLAUDE.md / GEMINI.md** are addenda — tool-specific quirks that don't belong in the cross-tool contract. Hooks, model-specific guardrails, etc.

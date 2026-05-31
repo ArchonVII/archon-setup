@@ -48,10 +48,10 @@ Notes:
 
 | Repo               | Status        | Detail                                                                                                                                             |
 | ------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `github-workflows` | In progress   | PR #35 is ready for review and documents the current release/agent lifecycle gaps; no lifecycle commands implemented yet.                           |
-| `archon-setup`     | Clean on main | Snapshot refresh PR #60 merged; manifest records `github-workflows@v1` `00fbaab`, `repo-template` `7aa1e91`, and `.github` `0717902`.             |
-| `repo-template`    | Clean on main | Baseline AGENTS/hooks/check-map exist; lifecycle commands/claims schema remain planned work.                                                       |
-| `.github`          | Clean on main | Role/lane policy exists; executable-vs-marker taxonomy still needs clarification.                                                                   |
+| `github-workflows` | In progress   | PR #35 is ready for review and documents the current release/agent lifecycle gaps; strict PR contract PR #39 landed at `90c0a89` and `v1`.          |
+| `archon-setup`     | Clean on main | PR #67 refreshed strict PR contract snapshots to `github-workflows@90c0a89`, `repo-template@a328461`, and `.github@792fc81`.                       |
+| `repo-template`    | Clean on main | Strict PR contract PR #30 landed at `a328461`; baseline AGENTS/hooks/check-map exist and lifecycle commands/claims schema remain planned work.      |
+| `.github`          | Clean on main | Strict PR contract PR #23 landed at `792fc81`; role/lane policy exists and executable-vs-marker taxonomy still needs clarification.                 |
 
 ## In-flight PRs
 
@@ -84,7 +84,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 ## Backlog (prioritized)
 
 1. **Land `github-workflows` PR #35** — preserve the lifecycle accounting, then execute the linked lifecycle implementation issues.
-2. **Template walkthrough** — refresh PR template + issue forms + AGENTS.md against the new F2/F10 evidence shape and F7 owner-lane semantics. Single coordinated three-PR pass.
+2. **Template walkthrough** — refresh issue forms against the new F2/F10 evidence shape and F7 owner-lane semantics after the strict PR contract lands.
 3. **F7 `.github` policy work** — finish `.github` #14 scoped policy now that the reusable workflow and template pieces are shipped.
 4. **Branch-protection 400 anomaly** — file via the anomaly-triage workflow on next `archon-setup` PR. Reference fix already exists in `archon-setup/src/server/tasks/applyBaselineBranchProtection.mjs`.
 5. **Events-stream rollout** — `.archon/events.jsonl` schema in `repo-template` AGENTS.md + `agent-workflow.events-stream` feature in `archon-setup`. Same three-PR pattern as anomaly-triage; renderer (status board UI inside archon-setup's local server) deferred to v0.2.
@@ -92,6 +92,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 ## Recently completed
 
 - **2026-05-31** — `archon-setup` issue #59 completed through merged PR #60; snapshot manifest now records `github-workflows@v1` `00fbaab`, `repo-template` `7aa1e91`, and `.github` `0717902`.
+- **2026-05-31** — Strict PR contract provider rollout landed across `github-workflows` #39, `repo-template` #30, and `.github` #23; `archon-setup` #67 refreshed snapshots to `github-workflows@90c0a89`, `repo-template@a328461`, and `.github@792fc81`.
 - **2026-05-29** — Moved `github-workflows` `v1` to `007ad49` after the F14/F7 workflow merges and shipped `archon-setup` #29 to refresh snapshots for #28.
 - **2026-05-28** — `github-workflows` role-separation PR #27 and `repo-template` Owner Maintenance Lane PR #22 merged.
 - **2026-05-21** — `github-workflows` F14 targeted-gate lanes PR #23 merged.
@@ -108,6 +109,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 | Date       | Decision                                                                                                                                                                                                                                                             | Why                                                                                                                                                      |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-31 | Strict PR readiness is enforced as executable policy, not agent memory: one shared validator, blessed ready wrapper, and expensive CI behind the cheap contract.                                                                                                      | Malformed ready-for-review transitions cost paid CI and have recurred; invalid PR metadata must be unrepresentable through the blessed path.             |
 | 2026-05-31 | Move `github-workflows` `v1` to `00fbaab` after node-ci cache manager auto-detection PR #33.                                                                                                                                                                        | Keeps generated `@v1` callers aligned with the current reusable Node CI behavior without changing caller files.                                           |
 | 2026-05-29 | Move `github-workflows` `v1` to `007ad49` after F14 and F7 because the changes are additive/default-warning-only and current snapshot callers depend on new reusable-workflow inputs and helper scripts.                                                             | Keeps `@v1` callers and helper-script checkout refs version-aligned; avoids generating callers that pass inputs unsupported by the old tag.              |
 | 2026-05-20 | This `ecosystem-status.md` is the canonical "what's the ecosystem doing" doc. Lives in `archon-setup/docs/` because that repo is the integration hub.                                                                                                                | Resolves where ecosystem-wide coordination state belongs. No fifth "master" repo.                                                                        |
