@@ -33,6 +33,9 @@ const LOCAL_BASELINE_FILES = [
   ".githooks/scripts/install-githooks.sh",
   ".githooks/scripts/owner-maintenance.sh",
   ".githooks/scripts/test-owner-maintenance.sh",
+  ".githooks/scripts/checkout-role.sh",
+  ".githooks/scripts/checkout-doctor.sh",
+  ".githooks/scripts/test-checkout-role.sh",
   ".gitattributes",
   "CHANGELOG.md",
   ".changelog/unreleased/README.md",
@@ -47,8 +50,10 @@ const FORBIDDEN_OUTPUT_PATTERNS = [
   /\bskills\b/i,
   /jma-history/i,
   /F18/,
+  /\bF19\b/,
   /repo-template#16/,
   /docs\/phase2\/hook-authority\.md/,
+  /docs\/adr\/001-primary-checkout-worktree-policy\.md/,
 ];
 
 async function tempRoot(prefix = "archon-foundation-") {
@@ -145,6 +150,9 @@ test("writeGithooks copies scrubbed repo-template hooks", async () => {
     ".githooks/scripts/install-githooks.sh",
     ".githooks/scripts/owner-maintenance.sh",
     ".githooks/scripts/test-owner-maintenance.sh",
+    ".githooks/scripts/checkout-role.sh",
+    ".githooks/scripts/checkout-doctor.sh",
+    ".githooks/scripts/test-checkout-role.sh",
   ]);
 
   const hookFiles = await readdir(join(root, ".githooks"), { recursive: true });
