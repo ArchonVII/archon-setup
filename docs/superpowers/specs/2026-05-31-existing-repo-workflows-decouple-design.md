@@ -54,7 +54,10 @@ A pure resolver produces a `githubRepoTarget`:
 
 **Precedence (highest first):**
 
-1. Explicit `--repo owner/repo` (CLI/config) — always wins.
+1. Explicit identity from the CLI — always wins. The #46 headless CLI **already
+   has `--owner` and `--repo` flags**; an explicit target = both present. No new
+   flag is added in A. Invalid input (only one of the pair, or malformed) is
+   rejected in `runOnboard` before `buildPlan`.
 2. Detected GitHub `origin` remote in the target dir.
 3. `remote.github` is selected → `will-create`.
 4. Otherwise `none`.
@@ -66,6 +69,14 @@ Repo presence is detected *state*, carried on the plan context.
 **Guardrail 1 — `will-create` is only legal when `remote.github` is selected.**
 The resolver must never manufacture a `will-create` target from anything other
 than an explicit `remote.github` selection. No "will create somehow."
+
+**`remote.github` selected *with* a known target.** Because explicit/origin beat
+`remote.github` in the precedence, selecting `remote.github` while an explicit or
+origin target is already known leaves `githubRepoTarget.status === "known"` — but
+the `ghRepoCreateAndPush` task is still in the plan and runs per its existing
+**idempotent** behavior (`check()` returns `already-done` when the repo exists).
+This is allowed in A; a later UX pass (E) may add an informational warning that
+the repo already exists. We do not add a blocking conflict for it now.
 
 ### 2. Origin parsing (`parseGithubRemote`) — MVP
 
@@ -79,8 +90,17 @@ ssh://git@github.com/owner/repo
 ssh://git@github.com/owner/repo.git
 ```
 
-Anything else (GitHub Enterprise hosts, non-github remotes, no `origin`) returns
-no match → contributes `status: "none"`. **Enterprise host support is explicit
+A single trailing slash on the https forms is tolerated
+(`https://github.com/owner/repo/`). Anything else returns no match → contributes
+`status: "none"`:
+
+- Extra path segments (`https://github.com/owner/repo/issues`,
+  `…/owner/repo/tree/main`) → `null` (not a bare repo remote).
+- Missing owner or repo, unsupported hosts (GitHub Enterprise, gitlab, …),
+  non-`origin` or absent remote → `null`.
+
+**Contract:** only an *exact* github.com repository remote URL yields
+`{owner, repo}`; everything else is `null`. **Enterprise host support is explicit
 future work**, out of scope for A.
 
 ### 3. Per-feature requirement enum
@@ -100,6 +120,11 @@ New registry field `remoteRequirement`. Absent means local-only (no gate).
   target and no creation, there is no meaningful local fallback → blocking error.
 
 The four feature groups **drop** `requires: ["remote.github"]`.
+
+**Aggregate the runtime warning.** When several `runtime` features are selected
+with no target, `buildPlan` emits **one** deduped runtime diagnostic (keyed by
+`remoteRequirement: "runtime"`), not one per workflow, so the user is not spammed
+with identical copies.
 
 ### 4. Ordering — unchanged, single authority
 
@@ -128,18 +153,35 @@ Warnings carry `severity: "warn" | "error"`:
 - `api-target` feature, target `none`, `remote.github` not selected →
   `severity: "error"` (blocking).
 
-`buildPlan` stays pure (emits warnings; never throws). The gate classifier
-becomes:
+`buildPlan` stays pure (emits diagnostics; never throws). **Each warning is
+stamped with a derived `blocking: boolean`** computed once, server-side:
 
 ```js
-isBlockingWarning(w) =>
-  w.severity === "error" ||
-  w.feature === "workflows.ci" ||           // legacy: missing/dup CI choice
-  /conflicts with/.test(w.message)          // legacy: feature conflicts
+warning.blocking =
+  warning.severity === "error" ||
+  warning.feature === "workflows.ci" ||      // legacy: missing/dup CI choice
+  /conflicts with/.test(warning.message)     // legacy: feature conflicts
 ```
 
-Both the CLI (`runOnboard`) and the wizard Review screen block Execute when any
-blocking warning is present.
+This is the **single source of truth** for the gate. Both consumers just filter
+`warnings.filter(w => w.blocking)` — no duplicated classifier:
+
+- CLI: `runOnboard` blocks Execute (today's `isBlockingWarning` becomes
+  `w => w.blocking === true`; its #46 tests update to the `blocking`/`severity`
+  shape).
+- Wizard: `renderReview` in `src/ui/app.mjs` has its **own inline** filter today
+  (`w.feature === "workflows.ci" || /conflicts with/`). It is replaced with
+  `w.blocking`, so the plan crossing the RPC boundary carries the gate decision
+  with it.
+
+> The array stays named `warnings` for compatibility; conceptually these are
+> *diagnostics* (a `warn`/`error` severity each). No rename in A.
+
+**Wizard scope for A (Option A — minimal gating, not full UX).** A wires
+`checkOriginRemote` into preflight and updates `renderReview`'s gate to
+`w.blocking` so the wizard refuses Execute on `error` diagnostics. Richer UI
+surfacing (dedicated copy, an "existing repo detected" affordance, create-vs-use
+toggle) remains **E**.
 
 **Runtime warning copy** (direct, so the user does not read it as failure):
 
@@ -154,32 +196,46 @@ Wizard:  preflight.checkOriginRemote(target) ──┐
                                                ├─▶ context.repoTargetCandidate
 Headless: runOnboard detects origin in target ─┘   (status known|none, owner/repo)
                                                │
-  + explicit --repo (headless) / future UI ────┤
+  + explicit owner/repo (headless flags) ──────┤
                                                ▼
 buildPlan: resolveRepoTarget({ explicit, originDetected, selection })
-           → context.githubRepoTarget {status, owner?, repo?}
-           → per-feature remoteRequirement gate → warnings[{severity}]
+           → applyResolvedRepoTarget(context) → {githubRepoTarget, owner, repo}
+           → per-feature remoteRequirement gate → warnings[{severity, blocking}]
            → ordered (taskPhase)
                                                ▼
 executePlan: api-target tasks read owner/repo from context (see guardrail 2)
 ```
 
 **Guardrail 2 — API-target tasks consume the resolved target explicitly.**
-The existing `applyLabels` / `applyBaselineBranchProtection` already read
-`ctx.owner` / `ctx.repo`. To keep one source of truth, `resolveRepoTarget`
-**writes the resolved identity back onto the plan context**:
+`resolveRepoTarget` is **pure** — it returns a `githubRepoTarget` and mutates
+nothing. `buildPlan` is responsible for applying it to the plan context:
 
-- `status === "known"` → set `context.owner` / `context.repo` to the
-  explicit/detected `owner/repo` (overriding any stale values).
-- `status === "will-create"` → leave `context.owner` / `context.repo` as-is;
-  they *are* the creation identity `remote.github` will use, and
-  `ghRepoCreateAndPush` (phase 20) runs before labels/protection (30/40).
+```js
+const githubRepoTarget = resolveRepoTarget({ explicit, originDetected, selection });
+const planContext = applyResolvedRepoTarget(context, githubRepoTarget);
+// applyResolvedRepoTarget returns a NEW context; it does not mutate its input.
+```
+
+The existing `applyLabels` / `applyBaselineBranchProtection` already read
+`ctx.owner` / `ctx.repo`, so `applyResolvedRepoTarget` sets those to the single
+source of truth:
+
+- `status === "known"` → `owner`/`repo` = the explicit/detected identity
+  (overriding any stale values).
+- `status === "will-create"` → `owner`/`repo` left as-is; they *are* the
+  creation identity `remote.github` will use, and `ghRepoCreateAndPush` (phase
+  20) runs before labels/protection (30/40).
 - `status === "none"` for an `api-target` feature is already a blocking error
   (§5), so those tasks never execute without a resolved target.
 
-This makes guardrail 2 automatic for the current tasks, but is stated as an
-invariant: an api-target task must derive `owner/repo` from the resolved target
+Invariant: an api-target task must derive `owner/repo` from the resolved target
 and must not fall back to unrelated assumptions.
+
+**`will-create` with missing creation identity.** If an `api-target` feature is
+selected with `status === "will-create"` but `remote.github` lacks a usable
+`owner`/`repo` to create (empty identity), `buildPlan` emits a blocking `error`
+diagnostic — labels/protection must not proceed against a repo that cannot be
+created/pushed.
 
 ## Components
 
@@ -187,12 +243,12 @@ and must not fall back to unrelated assumptions.
 |---|---|---|
 | `lib/parseGithubRemote.mjs` | Parse a remote URL → `{owner, repo}` for github.com; else null | — |
 | `preflight/checkOriginRemote.mjs` | `git -C <target> remote get-url origin` → detected target state | `parseGithubRemote` |
-| `planner/resolveRepoTarget.mjs` | Combine explicit + detected + selection → `githubRepoTarget` (guardrail 1) | `parseGithubRemote` |
-| `planner/buildPlan.mjs` (edit) | Drop `requires`; apply `remoteRequirement` gate; emit `severity` warnings | `resolveRepoTarget` |
+| `planner/resolveRepoTarget.mjs` | **Pure**: combine explicit + detected + selection → `githubRepoTarget` (guardrail 1). Also exports `applyResolvedRepoTarget(context, target)` → new context with `owner/repo/githubRepoTarget` set (no mutation) | `parseGithubRemote` |
+| `planner/buildPlan.mjs` (edit) | Apply resolved target; drop `requires`; `remoteRequirement` gate; emit diagnostics with `severity` + stamped `blocking`; dedupe runtime diagnostic | `resolveRepoTarget` |
 | `registry/features.json` (edit) | `remoteRequirement` + adjusted `capabilitiesNeeded`; remove `requires: remote.github` from the 4 groups | — |
-| `onboard/headlessOnboard.mjs` (edit) | Auto-detect origin in target; backfill owner/repo; pass `explicit` | `checkOriginRemote`/`parseGithubRemote` |
-| `executor` tasks (edit) | `applyLabels` / branch-protection consume resolved target (guardrail 2) | — |
-| `onboard/headlessOnboard.mjs` `isBlockingWarning` (edit) | Add `severity === "error"` | — |
+| `onboard/headlessOnboard.mjs` (edit) | Auto-detect origin in target; validate `--owner`/`--repo` pair; pass `explicit`; `isBlockingWarning` → `w => w.blocking === true` | `checkOriginRemote`/`parseGithubRemote` |
+| `executor` tasks (edit) | `applyLabels` / branch-protection consume resolved `ctx.owner/ctx.repo` (guardrail 2) | — |
+| `src/ui/app.mjs` `renderReview` (edit) | Replace inline blocking filter with `w.blocking` (single source of truth) | — |
 
 ## Testing
 
@@ -207,9 +263,15 @@ test style.
 
 **`parseGithubRemote`:**
 - `git@github.com:owner/repo.git` → `{owner, repo}`.
-- `https://github.com/owner/repo(.git)` → `{owner, repo}`.
+- `https://github.com/owner/repo(.git)` and trailing-slash `…/repo/` → `{owner, repo}`.
 - `ssh://git@github.com/owner/repo.git` → `{owner, repo}`.
+- `https://github.com/owner/repo/issues` (extra path segment) → null.
 - non-github / empty → null.
+
+**`checkOriginRemote`:**
+- non-git directory → `none`, **no thrown error**.
+- git repo with no `origin` → `none`, **no thrown error**.
+- git repo with a github `origin` → detected `{owner, repo}`.
 
 **`resolveRepoTarget`:**
 - explicit `--repo org/main` + origin `user/fork` → `known`, `org/main`
@@ -221,13 +283,21 @@ test style.
 
 **`buildPlan`:**
 - `workflow.pr-policy` alone, no target → `ordered` has `installWorkflow`, **no**
-  `ghRepoCreateAndPush`; one `severity:"warn"` warning.
-- `remote.labels` alone, no target, no `remote.github` → `severity:"error"`
-  warning; `isBlockingWarning` true; no misleading "written locally".
+  `ghRepoCreateAndPush`; one `severity:"warn"`, `blocking:false` diagnostic.
+- `workflow.pr-policy` with **no `gh.authenticated`** capability → **no** blocking
+  auth diagnostic (runtime needs no auth; protects the behavior at the planner
+  level, not just the registry).
+- Multiple `runtime` features, no target → **one deduped** runtime diagnostic,
+  not one per workflow.
+- `remote.labels` alone, no target, no `remote.github` → `severity:"error"`,
+  `blocking:true`; no misleading "written locally".
 - `remote.labels` with detected origin → no repo-create task; needs
   `gh.authenticated`; uses detected owner/repo.
 - `remote.github` + `remote.labels` → `ghRepoCreateAndPush` present; `applyLabels`
   ordered after it (phase 20 < 30).
+- `remote.github` + `remote.labels` with **empty creation identity**
+  (`will-create`, no owner/repo) → blocking `error` (labels must not proceed
+  against an un-creatable repo).
 
 **Headless (`onboardHeadless.test`):**
 - seeded temp git repo with a github origin, onboarded with a `workflow.*`
@@ -240,4 +310,7 @@ test style.
   dirs — **#49 (B)**.
 - AGENTS.md/CLAUDE.md reconcile — **#50 (C)**.
 - Branch-protection two-step automation — **#51 (D)**.
-- Browser-wizard surfacing of the new model / warning copy — **E** (later).
+- **Richer** browser-wizard UX for the new model — dedicated diagnostic copy, an
+  "existing repo detected" affordance, a create-vs-use toggle — **E** (later).
+  Note: A *does* include minimal wizard work (origin detection in preflight +
+  `renderReview` gating on `w.blocking`); only the richer UX is deferred.
