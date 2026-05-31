@@ -47,6 +47,8 @@ const state = {
   options: {},
   plan: null,
   executionEvents: [],
+  globalUpdates: [],
+  globalUpdateResults: null,
 };
 
 // Land directly on the dashboard when launched with #ecosystem (the desktop launcher uses this).
@@ -535,6 +537,113 @@ function renderSnapshot(snap) {
   return wrap;
 }
 
+function renderGlobalUpdateResults(run) {
+  if (!run) return null;
+  const wrap = h("div", { class: "mt-5 rounded border border-slate-200 bg-slate-50 p-4" });
+  wrap.append(
+    h("div", { class: "flex flex-wrap items-center gap-3 text-sm" },
+      h("span", { class: "font-medium" }, run.dryRun ? "Dry-run results" : "Distribution results"),
+      h("span", { class: "text-slate-600" }, `${run.updated} applied · ${run.wouldApply} would apply · ${run.unchanged} unchanged · ${run.skipped} skipped · ${run.failed} failed`)
+    )
+  );
+  const table = h("div", { class: "mt-3 overflow-x-auto" },
+    h("table", { class: "min-w-full text-left text-xs" },
+      h("thead", { class: "text-slate-500" },
+        h("tr", {},
+          h("th", { class: "py-1 pr-3 font-medium" }, "Repo"),
+          h("th", { class: "py-1 pr-3 font-medium" }, "Status"),
+          h("th", { class: "py-1 pr-3 font-medium" }, "Reason"),
+          h("th", { class: "py-1 pr-3 font-medium" }, "Branch")
+        )
+      ),
+      h("tbody", {},
+        ...run.results.map((entry) => h("tr", { class: "border-t border-slate-200" },
+          h("td", { class: "py-1 pr-3 font-medium text-slate-800" }, entry.repo || "?"),
+          h("td", { class: "py-1 pr-3 text-slate-700" }, entry.status),
+          h("td", { class: "py-1 pr-3 text-slate-600" }, entry.reason || ""),
+          h("td", { class: "py-1 pr-3 font-mono text-slate-500" }, entry.branch || "")
+        ))
+      )
+    )
+  );
+  wrap.append(table);
+  return wrap;
+}
+
+function renderGlobalUpdates(updates, reload) {
+  const wrap = h("div", { class: "mt-6 border-t border-slate-200 pt-5" });
+  wrap.append(
+    h("h3", { class: "font-medium" }, "Global Update Records"),
+    h("p", { class: "mt-1 text-sm text-slate-600" },
+      "Recorded shared agent/workflow fixes. Distribution requires the exact confirmation phrase and reports every repo result."
+    )
+  );
+
+  if (!updates.length) {
+    wrap.append(h("p", { class: "mt-2 text-sm text-slate-500" }, "No global update records."));
+    return wrap;
+  }
+
+  for (const update of updates) {
+    const dryRunBtn = h("button", {
+      class: "rounded border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-100",
+      onClick: () => distribute(update, true),
+    }, "Dry run");
+    const applyBtn = h("button", {
+      class: "rounded bg-emerald-700 text-white px-3 py-1.5 text-sm hover:bg-emerald-800",
+      onClick: () => distribute(update, false),
+    }, "Distribute Fix to Ecosystem");
+
+    const box = h("div", { class: "mt-3 rounded border border-slate-200 p-4" },
+      h("div", { class: "flex flex-wrap items-start justify-between gap-3" },
+        h("div", {},
+          h("div", { class: "flex flex-wrap items-center gap-2" },
+            h("span", { class: "font-medium" }, update.title),
+            h("span", { class: "pill pill-green" }, update.status),
+            h("span", { class: "text-xs text-slate-500" }, update.date)
+          ),
+          h("p", { class: "mt-1 text-sm text-slate-600" }, update.summary),
+          h("p", { class: "mt-2 text-xs text-amber-800" }, update.agentInstruction),
+          h("code", { class: "mt-2 inline-block rounded bg-slate-100 px-2 py-1 text-xs text-slate-700" }, update.confirmationPhrase)
+        ),
+        h("div", { class: "flex shrink-0 gap-2" }, dryRunBtn, applyBtn)
+      )
+    );
+    wrap.append(box);
+  }
+
+  const results = renderGlobalUpdateResults(state.globalUpdateResults);
+  if (results) wrap.append(results);
+  return wrap;
+
+  async function distribute(update, dryRun) {
+    const typed = prompt(`Type the exact confirmation phrase to ${dryRun ? "dry-run" : "apply"} this global update:\n\n${update.confirmationPhrase}`);
+    if (typed == null) return;
+    dryRunBtnDisabled(true);
+    try {
+      state.globalUpdateResults = await rpc("globalUpdates.distribute", {
+        updateId: update.id,
+        confirmation: typed,
+        dryRun,
+      });
+      if (!state.globalUpdateResults.ok) {
+        showToast(state.globalUpdateResults.status === "confirmation-required"
+          ? "Confirmation phrase did not match. Nothing was changed."
+          : "Distribution completed with errors. Review the result log.");
+      }
+      reload();
+    } catch (err) {
+      showToast(`Distribution failed: ${err.message}`);
+    } finally {
+      dryRunBtnDisabled(false);
+    }
+  }
+
+  function dryRunBtnDisabled(disabled) {
+    for (const button of wrap.querySelectorAll("button")) button.disabled = disabled;
+  }
+}
+
 function renderEcosystem() {
   const card = h("section", { class: "card p-6" });
   const refreshBtn = h("button", {
@@ -545,7 +654,7 @@ function renderEcosystem() {
     h("div", { class: "flex items-start justify-between gap-4" },
       h("div", {},
         h("h2", { class: "text-xl font-semibold" }, "AI Ecosystem"),
-        h("p", { class: "text-sm text-slate-600 mt-1" }, "Read-only snapshot — ports, repos, Amber, signals.")
+        h("p", { class: "text-sm text-slate-600 mt-1" }, "Snapshot plus controlled global update distribution.")
       ),
       refreshBtn
     )
@@ -559,9 +668,18 @@ function renderEcosystem() {
     body.innerHTML = "";
     body.append(h("p", { class: "text-slate-500 text-sm" }, "Loading…"));
     try {
-      const snap = await rpcGet("ecosystem.snapshot");
+      const [snap, updates] = await Promise.all([
+        rpcGet("ecosystem.snapshot"),
+        rpcGet("globalUpdates.list"),
+      ]);
+      state.globalUpdates = updates.updates || [];
       body.innerHTML = "";
       body.append(renderSnapshot(snap));
+      body.append(renderGlobalUpdates(state.globalUpdates, () => {
+        body.innerHTML = "";
+        body.append(renderSnapshot(snap));
+        body.append(renderGlobalUpdates(state.globalUpdates, () => load()));
+      }));
     } catch (err) {
       body.innerHTML = "";
       body.append(h("p", { class: "text-rose-700 text-sm" }, "Snapshot failed: " + err.message));
