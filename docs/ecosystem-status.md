@@ -1,6 +1,6 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-05-29 by Codex_
+_Last updated: 2026-05-31 by Codex_
 
 The canonical "what is the ecosystem doing right now?" document for the four ArchonVII sibling repos. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
 
@@ -48,9 +48,9 @@ Notes:
 
 | Repo               | Status        | Detail                                                                                                                                             |
 | ------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `github-workflows` | Clean on main | `v1` now points at `007ad49`, carrying F14 lane routing plus the F7 role-separation warning/opt-in hard gate.                                      |
-| `archon-setup`     | Clean on main | Snapshot refresh #29 landed for #28: records `github-workflows` `007ad49`, `repo-template` `9192c3a`, and `.github` `0717902`.                     |
-| `repo-template`    | Clean on main | Owner Maintenance Lane docs/hooks shipped in #22; propagation to generated repos is covered by `archon-setup` #29.                                |
+| `github-workflows` | Clean on main | `v1` now points at `00fbaab`, carrying node-ci cache manager auto-detection from PR #33 plus the prior F14/F7 workflow updates.                     |
+| `archon-setup`     | In progress   | Snapshot refresh #59 records `github-workflows` `00fbaab`, `repo-template` `7aa1e91`, and `.github` `0717902`.                                    |
+| `repo-template`    | Clean on main | Owner Maintenance Lane docs/hooks shipped in #22; propagation to generated repos is covered by the current `archon-setup` snapshots.               |
 | `.github`          | Clean on main | Defaults snapshot is current at `0717902`; no separate provider PR is active.                                                                       |
 
 ## In-flight PRs
@@ -83,7 +83,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Backlog (prioritized)
 
-1. **Finish `archon-setup` #29** — merge the snapshot refresh so generated repos get the current `@v1` workflow callers and Owner Maintenance Lane contract.
+1. **Complete `archon-setup` issue #59** — land the snapshot refresh for `github-workflows` PR #33 so generated repos record the current `@v1` provider SHA.
 2. **Template walkthrough** — refresh PR template + issue forms + AGENTS.md against the new F2/F10 evidence shape and F7 owner-lane semantics. Single coordinated three-PR pass.
 3. **F7 `.github` policy work** — finish `.github` #14 scoped policy now that the reusable workflow and template pieces are shipped.
 4. **Branch-protection 400 anomaly** — file via the anomaly-triage workflow on next `archon-setup` PR. Reference fix already exists in `archon-setup/src/server/tasks/applyBaselineBranchProtection.mjs`.
@@ -91,6 +91,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Recently completed
 
+- **2026-05-31** — Moved `github-workflows` `v1` to `00fbaab` after node-ci cache manager auto-detection PR #33 and started `archon-setup` #59 to refresh snapshots.
 - **2026-05-29** — Moved `github-workflows` `v1` to `007ad49` after the F14/F7 workflow merges and shipped `archon-setup` #29 to refresh snapshots for #28.
 - **2026-05-28** — `github-workflows` role-separation PR #27 and `repo-template` Owner Maintenance Lane PR #22 merged.
 - **2026-05-21** — `github-workflows` F14 targeted-gate lanes PR #23 merged.
@@ -107,6 +108,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 | Date       | Decision                                                                                                                                                                                                                                                             | Why                                                                                                                                                      |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-31 | Move `github-workflows` `v1` to `00fbaab` after node-ci cache manager auto-detection PR #33.                                                                                                                                                                        | Keeps generated `@v1` callers aligned with the current reusable Node CI behavior without changing caller files.                                           |
 | 2026-05-29 | Move `github-workflows` `v1` to `007ad49` after F14 and F7 because the changes are additive/default-warning-only and current snapshot callers depend on new reusable-workflow inputs and helper scripts.                                                             | Keeps `@v1` callers and helper-script checkout refs version-aligned; avoids generating callers that pass inputs unsupported by the old tag.              |
 | 2026-05-20 | This `ecosystem-status.md` is the canonical "what's the ecosystem doing" doc. Lives in `archon-setup/docs/` because that repo is the integration hub.                                                                                                                | Resolves where ecosystem-wide coordination state belongs. No fifth "master" repo.                                                                        |
 | 2026-05-17 | **Owner Maintenance Lane (F7).** Solo-dev policy of three lanes (Owner / Agent-managed / Default), enforced by path scope, not author identity. Owner lane allows direct `main` commits for add-only safe docs/images; agent-managed code PRs hard-block self-merge. | A universal self-merge block would prevent legitimate GitHub Desktop maintenance and can't distinguish agent from human commits under the same identity. |
