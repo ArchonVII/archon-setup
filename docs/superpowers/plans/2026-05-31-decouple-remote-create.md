@@ -733,9 +733,15 @@ remoteRequirement gate, collect runtime features for dedupe):
 Replace the `if` condition only:
 
 ```js
-  if (resolvedTarget.status !== "none") {
+  const hasRemoteIntent = resolved.some((f) => f.remoteRequirement || f.group === "remote");
+  if (resolvedTarget.status !== "none" && hasRemoteIntent) {
     const ciSelected = resolved.filter((f) => f.group === "workflows.ci");
 ```
+
+(The `hasRemoteIntent` guard is required: a purely local onboard may still have a
+`known` target because `owner`/`repo` are set for CODEOWNERS/manifest. Without the
+guard, that would wrongly demand a CI choice and block the local baseline. The CI
+contract only applies when the user actually selects a remote/runtime/api feature.)
 
 3e. Stamp `blocking` on every diagnostic. Find the final `return plan;` and
 insert immediately before it:
