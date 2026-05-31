@@ -101,11 +101,14 @@
       ".githooks/pre-commit",
       ".githooks/scripts/install-githooks.sh",
       ".githooks/scripts/owner-maintenance.sh",
-      ".githooks/scripts/test-owner-maintenance.sh"
+      ".githooks/scripts/test-owner-maintenance.sh",
+      ".githooks/scripts/checkout-role.sh",
+      ".githooks/scripts/checkout-doctor.sh",
+      ".githooks/scripts/test-checkout-role.sh"
     ],
     "tasks": ["writeGithooks"],
     "beginnerDescription": "Installs the standard local git hooks for commit-message and protected-branch guardrails.",
-    "advancedDescription": "Copied from repo-template snapshots with repo-template-internal references scrubbed. core.hooksPath is activated by git-init when safe."
+    "advancedDescription": "Copied from repo-template snapshots with repo-template-internal references scrubbed. Includes the F19 checkout-role worktree guard (feature commits blocked in the primary checkout). core.hooksPath is activated by git-init when safe."
   },
   {
     "id": "foundation.gitattributes",
