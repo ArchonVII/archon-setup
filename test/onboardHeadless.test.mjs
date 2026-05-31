@@ -8,7 +8,6 @@ import assert from "node:assert/strict";
 import {
   runOnboard,
   defaultLocalSelection,
-  isBlockingWarning,
   loadSourceSnapshots,
 } from "../src/server/onboard/headlessOnboard.mjs";
 import { loadRegistry, buildPlan } from "../src/server/planner/buildPlan.mjs";
@@ -88,12 +87,6 @@ test("defaultLocalSelection is every default feature with no remoteRequirement",
   assert.ok(!expected.includes("workflow.required-gate"), "runtime features are not in the local baseline");
 });
 
-test("isBlockingWarning mirrors the wizard's Execute gate", () => {
-  assert.equal(isBlockingWarning({ feature: "workflows.ci", message: "no CI" }), true);
-  assert.equal(isBlockingWarning({ feature: "x", message: "conflicts with foundation.y" }), true);
-  assert.equal(isBlockingWarning({ feature: "x", message: "missing capability: gh.installed" }), false);
-});
-
 test("dry-run builds a plan via the shared planner and writes nothing", async () => {
   const root = await tempRoot();
   const result = await runOnboard({ targetPath: root, dryRun: true });
@@ -115,6 +108,7 @@ test("dry-run builds a plan via the shared planner and writes nothing", async ()
       repo: "",
       visibility: "private",
       capabilities: {},
+      originDetected: null,
       sourceSnapshots: await loadSourceSnapshots(),
     },
   });
@@ -180,4 +174,21 @@ test("blocking warnings halt execution and write nothing", async () => {
   assert.ok(result.blockingWarnings.length > 0, "should report blocking warnings");
   assert.equal(result.result, undefined, "executor should not have run");
   assert.equal(await exists(root, "README.md"), false, "no files written when blocked");
+});
+
+test("onboarding an existing-origin repo installs a workflow without repo-create", async () => {
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const execFileP = promisify(execFile);
+  const root = await tempRoot();
+  await execFileP("git", ["-C", root, "init", "-b", "main"]);
+  await execFileP("git", ["-C", root, "remote", "add", "origin", "git@github.com:ArchonVII/example.git"]);
+
+  const result = await runOnboard({ targetPath: root, features: ["workflow.pr-policy"], dryRun: true });
+
+  assert.equal(result.ok, true);
+  assert.ok(!result.plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
+  assert.ok(result.plan.files.some((f) => f.path === ".github/workflows/pr-policy.yml"));
+  assert.equal(result.plan.context.githubRepoTarget.status, "known");
+  assert.equal(result.plan.context.owner, "ArchonVII");
 });

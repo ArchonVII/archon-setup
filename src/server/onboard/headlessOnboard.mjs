@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 
 import { loadRegistry, buildPlan } from "../planner/buildPlan.mjs";
 import { executePlan } from "../executor/executePlan.mjs";
+import { checkOriginRemote } from "../preflight/checkOriginRemote.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // src/server/onboard -> src/snapshots/manifest.json
@@ -15,13 +16,6 @@ const SNAPSHOT_MANIFEST = join(__dirname, "..", "..", "snapshots", "manifest.jso
 // existing-repo onboarding (e.g. jma-history during F19) needed.
 export function defaultLocalSelection(features) {
   return features.filter((f) => f.default && !f.remoteRequirement).map((f) => f.id);
-}
-
-// Mirrors the wizard's Execute gate (src/ui/app.mjs renderReview): a missing or
-// duplicate language-CI choice and feature conflicts are hard blockers; missing
-// remote capabilities are surfaced as non-blocking warnings.
-export function isBlockingWarning(w) {
-  return w.feature === "workflows.ci" || /conflicts with/.test(w.message);
 }
 
 // Snapshot provenance recorded into the generated `.github/archon-setup.json`.
@@ -72,6 +66,12 @@ export async function runOnboard({
   const unknown = selection.filter((id) => !known.has(id));
   if (unknown.length) throw new Error(`unknown feature(s): ${unknown.join(", ")}`);
 
+  if (Boolean(owner) !== Boolean(repo)) {
+    throw new Error("--owner and --repo must be provided together (or neither)");
+  }
+
+  const { originDetected } = await checkOriginRemote(targetPath);
+
   const context = {
     targetPath,
     owner,
@@ -79,11 +79,12 @@ export async function runOnboard({
     repo,
     visibility,
     capabilities,
+    originDetected,
     sourceSnapshots: await loadSourceSnapshots(),
   };
 
   const plan = await buildPlan({ selection, options, context });
-  const blockingWarnings = (plan.warnings || []).filter(isBlockingWarning);
+  const blockingWarnings = (plan.warnings || []).filter((w) => w.blocking);
 
   if (dryRun) {
     return { ok: true, dryRun: true, plan, blockingWarnings };
