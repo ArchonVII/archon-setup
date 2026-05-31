@@ -14,9 +14,7 @@ const SNAPSHOT_MANIFEST = join(__dirname, "..", "..", "snapshots", "manifest.jso
 // deterministic and offline-friendly — exactly the "local baseline" the
 // existing-repo onboarding (e.g. jma-history during F19) needed.
 export function defaultLocalSelection(features) {
-  return features
-    .filter((f) => f.default && !(f.requires || []).includes("remote.github"))
-    .map((f) => f.id);
+  return features.filter((f) => f.default && !f.remoteRequirement).map((f) => f.id);
 }
 
 // Mirrors the wizard's Execute gate (src/ui/app.mjs renderReview): a missing or
