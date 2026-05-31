@@ -49,10 +49,12 @@ so use the source checkout commands above.
 Your default browser opens to a local URL. The wizard walks you through:
 
 0. **Doctor** — confirms `git`, `gh`, optional `actionlint`, network, and write permissions are good.
-1. **Location** — where to scaffold, repo name, public/private.
+1. **Location** — choose a new repo folder or an existing repo to audit/onboard.
 2. **Features** — checkbox tree (Foundations, GitHub remote, PR contract, …).
-3. **Review** — exactly what files will be created and commands run.
-4. **Execute** — streaming progress.
+3. **Review** — exactly what files will be created and commands run; existing
+   repo mode also shows present/missing/drifted audit results and requires an
+   explicit target confirmation before write-capable steps.
+4. **Execute** — streaming progress plus applied/skipped/failed task results.
 5. **Ecosystem** — current repo/port/signals snapshot plus recorded global
    update fixes that can be dry-run or distributed with explicit confirmation.
 
@@ -88,12 +90,14 @@ checks each planned baseline file in the target repo, reporting `present` when
 it matches, `missing` when absent, and `drifted` when the existing content
 differs from the managed baseline.
 
-**Existing repos.** Point `onboard` at a repo that already has a github `origin`
-and select GitHub features without `remote.github` — workflow callers are
-written locally, and `remote.labels` / `remote.branch-protection` target the
-detected `owner/repo`. No new repo is created. Pass `--owner`/`--repo` to target
-a specific repo (e.g. an upstream instead of a fork); explicit values win over
-the detected origin.
+**Existing repos.** In the browser wizard, choose **Existing repo** on Location.
+The wizard accepts a populated git repo, detects its GitHub `origin`, runs a
+read-only audit on the shared plan, and disables GitHub repo creation while
+still allowing workflow callers, labels, and baseline branch protection to
+target the selected repo. The headless equivalent is to point `onboard` at a
+repo that already has a GitHub `origin` and select GitHub features without
+`remote.github`. Pass `--owner`/`--repo` to target a specific repo (e.g. an
+upstream instead of a fork); explicit values win over the detected origin.
 
 ## Canonical New-Repo Setup
 

@@ -1,10 +1,10 @@
 # Onboarding an Existing Repo
 
-> **Status:** Interim runbook. The new-repo path is the wizard (`README` → "Canonical
-> New-Repo Setup"). Bringing an **existing** repo onto the baseline is the README's
-> "First End Goal" but is **not yet a guided wizard flow**. The headless CLI now has
-> read-only audit support; until [#34] closes, follow the steps below. Each step notes
-> where the tool helps vs. where you do it by hand.
+> **Status:** Browser-assisted runbook. The wizard now exposes an **Existing repo**
+> mode that accepts populated git repos, detects GitHub `origin`, runs the shared
+> read-only audit, disables repo creation, and requires explicit confirmation
+> before write-capable steps. Keep using this runbook for reconcile judgment,
+> worktree isolation, and PR closeout.
 
 This is for a repo that **already exists** (has history, a remote, and likely its own
 `AGENTS.md`/`CLAUDE.md` and code) and needs to adopt the ArchonVII baseline: foundations,
@@ -33,6 +33,9 @@ For a plain-English explanation of the whole process, read
 
 ### 0. Audit (read-only)
 
+- Browser path: run `npm start`, choose **Existing repo** on Location, select the
+  target repo, then review the present/missing/drifted audit results before
+  confirming any write-capable step.
 - Run `npm run onboard -- <repo> --audit` to report planned baseline files as
   `present`, `missing`, or `drifted` without writing.
 - `git -C <repo> rev-parse --abbrev-ref HEAD`, `git remote get-url origin`, `git status --porcelain`.
@@ -85,10 +88,10 @@ Install the caller workflows into `.github/workflows/`: `repo-required-gate` + `
 (the single gate), the PR-contract set (`pr-policy`, `semantic-pr-title`,
 `pr-body-autoinject`, `branch-naming`), and `anomaly-triage`.
 
-- ⚠️ Don't drive these through the executor's planner on an existing repo: selecting
-  `workflow.*` transitively pulls in `remote.github` → `gh repo create`. Until [#34] adds a
-  no-create path, copy the caller YAMLs from `src/snapshots/github-workflows/<name>.yml`
-  (each must reference `@v1`); take `actionlint.yml` from repo-template.
+- The browser wizard and headless planner now support this without repo creation:
+  select workflow features, labels, and branch protection while leaving
+  `remote.github` disabled. The detected or explicitly entered owner/repo becomes
+  the remote target.
 
 ### 5. Hooks (by hand for existing repos, see [#34])
 
@@ -130,11 +133,11 @@ but let each clone activate (don't flip the shared `core.hooksPath` out from und
 
 ## Known gaps
 
-Fresh-repo gaps addressed by the wizard: `foundation.hooks` and manifest created/skipped
-file accuracy. The headless CLI can now run a read-only existing-repo audit, while
-the remaining [#34] gaps are wizard surfacing, AGENTS/CLAUDE reconcile,
-workflows-without-repo-create, managed replacement planning, and a guided
-branch-protection two-step wizard path. When those land, this runbook collapses
-into "run the wizard."
+The wizard now covers existing-repo selection, read-only audit surfacing,
+no-create workflow/label/protection targeting, explicit write confirmation, and
+handoff commands for AGENTS/CLAUDE reconcile plus `tighten-required-gate`.
+Remaining work is deeper managed replacement planning for repo-specific files:
+the user still needs to review AGENTS/CLAUDE diffs and carry forward real
+repo-specific decisions in the setup PR.
 
 [#34]: https://github.com/ArchonVII/archon-setup/issues/34

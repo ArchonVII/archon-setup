@@ -1,6 +1,7 @@
 import { runPreflight, deriveCapabilities } from "./preflight/index.mjs";
 import { loadRegistry, buildPlan } from "./planner/buildPlan.mjs";
 import { executePlan } from "./executor/executePlan.mjs";
+import { auditPlan } from "./onboard/auditPlan.mjs";
 import { pickFolder } from "./lib/pickFolder.mjs";
 import { buildSnapshot } from "./ecosystem/snapshot.mjs";
 import { redactDeep } from "./ecosystem/redact.mjs";
@@ -39,12 +40,15 @@ export const RPC = {
   },
 
   // POST
-  async "preflight.run"({ target }) {
-    const pre = await runPreflight({ target });
+  async "preflight.run"({ target, targetMode }) {
+    const pre = await runPreflight({ target, targetMode });
     return { ...pre, capabilities: deriveCapabilities(pre) };
   },
   async "plan.build"({ selection, options, context }) {
     return buildPlan({ selection, options, context });
+  },
+  async "plan.audit"({ plan }) {
+    return auditPlan(plan);
   },
   async "plan.execute"({ plan }, { onEvent }) {
     return executePlan(plan, { onEvent });
