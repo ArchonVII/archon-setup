@@ -22,6 +22,8 @@ human to understand what was installed and what was intentionally skipped.
 For a plain-English explanation of what onboarding checks, confirms, adds,
 edits, and leaves for review, see
 [`docs/REPO_ONBOARDING_WALKTHROUGH.md`](./docs/REPO_ONBOARDING_WALKTHROUGH.md).
+For the current coordinator/review/close handoff, see
+[`docs/COORDINATOR_HANDOFF.md`](./docs/COORDINATOR_HANDOFF.md).
 
 ## Quickstart
 
@@ -170,14 +172,24 @@ Existing agent-facing capabilities:
 - **Global update records** - archon-setup records shared agent/workflow fixes
   that may need ecosystem-wide dissemination, exposes them in the Ecosystem UI,
   and logs per-repo distribution results.
+- **Headless existing-repo audit** - `npm run onboard -- <repo> --audit`
+  reports planned baseline files as `present`, `missing`, or `drifted` without
+  writing.
+- **Managed AGENTS / CLAUDE reconcile** - existing agent instruction files can
+  receive ArchonVII managed blocks while preserving repo-specific content.
+- **Strict PR-ready contract** - generated policy forbids direct `gh pr ready`
+  and points agents at the shared `agent:close-preflight` /
+  `agent:pr-ready` wrapper path.
+- **Required-gate tighten command** - `tighten-required-gate` performs the
+  delayed `repo-required-gate / decision` required-check step once GitHub has
+  seen the check run.
 - **Owner / agent / default lanes** - the ecosystem policy distinguishes safe
   owner maintenance from agent-managed code changes and ordinary reviewed work.
 
 Planned agent-facing capabilities:
 
-- **Existing-repo audit agent** - inspect an existing repo's workflows, branch
-  protection, docs, hooks, manifests, skills, memory files, and local policy
-  before proposing any changes.
+- **Existing-repo browser UX** - surface the existing-repo audit and apply path
+  in the browser wizard with explicit confirmation before write-capable steps.
 - **Managed merge planner** - classify every proposed update as create, refresh,
   replace, carry-forward, skip, or needs-human-review, with clear diffs for
   AGENTS sections, workflows, check maps, and repo-local customizations.
