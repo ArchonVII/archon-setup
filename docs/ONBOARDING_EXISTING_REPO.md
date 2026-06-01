@@ -34,6 +34,9 @@ For a plain-English explanation of the whole process, read
 
 ### 0. Audit (read-only)
 
+- Browser path: run `npm start`, choose **Existing repo** on Location, select the
+  target repo, then review the present/missing/drifted audit results before
+  confirming any write-capable step.
 - Run `npm run onboard -- <repo> --audit` to report planned baseline files as
   `present`, `missing`, or `drifted` without writing.
 - `git -C <repo> rev-parse --abbrev-ref HEAD`, `git remote get-url origin`, `git status --porcelain`.

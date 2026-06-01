@@ -42,11 +42,15 @@ const state = {
   originDetected: null,
   registry: null,
   snapshots: null,
+  targetMode: "new-repo",
   context: { targetPath: "", owner: "", repo: "", visibility: "private" },
   selection: new Set(),
   options: {},
   plan: null,
+  audit: null,
+  existingRepoConfirmed: false,
   executionEvents: [],
+  executionResult: null,
   globalUpdates: [],
   globalUpdateResults: null,
 };
@@ -85,6 +89,26 @@ function showToast(message) {
 function pill(status) {
   const cls = status === "green" ? "pill pill-green" : status === "yellow" ? "pill pill-yellow" : "pill pill-red";
   return h("span", { class: cls }, status);
+}
+
+function statusPill(status) {
+  const cls =
+    ["present", "applied"].includes(status) ? "pill pill-green"
+      : ["missing", "drifted", "skipped"].includes(status) ? "pill pill-yellow"
+        : ["failed", "error", "blocked", "verify-failed"].includes(status) ? "pill pill-red"
+          : "pill bg-slate-100 text-slate-700";
+  return h("span", { class: cls }, status);
+}
+
+function selectedTargetLabel(plan = state.plan) {
+  const target = plan?.context?.githubRepoTarget;
+  if (target?.status === "known") return `${target.owner}/${target.repo} (${target.source})`;
+  if (target?.status === "will-create") return `${plan?.context?.owner || "owner"}/${plan?.context?.repo || "repo"} (will create)`;
+  return "local files only";
+}
+
+function shellQuote(value) {
+  return `"${String(value || "").replaceAll('"', '\\"')}"`;
 }
 
 const WIZARD_SCREENS = ["doctor", "location", "features", "review", "execute"];
@@ -169,11 +193,36 @@ function renderDoctor() {
 function renderLocation() {
   const card = h("section", { class: "card p-6" });
   card.append(h("h2", { class: "text-xl font-semibold" }, "Where should this live?"));
+  card.append(h("p", { class: "mt-1 text-sm text-slate-600" }, "Choose whether the wizard should scaffold a new repo folder or audit/onboard an existing repo."));
+
+  const isExisting = state.targetMode === "existing-repo";
+  function modeButton(mode, label, detail) {
+    const active = state.targetMode === mode;
+    return h("button", {
+      class: active
+        ? "min-w-0 flex-1 rounded border border-slate-900 bg-slate-900 px-4 py-3 text-left text-white"
+        : "min-w-0 flex-1 rounded border border-slate-300 bg-white px-4 py-3 text-left hover:bg-slate-50",
+      type: "button",
+      onClick: () => {
+        state.targetMode = mode;
+        state.plan = null;
+        state.audit = null;
+        state.existingRepoConfirmed = false;
+        state.executionEvents = [];
+        state.executionResult = null;
+        if (mode === "existing-repo") state.selection.delete("remote.github");
+        render();
+      },
+    },
+      h("div", { class: "font-medium" }, label),
+      h("div", { class: active ? "mt-1 text-xs text-slate-200" : "mt-1 text-xs text-slate-500" }, detail)
+    );
+  }
 
   const targetIn = h("input", {
     class: "min-w-0 flex-1 rounded border border-slate-300 px-3 py-2 font-mono text-sm",
     type: "text",
-    placeholder: "C:\\github\\my-new-repo",
+    placeholder: isExisting ? "C:\\github\\existing-repo" : "C:\\github\\my-new-repo",
     value: state.context.targetPath,
   });
   targetIn.addEventListener("input", (e) => (state.context.targetPath = e.target.value));
@@ -211,7 +260,7 @@ function renderLocation() {
   const ownerIn = h("input", {
     class: "mt-1 w-full rounded border border-slate-300 px-3 py-2",
     type: "text",
-    placeholder: "GitHub owner (user or org)",
+    placeholder: isExisting ? "GitHub owner override (optional)" : "GitHub owner (user or org)",
     value: state.context.owner,
   });
   ownerIn.addEventListener("input", (e) => (state.context.owner = e.target.value));
@@ -219,7 +268,7 @@ function renderLocation() {
   const repoIn = h("input", {
     class: "mt-1 w-full rounded border border-slate-300 px-3 py-2",
     type: "text",
-    placeholder: "Repo name",
+    placeholder: isExisting ? "Repo override (optional)" : "Repo name",
     value: state.context.repo,
   });
   repoIn.addEventListener("input", (e) => (state.context.repo = e.target.value));
@@ -231,20 +280,32 @@ function renderLocation() {
   visSel.addEventListener("change", (e) => (state.context.visibility = e.target.value));
 
   card.append(
+    h("div", { class: "mt-4 flex flex-col gap-2 sm:flex-row" },
+      modeButton("new-repo", "New repo", "Create a fresh local repo and optionally create GitHub remote."),
+      modeButton("existing-repo", "Existing repo", "Audit a populated git repo, then apply selected onboarding steps.")
+    ),
     h("label", { class: "mt-4 block text-sm font-medium" }, "Target folder"),
     h("div", { class: "mt-2 flex gap-2" }, targetIn, browseBtn),
-    h("label", { class: "mt-4 block text-sm font-medium" }, "GitHub owner"),
+    h("label", { class: "mt-4 block text-sm font-medium" }, isExisting ? "GitHub owner override" : "GitHub owner"),
     ownerIn,
-    h("label", { class: "mt-4 block text-sm font-medium" }, "Repo name"),
-    repoIn,
-    h("label", { class: "mt-4 block text-sm font-medium" }, "Visibility"),
-    visSel
+    h("label", { class: "mt-4 block text-sm font-medium" }, isExisting ? "Repo override" : "Repo name"),
+    repoIn
   );
+  if (isExisting) {
+    card.append(
+      h("p", { class: "mt-2 text-xs text-slate-500" }, "Leave owner/repo blank to use the target's GitHub origin. Existing-repo mode disables repo creation but can still target workflows, labels, and branch protection.")
+    );
+  } else {
+    card.append(
+      h("label", { class: "mt-4 block text-sm font-medium" }, "Visibility"),
+      visSel
+    );
+  }
 
   const btn = h("button", {
     class: "mt-6 rounded bg-slate-900 text-white px-4 py-2 hover:bg-slate-700",
     onClick: async () => {
-      const pre = await rpc("preflight.run", { target: state.context.targetPath });
+      const pre = await rpc("preflight.run", { target: state.context.targetPath, targetMode: state.targetMode });
       state.preflight = pre;
       state.capabilities = pre.capabilities;
       state.originDetected = pre.originDetected || null;
@@ -253,11 +314,22 @@ function renderLocation() {
         alert(target.detail);
         return;
       }
+      if (state.targetMode === "existing-repo" && state.originDetected && !state.context.repo) {
+        state.context.owner = state.originDetected.owner;
+        state.context.repo = state.originDetected.repo;
+      }
+      state.selection = new Set();
+      state.plan = null;
+      state.audit = null;
+      state.existingRepoConfirmed = false;
+      state.executionEvents = [];
+      state.executionResult = null;
       state.screen = "features";
       // pre-select defaults
       for (const f of state.registry.features) {
         if (f.default && !f.disabled) state.selection.add(f.id);
       }
+      if (state.targetMode === "existing-repo") state.selection.delete("remote.github");
       render();
     },
   }, "Continue →");
@@ -269,12 +341,23 @@ function renderFeatures() {
   const card = h("section", { class: "card p-6" });
   card.append(h("h2", { class: "text-xl font-semibold" }, "Features"));
   card.append(h("p", { class: "text-sm text-slate-600" }, "Pick what to install. Children are disabled until parents are checked."));
+  if (state.targetMode === "existing-repo") {
+    card.append(
+      h("div", { class: "mt-4 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900" },
+        h("div", { class: "font-medium" }, "Existing repo audit mode"),
+        h("div", { class: "mt-1" }, `Target: ${state.context.targetPath || "not set"}`),
+        h("div", { class: "mt-1" }, `GitHub target: ${state.originDetected ? `${state.originDetected.owner}/${state.originDetected.repo}` : "owner/repo override required for remote settings"}`),
+        h("div", { class: "mt-1" }, "Create GitHub repo is disabled; workflow, label, and protection steps target the selected existing repo.")
+      )
+    );
+  }
 
   const groups = state.registry.groups
     .filter((g) => !g.disabled)
     .sort((a, b) => a.order - b.order);
 
   function dependenciesSatisfied(feature) {
+    if (state.targetMode === "existing-repo" && feature.id === "remote.github") return false;
     for (const dep of feature.requires || []) {
       const isFeatureId = dep.includes(".");
       if (isFeatureId && !state.selection.has(dep)) return false;
@@ -283,6 +366,17 @@ function renderFeatures() {
       if (!state.capabilities?.[cap]) return false;
     }
     return true;
+  }
+
+  function disabledReason(feature) {
+    if (state.targetMode === "existing-repo" && feature.id === "remote.github") {
+      return "Disabled in Existing repo mode.";
+    }
+    const missingRequires = (feature.requires || []).filter((dep) => dep.includes(".") && !state.selection.has(dep));
+    if (missingRequires.length) return "Requires: " + missingRequires.join(", ");
+    const missingCaps = (feature.capabilitiesNeeded || []).filter((cap) => !state.capabilities?.[cap]);
+    if (missingCaps.length) return "Missing capability: " + missingCaps.join(", ");
+    return "";
   }
 
   for (const g of groups) {
@@ -314,8 +408,8 @@ function renderFeatures() {
             f.locked ? h("span", { class: "ml-2 text-xs text-slate-500" }, "(locked)") : null
           ),
           h("div", { class: "text-xs text-slate-500" }, f.beginnerDescription || ""),
-          !enabled && (f.requires || []).length
-            ? h("div", { class: "text-xs text-rose-600" }, "Requires: " + (f.requires || []).join(", "))
+          !enabled
+            ? h("div", { class: "text-xs text-rose-600" }, disabledReason(f))
             : null
         )
       );
@@ -333,6 +427,7 @@ function renderFeatures() {
         options: state.options,
         context: {
           ...state.context,
+          targetMode: state.targetMode,
           capabilities: state.capabilities,
           account: state.capabilities?.account,
           originDetected: state.originDetected,
@@ -340,6 +435,10 @@ function renderFeatures() {
         },
       });
       state.plan = plan;
+      state.audit = state.targetMode === "existing-repo" ? await rpc("plan.audit", { plan }) : null;
+      state.existingRepoConfirmed = false;
+      state.executionEvents = [];
+      state.executionResult = null;
       state.screen = "review";
       render();
     },
@@ -348,10 +447,141 @@ function renderFeatures() {
   return card;
 }
 
+function renderAuditResults(audit) {
+  if (!audit) return null;
+  const wrap = h("div", { class: "mt-5 rounded border border-slate-200 bg-slate-50 p-4" });
+  wrap.append(
+    h("div", { class: "flex flex-wrap items-center gap-3 text-sm" },
+      h("span", { class: "font-medium" }, "Audit results"),
+      statusPill("present"), h("span", { class: "text-slate-600 -ml-2" }, String(audit.summary.present)),
+      statusPill("missing"), h("span", { class: "text-slate-600 -ml-2" }, String(audit.summary.missing)),
+      statusPill("drifted"), h("span", { class: "text-slate-600 -ml-2" }, String(audit.summary.drifted))
+    )
+  );
+  const table = h("div", { class: "mt-3 max-h-80 overflow-auto rounded border border-slate-200 bg-white" },
+    h("table", { class: "min-w-full text-left text-xs" },
+      h("thead", { class: "sticky top-0 bg-white text-slate-500" },
+        h("tr", {},
+          h("th", { class: "py-2 pl-3 pr-3 font-medium" }, "Status"),
+          h("th", { class: "py-2 pr-3 font-medium" }, "Path"),
+          h("th", { class: "py-2 pr-3 font-medium" }, "Feature"),
+          h("th", { class: "py-2 pr-3 font-medium" }, "Detail")
+        )
+      ),
+      h("tbody", {},
+        ...audit.items.map((item) => h("tr", { class: "border-t border-slate-100" },
+          h("td", { class: "py-1.5 pl-3 pr-3" }, statusPill(item.status)),
+          h("td", { class: "py-1.5 pr-3 font-mono text-slate-800" }, item.path),
+          h("td", { class: "py-1.5 pr-3 text-slate-600" }, item.feature),
+          h("td", { class: "py-1.5 pr-3 text-slate-600" }, item.detail || "")
+        ))
+      )
+    )
+  );
+  wrap.append(table);
+  return wrap;
+}
+
+function renderExistingRepoHandoff(plan, audit) {
+  if (state.targetMode !== "existing-repo") return null;
+  const wrap = h("div", { class: "mt-5 rounded border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" });
+  wrap.append(
+    h("div", { class: "font-medium" }, "Existing repo handoff"),
+    h("p", { class: "mt-1" }, `Selected target: ${selectedTargetLabel(plan)}.`)
+  );
+
+  const agentItems = (audit?.items || []).filter((item) => ["AGENTS.md", "CLAUDE.md"].includes(item.path));
+  if (
+    agentItems.some((item) => item.status !== "present")
+    || plan.selectedFeatureIds.includes("foundation.agents")
+    || plan.selectedFeatureIds.includes("foundation.claude-md")
+  ) {
+    wrap.append(
+      h("p", { class: "mt-3" }, "For AGENTS/CLAUDE reconcile, preserve repo-specific facts and run the focused headless command if you want that slice alone:"),
+      h("code", { class: "mt-2 block overflow-x-auto rounded bg-white px-2 py-1 text-xs text-blue-900" },
+        `npm run onboard -- ${shellQuote(plan.context.targetPath)} --features foundation.agents,foundation.claude-md`
+      )
+    );
+  }
+
+  if (plan.postChecks?.some((check) => check.type === "branchProtection.tightenRequiredChecks")) {
+    wrap.append(
+      h("p", { class: "mt-3" }, "After the first repo-required-gate run, tighten the named required check:"),
+      h("code", { class: "mt-2 block overflow-x-auto rounded bg-white px-2 py-1 text-xs text-blue-900" },
+        `node bin/archon-setup.mjs tighten-required-gate --target ${shellQuote(plan.context.targetPath)}`
+      )
+    );
+  }
+
+  return wrap;
+}
+
+function executionOutcome(result) {
+  if (!result?.ok) return "failed";
+  if (["already-done", "skipped"].includes(result.status)) return "skipped";
+  if (result.status === "applied") return "applied";
+  return result.status || "applied";
+}
+
+function renderExecutionResults(result) {
+  const wrap = h("div", { class: "mt-5 rounded border border-slate-200 bg-slate-50 p-4" });
+  if (!result?.results?.length) {
+    wrap.append(h("p", { class: "text-sm text-slate-500" }, "No task results yet."));
+    return wrap;
+  }
+
+  const rows = result.results.map((entry) => ({ ...entry, outcome: executionOutcome(entry) }));
+  const applied = rows.filter((row) => row.outcome === "applied").length;
+  const skipped = rows.filter((row) => row.outcome === "skipped").length;
+  const failed = rows.filter((row) => row.outcome === "failed").length;
+
+  wrap.append(
+    h("div", { class: "flex flex-wrap items-center gap-3 text-sm" },
+      h("span", { class: "font-medium" }, "Execution results"),
+      statusPill("applied"), h("span", { class: "text-slate-600 -ml-2" }, String(applied)),
+      statusPill("skipped"), h("span", { class: "text-slate-600 -ml-2" }, String(skipped)),
+      statusPill("failed"), h("span", { class: "text-slate-600 -ml-2" }, String(failed))
+    )
+  );
+  wrap.append(
+    h("div", { class: "mt-3 overflow-x-auto rounded border border-slate-200 bg-white" },
+      h("table", { class: "min-w-full text-left text-xs" },
+        h("thead", { class: "text-slate-500" },
+          h("tr", {},
+            h("th", { class: "py-2 pl-3 pr-3 font-medium" }, "Status"),
+            h("th", { class: "py-2 pr-3 font-medium" }, "Task"),
+            h("th", { class: "py-2 pr-3 font-medium" }, "Feature"),
+            h("th", { class: "py-2 pr-3 font-medium" }, "Detail")
+          )
+        ),
+        h("tbody", {},
+          ...rows.map((entry) => h("tr", { class: "border-t border-slate-100" },
+            h("td", { class: "py-1.5 pl-3 pr-3" }, statusPill(entry.outcome)),
+            h("td", { class: "py-1.5 pr-3 font-mono text-slate-800" }, entry.unit?.taskId || "?"),
+            h("td", { class: "py-1.5 pr-3 text-slate-600" }, entry.unit?.featureId || ""),
+            h("td", { class: "py-1.5 pr-3 text-slate-600" }, entry.error || entry.status || "")
+          ))
+        )
+      )
+    )
+  );
+  return wrap;
+}
+
 function renderReview() {
   const card = h("section", { class: "card p-6" });
   card.append(h("h2", { class: "text-xl font-semibold" }, "Review"));
   card.append(h("p", { class: "text-sm text-slate-600 mt-1" }, "Exactly what will happen on Execute."));
+  card.append(
+    h("div", { class: "mt-4 rounded border border-slate-200 bg-slate-50 p-3 text-sm" },
+      h("div", { class: "font-medium text-slate-800" }, state.targetMode === "existing-repo" ? "Existing repo target" : "New repo target"),
+      h("div", { class: "mt-1 text-slate-600" }, state.plan.context.targetPath || "No target path"),
+      h("div", { class: "mt-1 text-slate-600" }, `GitHub target: ${selectedTargetLabel(state.plan)}`)
+    )
+  );
+
+  const auditResults = renderAuditResults(state.audit);
+  if (auditResults) card.append(auditResults);
 
   card.append(h("h3", { class: "mt-4 font-medium" }, "Files to create"));
   const filesUl = h("ul", { class: "mt-1 text-sm font-mono space-y-0.5" });
@@ -385,6 +615,9 @@ function renderReview() {
     card.append(pcUl);
   }
 
+  const handoff = renderExistingRepoHandoff(state.plan, state.audit);
+  if (handoff) card.append(handoff);
+
   // Warnings block selection issues that must be fixed before Execute
   // (e.g. missing/duplicate language-CI choice per issue #17 / F1).
   const blockingWarnings = (state.plan.warnings || []).filter((w) => w.blocking);
@@ -397,6 +630,28 @@ function renderReview() {
     card.append(wUl);
   }
 
+  const requiresExistingConfirmation = state.targetMode === "existing-repo";
+  if (requiresExistingConfirmation) {
+    const confirm = h("input", {
+      type: "checkbox",
+      class: "mt-1 h-4 w-4 shrink-0 rounded border-slate-300",
+    });
+    confirm.checked = state.existingRepoConfirmed;
+    confirm.addEventListener("change", (event) => {
+      state.existingRepoConfirmed = event.target.checked;
+      render();
+    });
+    card.append(
+      h("label", { class: "mt-5 flex items-start gap-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950" },
+        confirm,
+        h("span", {},
+          `I confirm ${state.plan.context.targetPath} is the existing repo I want to onboard, and write-capable steps may update selected files and GitHub settings for ${selectedTargetLabel(state.plan)}.`
+        )
+      )
+    );
+  }
+
+  const canExecute = blockingWarnings.length === 0 && (!requiresExistingConfirmation || state.existingRepoConfirmed);
   const row = h("div", { class: "mt-6 flex gap-2" });
   row.append(
     h("button", {
@@ -404,12 +659,16 @@ function renderReview() {
       onClick: () => { state.screen = "features"; render(); },
     }, "← Back"),
     h("button", {
-      class: blockingWarnings.length
+      class: !canExecute
         ? "rounded bg-slate-300 text-slate-500 px-4 py-2 cursor-not-allowed"
         : "rounded bg-emerald-700 text-white px-4 py-2 hover:bg-emerald-800",
-      disabled: blockingWarnings.length ? "" : undefined,
-      onClick: blockingWarnings.length
-        ? () => alert("Fix selection warnings before executing: " + blockingWarnings.map((w) => w.message).join("; "))
+      disabled: !canExecute,
+      onClick: !canExecute
+        ? () => alert(
+            blockingWarnings.length
+              ? "Fix selection warnings before executing: " + blockingWarnings.map((w) => w.message).join("; ")
+              : "Confirm the existing repo target before executing write-capable steps."
+          )
         : () => { state.screen = "execute"; render(); },
     }, "Execute →")
   );
@@ -420,13 +679,18 @@ function renderReview() {
 function renderExecute() {
   const card = h("section", { class: "card p-6" });
   card.append(h("h2", { class: "text-xl font-semibold" }, "Executing"));
+  card.append(h("p", { class: "mt-1 text-sm text-slate-600" }, `Target: ${state.plan.context.targetPath} · GitHub: ${selectedTargetLabel(state.plan)}`));
   const log = h("pre", {
     class: "mt-4 bg-slate-900 text-emerald-300 text-xs p-4 rounded h-96 overflow-auto font-mono whitespace-pre-wrap",
   }, "Starting…\n");
   card.append(log);
+  const resultsHost = h("div", {});
+  card.append(resultsHost);
 
   (async () => {
     try {
+      state.executionEvents = [];
+      state.executionResult = null;
       const res = await fetch("/rpc/plan.execute", {
         method: "POST",
         headers,
@@ -453,10 +717,24 @@ function renderExecute() {
           if (!dataStr) continue;
           const ev = JSON.parse(dataStr);
           if (evType === "done") {
+            state.executionResult = ev;
             log.textContent += "\n✓ done\n" + JSON.stringify(ev, null, 2);
+            resultsHost.innerHTML = "";
+            resultsHost.append(renderExecutionResults(ev));
+            const handoff = renderExistingRepoHandoff(state.plan, state.audit);
+            if (handoff) resultsHost.append(handoff);
           } else if (evType === "error") {
+            state.executionResult = { ok: false, results: [] };
             log.textContent += "\n✗ error\n" + JSON.stringify(ev, null, 2);
+            resultsHost.innerHTML = "";
+            resultsHost.append(
+              h("div", { class: "mt-5 rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" },
+                h("span", { class: "font-medium" }, "Execution failed"),
+                h("div", { class: "mt-1" }, ev.error || "Unknown error")
+              )
+            );
           } else {
+            state.executionEvents.push(ev);
             log.textContent += `[${ev.kind}] ${ev.taskId}${ev.result ? " (" + ev.result + ")" : ""}\n`;
           }
           log.scrollTop = log.scrollHeight;
@@ -464,6 +742,13 @@ function renderExecute() {
       }
     } catch (err) {
       log.textContent += "\n✗ stream error: " + err.message + "\n";
+      resultsHost.innerHTML = "";
+      resultsHost.append(
+        h("div", { class: "mt-5 rounded border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" },
+          h("span", { class: "font-medium" }, "Execution failed"),
+          h("div", { class: "mt-1" }, err.message)
+        )
+      );
     }
   })();
 

@@ -12,6 +12,10 @@
   with an exact confirmation phrase and per-repo applied/skipped/failed results.
 - Added persistent distribution run logging at
   `C:\Users\<you>\.codex\archon-setup\global-update-runs.jsonl`.
+- Added browser wizard existing-repo mode with read-only audit results,
+  explicit write confirmation, no-create workflow/label/protection targeting,
+  execution result summaries, and AGENTS/CLAUDE plus required-gate handoff
+  commands.
 
 ### Changed
 
