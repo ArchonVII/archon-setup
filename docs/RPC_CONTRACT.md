@@ -36,8 +36,11 @@ path is only copied into the Location screen; target validation remains in
 
 ### `preflight.run`
 
-Body: `{ target?: string }`.
+Body: `{ target?: string, targetMode?: "new-repo" | "existing-repo" }`.
 Returns `{ checks, summary, capabilities }` — see `docs/MANIFEST.md` for capability bits.
+
+`targetMode: "existing-repo"` allows a populated git repository target and returns
+`originDetected` when the target has a GitHub `origin`.
 
 ### `plan.build`
 
@@ -45,6 +48,13 @@ Body: `{ selection: string[], options: object, context: object }`.
 Returns a normalized plan object: `{ context, selectedFeatureIds, files, commands, remoteMutations, postChecks, ordered, warnings }`.
 
 The Review screen and the Execute screen consume the **same plan object** — never two sources of truth.
+
+### `plan.audit`
+
+Body: `{ plan }`.
+Returns `{ summary, items }` using the existing-repo audit model. Summary counts
+`present`, `missing`, and `drifted` planned baseline files. Items include
+`path`, `feature`, `taskId`, `status`, `comparison`, and `detail`.
 
 ### `plan.execute`
 

@@ -22,6 +22,8 @@ human to understand what was installed and what was intentionally skipped.
 For a plain-English explanation of what onboarding checks, confirms, adds,
 edits, and leaves for review, see
 [`docs/REPO_ONBOARDING_WALKTHROUGH.md`](./docs/REPO_ONBOARDING_WALKTHROUGH.md).
+For the current coordinator/review/close handoff, see
+[`docs/COORDINATOR_HANDOFF.md`](./docs/COORDINATOR_HANDOFF.md).
 
 ## Quickstart
 
@@ -49,10 +51,12 @@ so use the source checkout commands above.
 Your default browser opens to a local URL. The wizard walks you through:
 
 0. **Doctor** — confirms `git`, `gh`, optional `actionlint`, network, and write permissions are good.
-1. **Location** — where to scaffold, repo name, public/private.
+1. **Location** — choose a new repo folder or an existing repo to audit/onboard.
 2. **Features** — checkbox tree (Foundations, GitHub remote, PR contract, …).
-3. **Review** — exactly what files will be created and commands run.
-4. **Execute** — streaming progress.
+3. **Review** — exactly what files will be created and commands run; existing
+   repo mode also shows present/missing/drifted audit results and requires an
+   explicit target confirmation before write-capable steps.
+4. **Execute** — streaming progress plus applied/skipped/failed task results.
 5. **Ecosystem** — current repo/port/signals snapshot plus recorded global
    update fixes that can be dry-run or distributed with explicit confirmation.
 
@@ -88,12 +92,14 @@ checks each planned baseline file in the target repo, reporting `present` when
 it matches, `missing` when absent, and `drifted` when the existing content
 differs from the managed baseline.
 
-**Existing repos.** Point `onboard` at a repo that already has a github `origin`
-and select GitHub features without `remote.github` — workflow callers are
-written locally, and `remote.labels` / `remote.branch-protection` target the
-detected `owner/repo`. No new repo is created. Pass `--owner`/`--repo` to target
-a specific repo (e.g. an upstream instead of a fork); explicit values win over
-the detected origin.
+**Existing repos.** In the browser wizard, choose **Existing repo** on Location.
+The wizard accepts a populated git repo, detects its GitHub `origin`, runs a
+read-only audit on the shared plan, and disables GitHub repo creation while
+still allowing workflow callers, labels, and baseline branch protection to
+target the selected repo. The headless equivalent is to point `onboard` at a
+repo that already has a GitHub `origin` and select GitHub features without
+`remote.github`. Pass `--owner`/`--repo` to target a specific repo (e.g. an
+upstream instead of a fork); explicit values win over the detected origin.
 
 ## Canonical New-Repo Setup
 
@@ -170,14 +176,24 @@ Existing agent-facing capabilities:
 - **Global update records** - archon-setup records shared agent/workflow fixes
   that may need ecosystem-wide dissemination, exposes them in the Ecosystem UI,
   and logs per-repo distribution results.
+- **Headless existing-repo audit** - `npm run onboard -- <repo> --audit`
+  reports planned baseline files as `present`, `missing`, or `drifted` without
+  writing.
+- **Managed AGENTS / CLAUDE reconcile** - existing agent instruction files can
+  receive ArchonVII managed blocks while preserving repo-specific content.
+- **Strict PR-ready contract** - generated policy forbids direct `gh pr ready`
+  and points agents at the shared `agent:close-preflight` /
+  `agent:pr-ready` wrapper path.
+- **Required-gate tighten command** - `tighten-required-gate` performs the
+  delayed `repo-required-gate / decision` required-check step once GitHub has
+  seen the check run.
 - **Owner / agent / default lanes** - the ecosystem policy distinguishes safe
   owner maintenance from agent-managed code changes and ordinary reviewed work.
 
 Planned agent-facing capabilities:
 
-- **Existing-repo audit agent** - inspect an existing repo's workflows, branch
-  protection, docs, hooks, manifests, skills, memory files, and local policy
-  before proposing any changes.
+- **Existing-repo browser UX** - surface the existing-repo audit and apply path
+  in the browser wizard with explicit confirmation before write-capable steps.
 - **Managed merge planner** - classify every proposed update as create, refresh,
   replace, carry-forward, skip, or needs-human-review, with clear diffs for
   AGENTS sections, workflows, check maps, and repo-local customizations.
