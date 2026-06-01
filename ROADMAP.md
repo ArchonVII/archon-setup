@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-05-30.
+Last updated: 2026-05-31.
 
 This roadmap tracks the `archon-setup` product surface: the local wizard and
 update tooling that scaffold ArchonVII repositories.
@@ -43,6 +43,24 @@ update tooling that scaffold ArchonVII repositories.
   PRs and `main` through `ArchonVII/github-workflows@v1`.
 - **Tests** - Node tests cover registry invariants, safe paths, actionlint
   preflight discovery, managed-file updates, and AGENTS generation.
+- **Headless existing-repo audit** - `npm run onboard -- <repo> --audit`
+  reports planned baseline files as present, missing, or drifted without
+  writing.
+- **Existing-repo target decoupling** - workflow callers can be installed for an
+  existing GitHub repo without selecting the repo-create task; labels and
+  branch protection target explicit or detected `owner/repo`.
+- **Managed agent-doc reconciliation** - existing `AGENTS.md` and `CLAUDE.md`
+  files can receive ArchonVII managed blocks while preserving repo-specific
+  content outside the blocks.
+- **Required-gate tightening command** - `node bin/archon-setup.mjs
+  tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
+  required after GitHub has seen the check run.
+- **Global update records** - the Ecosystem screen records shared
+  agent/workflow fixes and can dry-run or distribute eligible updates with
+  explicit confirmation and per-repo result logs.
+- **Strict PR contract snapshots** - provider snapshots include the shared
+  strict PR-ready contract, wrapper guidance, and updated PR templates from
+  `github-workflows`, `repo-template`, and `.github`.
 
 ## In Progress
 
@@ -51,11 +69,13 @@ update tooling that scaffold ArchonVII repositories.
 - **End-to-end wizard hardening** - real repo creation now has smoke-test
   coverage for the fresh-repo path, but future remote changes should keep
   receiving full dry-run, execute, and rerun coverage.
-- **Required-check tightening** - generated repos record a deferred post-check
-  because GitHub cannot require a named check until that check has run.
-- **Existing-repo update scope** - the updater handles managed workflow callers;
-  broader managed sync for AGENTS sections, hooks, and repo-specific policy is
-  intentionally not automatic yet.
+- **Existing-repo browser UX** - headless/tooling support is built; issue #68
+  tracks surfacing the same audit and existing-repo confirmation path in the
+  browser wizard.
+- **Branch protection/ruleset audit** - issue #65 tracks making hub repo
+  protection and ruleset state visible in audit/status output.
+- **Agent lifecycle baseline** - issue #64 tracks installing, updating, and
+  auditing lifecycle files after the provider repos own the command surface.
 - **Roadmap/status reconciliation** - `docs/ecosystem-status.md` remains the
   cross-repo ecosystem status file; this roadmap is the product roadmap for this
   repo.
@@ -64,12 +84,8 @@ update tooling that scaffold ArchonVII repositories.
 
 ## Planned / Deferred
 
-- **Audit existing repo mode** - read `.github/archon-setup.json` and compare an
-  existing repo against the selected baseline.
 - **Workflow drift upgrades** - use recorded snapshot SHAs to identify and
   upgrade stale managed workflows.
-- **Managed AGENTS sync path** - provide an explicit, reviewable way to update
-  shared AGENTS content without clobbering repo-specific sections.
 - **Events stream support** - add `.archon/events.jsonl` conventions and a
   status-board view once real events accumulate.
 - **Copilot and secret setup** - deferred until the v0.4 path; secrets must go

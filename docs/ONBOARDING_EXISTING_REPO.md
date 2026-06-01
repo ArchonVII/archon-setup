@@ -1,10 +1,11 @@
 # Onboarding an Existing Repo
 
-> **Status:** Browser-assisted runbook. The wizard now exposes an **Existing repo**
-> mode that accepts populated git repos, detects GitHub `origin`, runs the shared
-> read-only audit, disables repo creation, and requires explicit confirmation
-> before write-capable steps. Keep using this runbook for reconcile judgment,
-> worktree isolation, and PR closeout.
+> **Status:** Interim runbook. The new-repo path is the wizard (`README` → "Canonical
+> New-Repo Setup"). Bringing an **existing** repo onto the baseline is the README's
+> "First End Goal" but is **not yet a guided wizard flow**. The headless CLI now has
+> read-only audit support plus targeted reconcile/tighten commands. Until [#68] lands,
+> follow the steps below. Each step notes where the tool helps vs. where you do it by
+> hand.
 
 This is for a repo that **already exists** (has history, a remote, and likely its own
 `AGENTS.md`/`CLAUDE.md` and code) and needs to adopt the ArchonVII baseline: foundations,
@@ -69,15 +70,20 @@ executor.
   After that, replace or reconcile stale existing files by hand so the setup PR still
   lands the full baseline.
 
-### 3. Reconcile AGENTS.md / CLAUDE.md (by hand)
+### 3. Reconcile AGENTS.md / CLAUDE.md
 
-The executor skips these if they exist, so the standard never lands automatically.
+The `writeAgentsMd` and `writeClaudeMd` tasks now reconcile existing files with
+ArchonVII managed blocks instead of blindly replacing repo-specific content.
+Review the diff after running setup and keep useful repo-specific material
+outside the managed blocks.
 
-- **AGENTS.md:** fold in the standard workflow contract (issue→branch→PR, owner-maintenance
-  lane, anomaly triage, `## Coordination` pointing at `.agent/coordination/`, verification,
-  commit hygiene) while **keeping** the repo's own purpose/stack/repo-map/project rules.
-- **CLAUDE.md:** make it a thin pointer to `AGENTS.md` (workflow content lives there; keep
-  only tool-specific notes).
+- **AGENTS.md:** the managed block carries the standard workflow contract
+  (issue/branch/PR discipline, owner-maintenance lane, anomaly triage,
+  coordination, verification, commit hygiene, and strict PR-ready wrapper
+  expectations). Keep the repo's own purpose/stack/repo-map/project rules
+  outside the managed block.
+- **CLAUDE.md:** the managed block keeps Claude pointed at `AGENTS.md`; keep
+  only tool-specific notes outside that block.
 - Align the anomaly path: the `anomaly-triage` workflow reads `.archon/anomalies-thispr.md`
   — make AGENTS.md say the same, and gitignore `.archon/*` except that file.
 - Remove any machine-global-board / sibling-repo references found in step 0.
@@ -88,21 +94,22 @@ Install the caller workflows into `.github/workflows/`: `repo-required-gate` + `
 (the single gate), the PR-contract set (`pr-policy`, `semantic-pr-title`,
 `pr-body-autoinject`, `branch-naming`), and `anomaly-triage`.
 
-- The browser wizard and headless planner now support this without repo creation:
-  select workflow features, labels, and branch protection while leaving
-  `remote.github` disabled. The detected or explicitly entered owner/repo becomes
-  the remote target.
+- The planner now separates "this repo has a GitHub target" from "create a new
+  GitHub repo." Workflow callers can be installed for an existing repo without
+  selecting `remote.github`; labels and branch protection use explicit
+  `--owner`/`--repo` or the detected GitHub `origin`.
 
-### 5. Hooks (by hand for existing repos, see [#34])
+### 5. Hooks
 
 The fresh-repo wizard now has `foundation.hooks`, writes the scrubbed repo-template
 `.githooks/` baseline, and activates `core.hooksPath=.githooks` when it is safe to do so.
 For existing repos, copy repo-template `.githooks/` (`pre-commit` main-guard +
 owner-maintenance, `commit-msg`, `scripts/install-githooks.sh`,
-`owner-maintenance.sh`) by hand until [#34] adds the managed audit/apply flow.
-Activation is per-clone: `bash .githooks/scripts/install-githooks.sh` sets
-`core.hooksPath`. In a shared/worktree setup with a concurrent agent, commit the hooks
-but let each clone activate (don't flip the shared `core.hooksPath` out from under them).
+`owner-maintenance.sh`) when the executor reports them missing, then review the
+diff before committing. Activation is per-clone:
+`bash .githooks/scripts/install-githooks.sh` sets `core.hooksPath`. In a
+shared/worktree setup with a concurrent agent, commit the hooks but let each
+clone activate (do not flip shared `core.hooksPath` out from under them).
 
 ### 6. Branch protection (two-step)
 
@@ -133,11 +140,11 @@ but let each clone activate (don't flip the shared `core.hooksPath` out from und
 
 ## Known gaps
 
-The wizard now covers existing-repo selection, read-only audit surfacing,
-no-create workflow/label/protection targeting, explicit write confirmation, and
-handoff commands for AGENTS/CLAUDE reconcile plus `tighten-required-gate`.
-Remaining work is deeper managed replacement planning for repo-specific files:
-the user still needs to review AGENTS/CLAUDE diffs and carry forward real
-repo-specific decisions in the setup PR.
+Fresh-repo gaps addressed by the wizard: `foundation.hooks` and manifest created/skipped
+file accuracy. The headless CLI can now run a read-only existing-repo audit,
+install workflow callers without forcing repo creation, reconcile AGENTS/CLAUDE
+managed blocks, and run the branch-protection tighten command. The remaining
+gap is guided browser wizard surfacing, tracked in [#68]. When that lands, this
+runbook collapses into "run the wizard."
 
-[#34]: https://github.com/ArchonVII/archon-setup/issues/34
+[#68]: https://github.com/ArchonVII/archon-setup/issues/68
