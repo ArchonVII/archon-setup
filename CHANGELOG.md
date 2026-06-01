@@ -12,6 +12,9 @@
   with an exact confirmation phrase and per-repo applied/skipped/failed results.
 - Added persistent distribution run logging at
   `C:\Users\<you>\.codex\archon-setup\global-update-runs.jsonl`.
+- Added ecosystem snapshot governance output for the four hub repos, separating
+  classic branch protection from repository rulesets and marking unavailable API
+  data as unknown.
 - Added browser wizard existing-repo mode with read-only audit results,
   explicit write confirmation, no-create workflow/label/protection targeting,
   execution result summaries, and AGENTS/CLAUDE plus required-gate handoff

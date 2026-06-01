@@ -9,6 +9,10 @@ export function renderHtml(snap) {
   const repos = snap.repos.map((r) =>
     `<li>${dot(!r.dirty)} <b>${esc(r.name)}</b> @${esc(r.branch)}${r.dirty ? " (dirty)" : ""}${(r.worktrees?.length ?? 0) > 1 ? ` · ${r.worktrees.length} worktrees` : ""}</li>`
   ).join("");
+  const governance = (snap.governance?.repos || []).map((r) =>
+    `<li>${dot(r.status === "green")} <b>${esc(r.fullName || `${r.owner}/${r.name}`)}</b> @${esc(r.defaultBranch || "unknown")} ` +
+    `<small>classic: ${esc(r.classic?.status)} · rulesets: ${esc(r.rulesets?.status)} · PR: ${esc(r.posture?.prRequired)} · direct push: ${esc(r.posture?.directPush)} · force push: ${esc(r.posture?.forcePush)} · deletion: ${esc(r.posture?.deletion)} · required gate: ${esc(r.posture?.requiredGate)}</small></li>`
+  ).join("");
   const recent = (snap.signals.recent || []).map((s) => `<li>${esc(s)}</li>`).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>AI Ecosystem</title><style>
@@ -23,6 +27,7 @@ export function renderHtml(snap) {
 <p class="meta">Amber: ${dot(snap.amber.online)} ${esc(snap.amber.detail)} · signals: ${snap.signals.anomalies} anomalies, ${snap.signals.noticed} noticed</p>
 <h2>Ports (timestamped, not authoritative)</h2><ul>${ports || "<li>none</li>"}</ul>
 <h2>Repos</h2><ul>${repos || "<li>none</li>"}</ul>
+<h2>Repository governance</h2><ul>${governance || "<li>none</li>"}</ul>
 <h2>Recent signals</h2><ul>${recent || "<li>none</li>"}</ul>
 </body></html>`;
 }
