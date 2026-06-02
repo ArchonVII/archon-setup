@@ -4,6 +4,12 @@
 
 ### Added
 
+- Added a best-effort `.archon/events.jsonl` event stream: `appendEvent` writes
+  append-only `{ts,type,actor,ref,detail}` lines (never throwing into the task
+  flow), the executor emits plan-start / task-applied / plan-end, and the
+  ecosystem snapshot renders a "Recent events" section. See
+  `docs/archon-events-convention.md`.
+
 - Added global update records for shared agent/workflow fixes, starting with the
   2026-05-31 Browser backend preflight policy.
 - Added a global update record for the strict PR ready-for-review contract that
