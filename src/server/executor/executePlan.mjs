@@ -1,5 +1,6 @@
 import { runTask } from "./taskRunner.mjs";
 import { appendEvent, TYPE_PLAN_START, TYPE_TASK_APPLIED, TYPE_PLAN_END } from "../lib/events.mjs";
+import { sanitizeSerializedPlan } from "../planner/secretOptions.mjs";
 import * as writeReadme from "../tasks/writeReadme.mjs";
 import * as writeLicense from "../tasks/writeLicense.mjs";
 import * as writeGitignore from "../tasks/writeGitignore.mjs";
@@ -54,7 +55,8 @@ const TASKS = {
 
 // Executes a plan from the planner. Streams events via onEvent.
 // On any task failure, halts and returns the partial result.
-export async function executePlan(plan, { onEvent } = {}) {
+export async function executePlan(plan, { onEvent, secretProvider } = {}) {
+  plan = sanitizeSerializedPlan(plan);
   const results = [];
   const manifest = {
     tool: "archon-setup",
@@ -96,6 +98,7 @@ export async function executePlan(plan, { onEvent } = {}) {
       featureId: unit.featureId,
       manifest,
       onEvent,
+      secretProvider,
     };
     const res = await runTask({ ...mod, id: unit.taskId }, ctx);
     results.push({ ...res, unit });

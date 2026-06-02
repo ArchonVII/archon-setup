@@ -41,6 +41,30 @@ function fail(message) {
   process.exit(1);
 }
 
+async function readStdin() {
+  let body = "";
+  for await (const chunk of process.stdin) body += chunk.toString();
+  return body;
+}
+
+// `secret set NAME --repo OWNER/REPO`
+//
+// Mirrors current gh CLI semantics: `--body VALUE` means VALUE is the secret,
+// and stdin is read only when `--body` is not specified. The log records the
+// source and byte length, never the secret value.
+if (args[0] === "secret" && args[1] === "set") {
+  const name = args[2] || "";
+  const bodyFlag = args.indexOf("--body");
+  const source = bodyFlag >= 0 ? "body" : "stdin";
+  const value = bodyFlag >= 0 ? (args[bodyFlag + 1] || "") : await readStdin();
+  const expected = process.env.ARCHON_FAKE_GH_EXPECT_SECRET;
+  if (expected != null && value !== expected) {
+    fail(`secret set ${name}: expected ${expected.length} bytes from stdin-compatible input, got ${value.length} bytes from ${source}`);
+  }
+  appendFileSync(join(remoteDir, ".gh-calls.log"), `secret set ${name} source=${source} bytes=${value.length}\n`);
+  process.exit(0);
+}
+
 // `repo create <owner>/<repo> [flags] --source=<dir> --remote=origin --push`
 if (args[0] === "repo" && args[1] === "create") {
   const ownerRepo = args.slice(2).find((a) => !a.startsWith("-") && a.includes("/"));

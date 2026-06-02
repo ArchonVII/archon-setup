@@ -439,7 +439,7 @@
     "capabilitiesNeeded": ["gh.copilotAgentAllowed"],
     "tasks": ["enableCopilot"],
     "beginnerDescription": "Enables GitHub Copilot for this repo (v0.4 — requires an org with Copilot billing).",
-    "advancedDescription": "Detects org vs personal via gh api users/<owner>; blocks personal accounts and records a manual billing/policy checklist into the manifest for organizations. Staged disabled until v0.4."
+    "advancedDescription": "Manual-only activation for now: uses gh api users/<owner> only to classify org vs personal, then blocks personal accounts and records a manual billing/policy checklist into the manifest for organizations. It does not mutate Copilot settings until the API/billing/seat semantics are proven. Staged disabled until v0.4."
   },
   {
     "id": "copilot.repo-secret",
@@ -454,7 +454,7 @@
       "secretName": { "type": "string", "value": "" }
     },
     "beginnerDescription": "Sets a repository Actions secret. The value is piped to `gh secret set` via stdin — it never touches disk, argv, or logs.",
-    "advancedDescription": "Uses the commandRunner stdin seam (`gh secret set NAME --body -`). The value is supplied at execute time (deferred stdin), and the manifest records only the name + wasSet. Staged disabled until v0.4."
+    "advancedDescription": "Uses the commandRunner stdin seam (`gh secret set NAME --repo OWNER/REPO` with --body omitted, because current gh reads stdin only when --body is not specified). The value is supplied through a runtime-only secret provider at execute time, never through serialized plan options, and the manifest records only the name + wasSet. Staged disabled until v0.4."
   },
   {
     "id": "agent-lifecycle.baseline",
