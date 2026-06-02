@@ -4,6 +4,13 @@
 
 ### Added
 
+- Added a hermetic no-remote fresh-repo smoke test that exercises the full
+  remote path (repo create + push + readiness poll) against a local bare repo
+  via a `gh` mock, creating no real GitHub repo (#43). Backed by a `gh`/`git`
+  binary-injection seam in the command runner and a
+  `scripts/cleanup-smoketest-repos.mjs` remediation helper for the repos leaked
+  before the policy landed.
+
 - Added global update records for shared agent/workflow fixes, starting with the
   2026-05-31 Browser backend preflight policy.
 - Added a global update record for the strict PR ready-for-review contract that
