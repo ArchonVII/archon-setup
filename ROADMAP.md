@@ -16,6 +16,12 @@ update tooling that scaffold ArchonVII repositories.
 - **Update command** - `node bin/archon-setup.mjs update --target <repo>`
   refreshes managed workflow callers that reference
   `ArchonVII/github-workflows@v1`.
+- **Workflow drift detection + upgrade** - `update --check` classifies each
+  managed caller as current / drifted / unmanaged against the recorded snapshot
+  (exits non-zero on drift, so it gates CI / pre-push); `update --upgrade`
+  rewrites drifted callers to the snapshot, re-injecting budget defaults. Both
+  honor `--dry-run`. Customizations beyond budget defaults are discarded on
+  upgrade — use plain `update` to preserve custom inputs.
 - **Token-gated local server** - binds to `127.0.0.1`, generates a per-launch
   session token, validates RPC Origin/Host, and requires POST for
   state-changing RPCs.
@@ -57,7 +63,7 @@ update tooling that scaffold ArchonVII repositories.
   files can receive ArchonVII managed blocks while preserving repo-specific
   content outside the blocks.
 - **Required-gate tightening command** - `node bin/archon-setup.mjs
-  tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
+tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
   required after GitHub has seen the check run.
 - **Global update records** - the Ecosystem screen records shared
   agent/workflow fixes and can dry-run or distribute eligible updates with
@@ -70,9 +76,12 @@ update tooling that scaffold ArchonVII repositories.
 
 - **npm publication** - `npx @archonvii/archon-setup` is the intended launch
   command, but the package is not published to npm yet.
-- **End-to-end wizard hardening** - real repo creation now has smoke-test
-  coverage for the fresh-repo path, but future remote changes should keep
-  receiving full dry-run, execute, and rerun coverage.
+- **End-to-end wizard hardening** - the fresh-repo remote path now has a
+  hermetic smoke test (`test/smokeFreshRepo.test.mjs`) that runs against a local
+  bare repo via a `gh` mock, creating no real GitHub repo (#43). Policy: smoke
+  tests never create persistent repos; a live-GitHub run is opt-in, one repo,
+  and must stop if it cannot delete. Future remote changes should keep dry-run,
+  execute, and rerun coverage on this hermetic harness.
 - **Existing-repo browser UX** - headless/tooling support is built; issue #68
   tracks surfacing the same audit and existing-repo confirmation path in the
   browser wizard.
@@ -88,8 +97,6 @@ update tooling that scaffold ArchonVII repositories.
 
 ## Planned / Deferred
 
-- **Workflow drift upgrades** - use recorded snapshot SHAs to identify and
-  upgrade stale managed workflows.
 - **Copilot and secret setup** - deferred until the v0.4 path; secrets must go
   directly to `gh secret set` and never touch disk or logs.
 - **Packaged distribution** - publish the npm package and then make `npx` the

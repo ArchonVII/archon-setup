@@ -2,8 +2,25 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { updateManagedFiles } from "../src/updater/updateManagedFiles.mjs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { updateManagedFiles, upgradeWorkflowCallers } from "../src/updater/updateManagedFiles.mjs";
+
+const SNAPSHOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "snapshots", "github-workflows");
+
+function snapshotBody(name) {
+  return readFile(join(SNAPSHOT_DIR, name), "utf8");
+}
+
+async function makeWorkflowTarget() {
+  const root = await mkdtemp(join(tmpdir(), "archon-upgrade-"));
+  await mkdir(join(root, ".github", "workflows"), { recursive: true });
+  return root;
+}
+
+function callerPath(root, file) {
+  return join(root, ".github", "workflows", file);
+}
 
 test("updates existing managed workflow callers from snapshots", async () => {
   const root = await mkdtemp(join(tmpdir(), "archon-update-"));
@@ -83,4 +100,82 @@ test("skips local or unmanaged workflow files", async () => {
   assert.equal(result.updated, 0);
   assert.equal(result.skipped, 1);
   assert.equal(current, "name: Local CI\njobs: {}\n");
+});
+
+test("upgradeWorkflowCallers rewrites a drifted managed caller to the snapshot", async () => {
+  const root = await makeWorkflowTarget();
+  const stale = (await snapshotBody("node-ci.yml")).replace(
+    "# Caller workflow for the reusable Node CI",
+    "# Caller workflow (UPSTREAM CHANGED)"
+  );
+  await writeFile(callerPath(root, "node-ci.yml"), stale);
+
+  const result = await upgradeWorkflowCallers({ targetPath: root });
+  const after = await readFile(callerPath(root, "node-ci.yml"), "utf8");
+
+  assert.equal(result.upgraded, 1);
+  assert.ok(!after.includes("UPSTREAM CHANGED"), "stale marker should be gone after upgrade");
+  assert.match(after, /Caller workflow for the reusable Node CI/);
+});
+
+test("upgradeWorkflowCallers --dry-run reports would-upgrade without writing", async () => {
+  const root = await makeWorkflowTarget();
+  const stale = (await snapshotBody("node-ci.yml")).replace(
+    "# Caller workflow for the reusable Node CI",
+    "# Caller workflow (UPSTREAM CHANGED)"
+  );
+  await writeFile(callerPath(root, "node-ci.yml"), stale);
+
+  const result = await upgradeWorkflowCallers({ targetPath: root, dryRun: true });
+  const after = await readFile(callerPath(root, "node-ci.yml"), "utf8");
+
+  assert.equal(result.upgraded, 0);
+  assert.ok(result.changes.some((c) => c.path.endsWith("node-ci.yml") && c.status === "would-upgrade"));
+  assert.equal(after, stale, "dry-run must not write");
+});
+
+test("upgradeWorkflowCallers re-injects budget defaults stripped from a drifted caller", async () => {
+  const root = await makeWorkflowTarget();
+  // A caller installed before budget defaults existed: drop the draft-skip line.
+  // Line-ending agnostic — the snapshot is CRLF in a Windows working tree but
+  // LF on a Linux CI checkout (no .gitattributes pins it).
+  const draftSkipRe =
+    /[ \t]*if: github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.draft == false\r?\n/;
+  const snapshot = await snapshotBody("node-ci.yml");
+  assert.ok(draftSkipRe.test(snapshot), "fixture precondition: snapshot has the draft-skip line");
+  await writeFile(callerPath(root, "node-ci.yml"), snapshot.replace(draftSkipRe, ""));
+
+  const result = await upgradeWorkflowCallers({ targetPath: root });
+  const after = await readFile(callerPath(root, "node-ci.yml"), "utf8");
+
+  assert.equal(result.upgraded, 1);
+  assert.match(after, /github\.event\.pull_request\.draft == false/);
+});
+
+test("upgradeWorkflowCallers leaves a current caller and a local workflow untouched", async () => {
+  const root = await makeWorkflowTarget();
+  await writeFile(callerPath(root, "node-ci.yml"), await snapshotBody("node-ci.yml")); // current
+  await writeFile(callerPath(root, "local.yml"), "name: Local\non: push\njobs: {}\n"); // unmanaged
+
+  const result = await upgradeWorkflowCallers({ targetPath: root });
+
+  assert.equal(result.upgraded, 0);
+  assert.equal(result.current, 1);
+  assert.equal(result.unmanaged, 1);
+});
+
+test("upgradeWorkflowCallers is idempotent — a second run upgrades nothing", async () => {
+  const root = await makeWorkflowTarget();
+  const stale = (await snapshotBody("node-ci.yml")).replace(
+    "# Caller workflow for the reusable Node CI",
+    "# Caller workflow (UPSTREAM CHANGED)"
+  );
+  await writeFile(callerPath(root, "node-ci.yml"), stale);
+
+  const first = await upgradeWorkflowCallers({ targetPath: root });
+  const second = await upgradeWorkflowCallers({ targetPath: root });
+
+  assert.equal(first.upgraded, 1);
+  assert.equal(second.upgraded, 0);
+  assert.equal(second.current, 1);
 });

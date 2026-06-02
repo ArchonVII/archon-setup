@@ -27,26 +27,20 @@ For the current coordinator/review/close handoff, see
 
 ## Quickstart
 
-Current source checkout command:
-
-```bash
-npm start
-```
-
-Equivalent direct command:
-
-```bash
-node bin/archon-setup.mjs
-```
-
-The intended published command is:
+The one-line quickstart, once published (tracked in #82), is:
 
 ```bash
 npx @archonvii/archon-setup
 ```
 
-As of 2026-05-28, the package is still pre-release and is not published to npm,
-so use the source checkout commands above.
+The package is **not yet on npm**. Until it is published, run it from a source
+checkout instead:
+
+```bash
+npm start
+# equivalently:
+node bin/archon-setup.mjs
+```
 
 Your default browser opens to a local URL. The wizard walks you through:
 
@@ -72,15 +66,15 @@ the two stay in lockstep:
 npm run onboard -- <targetPath> [options]
 ```
 
-| Option | Effect |
-| --- | --- |
+| Option             | Effect                                                                                                   |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
 | `--features a,b,c` | Override the selection (default: the local baseline — every default feature that needs no GitHub remote) |
-| `--owner <name>` | GitHub owner/account; enables `CODEOWNERS` and the manifest owner |
-| `--repo <name>` | Repo name recorded in `.github/archon-setup.json` |
-| `--visibility <v>` | `private` (default) or `public` |
-| `--audit` | Report planned baseline items as `present`, `missing`, or `drifted` without writing |
-| `--dry-run` | Print the plan and exit without writing |
-| `--json` | Emit the result as JSON instead of human-readable text |
+| `--owner <name>`   | GitHub owner/account; enables `CODEOWNERS` and the manifest owner                                        |
+| `--repo <name>`    | Repo name recorded in `.github/archon-setup.json`                                                        |
+| `--visibility <v>` | `private` (default) or `public`                                                                          |
+| `--audit`          | Report planned baseline items as `present`, `missing`, or `drifted` without writing                      |
+| `--dry-run`        | Print the plan and exit without writing                                                                  |
+| `--json`           | Emit the result as JSON instead of human-readable text                                                   |
 
 `--dry-run` shows exactly what the wizard's Review screen would, and onboarding
 writes the same baseline — including the F19-scrubbed `.githooks/`. This is the
@@ -100,6 +94,29 @@ target the selected repo. The headless equivalent is to point `onboard` at a
 repo that already has a GitHub `origin` and select GitHub features without
 `remote.github`. Pass `--owner`/`--repo` to target a specific repo (e.g. an
 upstream instead of a fork); explicit values win over the detected origin.
+
+### Updating managed workflows
+
+Once a repo is onboarded, keep its managed workflow callers in step with the
+recorded `github-workflows` snapshot:
+
+```bash
+# Refresh budget defaults in existing managed callers (preserves custom inputs):
+node bin/archon-setup.mjs update --target <repo>
+
+# Report drift vs the recorded snapshot (exits non-zero if anything is drifted):
+node bin/archon-setup.mjs update --check --target <repo>
+
+# Rewrite drifted callers to the current snapshot (re-injects budget defaults):
+node bin/archon-setup.mjs update --upgrade --target <repo>
+```
+
+`--check` classifies each caller as `current`, `drifted`, or `unmanaged` and is
+safe to run in CI or a pre-push hook (it never writes). `--upgrade` **fully
+replaces** drifted managed callers with the snapshot body, so any customization
+beyond the standard budget defaults is discarded — use plain `update` when you
+need to preserve custom inputs. Both `--check` and `--upgrade` accept
+`--dry-run`, and `--target` defaults to the current directory.
 
 ## Canonical New-Repo Setup
 

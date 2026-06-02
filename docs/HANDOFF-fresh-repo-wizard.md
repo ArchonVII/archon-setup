@@ -36,13 +36,19 @@ private under `ArchonVII`:
 - `archon-setup-smoketest-e2e2-20260530`
 
 They could not be deleted automatically: the `gh` session lacks the `delete_repo`
-scope (`HTTP 403 ... needs the "delete_repo" scope`). To finish:
+scope (`HTTP 403 ... needs the "delete_repo" scope`). Granting delete authority
+is a human action. To finish:
 
 ```bash
 # 1. Grant the scope (interactive — run yourself, e.g. via a `!` command):
 gh auth refresh -h github.com -s delete_repo
 
-# 2. Then delete each:
+# 2a. Preferred — the remediation helper (dry-run by default; deletes only with
+#     --confirm AND the scope above):
+node scripts/cleanup-smoketest-repos.mjs            # lists matches + commands
+node scripts/cleanup-smoketest-repos.mjs --confirm  # actually deletes
+
+# 2b. Or delete each by hand:
 gh repo delete ArchonVII/archon-setup-smoketest-manual-20260530 --yes
 gh repo delete ArchonVII/archon-setup-smoketest-direct-20260530 --yes
 gh repo delete ArchonVII/archon-setup-smoketest-createonly-20260530 --yes
@@ -53,13 +59,17 @@ gh repo delete ArchonVII/archon-setup-smoketest-e2e2-20260530 --yes
 gh repo list ArchonVII --limit 200 | grep -i smoke   # expect no output
 ```
 
-## Process lesson for future handoff prompts
+## Process lesson — now enforced as code
 
 PR3's agent created **five** throwaway repos (iterative debugging of the remote
 path) instead of one, and deleted none — it hit the `delete_repo` scope wall but
-kept creating more rather than stopping. Future remote-smoke-test prompts should
-say: **"Use exactly ONE throwaway repo. If you cannot delete it (e.g. missing
-`delete_repo` scope), STOP and report — do not create additional repos."**
+kept creating more rather than stopping. This is now fixed at the root rather
+than by discipline: **smoke tests no longer create real GitHub repos**. The
+fresh-repo remote path is exercised hermetically against a local bare repo via a
+`gh` mock (`test/smokeFreshRepo.test.mjs`), so there is nothing to clean up. Any
+opt-in live-GitHub smoke test must use exactly ONE throwaway repo and STOP +
+report if it cannot delete it. See the no-remote smoke-test decision in
+[ecosystem-status.md](ecosystem-status.md#decision-log).
 
 ## What remains — existing-repo flow (#34)
 
