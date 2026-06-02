@@ -4,12 +4,18 @@ import { collectRepos } from "./collectRepos.mjs";
 import { collectGovernance } from "./collectGovernance.mjs";
 import { collectAmber } from "./collectAmber.mjs";
 import { collectSignals } from "./collectSignals.mjs";
+import { collectEvents } from "./collectEvents.mjs";
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
 
+const EMPTY_EVENTS = { id: "events", status: "green", detail: "0 events", count: 0, recent: [] };
+
 // Pure: combine collector results into the schemaVersion-1 snapshot object.
-export function assembleSnapshot({ ports, repos, governance, amber, signals }, generatedAt) {
-  const checks = [ports, repos, governance, amber, signals].filter(Boolean);
+// `events` is optional for backward compatibility — when absent it defaults to
+// an empty green section and is NOT counted in the summary (only a section a
+// collector actually produced contributes to the green/yellow/red tally).
+export function assembleSnapshot({ ports, repos, governance, amber, signals, events }, generatedAt) {
+  const checks = [ports, repos, governance, amber, signals, events].filter(Boolean);
   const summary = checks.reduce((acc, c) => {
     acc[c.status] = (acc[c.status] || 0) + 1;
     return acc;
@@ -23,24 +29,29 @@ export function assembleSnapshot({ ports, repos, governance, amber, signals }, g
     governance: governance ?? { id: "governance", status: "yellow", detail: "not collected", repos: [] },
     amber,
     signals,
+    events: events ?? EMPTY_EVENTS,
   };
 }
 
 // Thin I/O wrapper: runs all collectors in parallel and assembles.
 export async function buildSnapshot({ portRegistryPath, githubRoot, amberNode, anomaliesPath }) {
-  // noticed.md lives at <repo>/.claude/noticed.md for each repo under githubRoot
+  // Per-repo signal files live under githubRoot: noticed.md at
+  // <repo>/.claude/noticed.md and the event stream at <repo>/.archon/events.jsonl.
   let noticedPaths = [];
+  let eventsJsonlPaths = [];
   try {
-    const entries = await readdir(githubRoot, { withFileTypes: true });
-    noticedPaths = entries.filter((e) => e.isDirectory()).map((e) => join(githubRoot, e.name, ".claude", "noticed.md"));
+    const dirs = (await readdir(githubRoot, { withFileTypes: true })).filter((e) => e.isDirectory());
+    noticedPaths = dirs.map((e) => join(githubRoot, e.name, ".claude", "noticed.md"));
+    eventsJsonlPaths = dirs.map((e) => join(githubRoot, e.name, ".archon", "events.jsonl"));
   } catch { /* no root */ }
 
-  const [ports, repos, governance, amber, signals] = await Promise.all([
+  const [ports, repos, governance, amber, signals, events] = await Promise.all([
     collectPorts(portRegistryPath),
     collectRepos(githubRoot),
     collectGovernance(),
     collectAmber(amberNode),
     collectSignals(anomaliesPath, noticedPaths),
+    collectEvents(eventsJsonlPaths),
   ]);
-  return assembleSnapshot({ ports, repos, governance, amber, signals }, new Date().toISOString());
+  return assembleSnapshot({ ports, repos, governance, amber, signals, events }, new Date().toISOString());
 }

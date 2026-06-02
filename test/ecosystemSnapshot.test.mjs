@@ -17,3 +17,29 @@ test("assembleSnapshot builds summary and merges payloads", () => {
   assert.equal(snap.governance.repos[0].name, "archon-setup");
   assert.equal(snap.amber.online, false);
 });
+
+test("assembleSnapshot carries an events section through and counts it in the summary", () => {
+  const snap = assembleSnapshot({
+    ports: { id: "ports", status: "green", detail: "", ports: [] },
+    repos: { id: "repos", status: "green", detail: "", repos: [] },
+    governance: { id: "governance", status: "green", detail: "", repos: [] },
+    amber: { id: "amber", status: "green", detail: "", online: true, lastSeen: "z" },
+    signals: { id: "signals", status: "green", detail: "", anomalies: 0, noticed: 0, recent: [] },
+    events: { id: "events", status: "green", detail: "2 events", count: 2, recent: [{ ts: "z", type: "plan-end" }] },
+  }, "2026-06-02T00:00:00.000Z");
+  assert.equal(snap.events.count, 2);
+  assert.equal(snap.events.recent[0].type, "plan-end");
+  assert.equal(snap.summary.green, 6); // ports, repos, governance, amber, signals, events
+});
+
+test("assembleSnapshot tolerates a missing events section (backward compatible)", () => {
+  const snap = assembleSnapshot({
+    ports: { id: "ports", status: "green", detail: "", ports: [] },
+    repos: { id: "repos", status: "green", detail: "", repos: [] },
+    governance: { id: "governance", status: "green", detail: "", repos: [] },
+    amber: { id: "amber", status: "green", detail: "", online: true, lastSeen: "z" },
+    signals: { id: "signals", status: "green", detail: "", anomalies: 0, noticed: 0, recent: [] },
+  }, "2026-06-02T00:00:00.000Z");
+  assert.equal(snap.summary.green, 5);
+  assert.deepEqual(snap.events, { id: "events", status: "green", detail: "0 events", count: 0, recent: [] });
+});
