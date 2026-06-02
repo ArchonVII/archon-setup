@@ -10,6 +10,10 @@ const PATTERNS = [
   [/(\/\/[^:@\s]{0,64}:)([^@\s]+)(@)/g, "$1[redacted]$3"],
   [/(Bearer\s+)[A-Za-z0-9._-]{8,}/gi, "$1[redacted]"],
   [/((?:token|secret|password|passwd|api[_-]?key)"?\s*[=:]\s*)("?)[^"\s&]+\2/gi, "$1[redacted]"],
+  // argv-leak backstop: redacts the VALUE in an accidental `gh secret set NAME
+  // VALUE` (lane F sets secrets via stdin `--body -`, never argv — this is
+  // defence-in-depth). The (?!-) keeps real flags like --repo / --body visible.
+  [/(gh\s+secret\s+set\s+\S+\s+)(?!-)(\S+)/g, "$1[redacted]"],
 ];
 
 export function redactString(value) {
