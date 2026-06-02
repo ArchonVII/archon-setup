@@ -28,8 +28,10 @@ const SOURCES = [
     source: "ArchonVII/repo-template",
     localPath: process.env.ARCHON_REPO_TEMPLATE || "C:/GitHub/repo-template",
     copyFiles: [
+      "README.md",
       "AGENTS.md",
       "docs/repo-update-log.md",
+      "docs/template-library-inventory.md",
       "package.json",
       "package-lock.json",
       ".agent/check-map.yml",

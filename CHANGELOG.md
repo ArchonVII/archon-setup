@@ -23,6 +23,8 @@
   archon-setup can follow its own strict PR-ready contract.
 - Added repo-template snapshot coverage for reusable template-system artifacts
   and repo-owned PR readiness wrapper source files.
+- Added repo-template snapshot coverage for the template library inventory
+  document and root README link.
 
 ### Changed
 
@@ -34,3 +36,5 @@
   gate disabled-input fix.
 - Refreshed the recorded `repo-template` provider SHA after the strict PR-ready
   wrapper and centralized template-system baseline landed.
+- Refreshed the recorded `repo-template` provider SHA after the template
+  library inventory landed.
