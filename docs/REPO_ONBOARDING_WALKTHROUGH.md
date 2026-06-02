@@ -76,7 +76,7 @@ We inspect automation before replacing or adding to it:
 
 - `.github/workflows/**`
 - Dependabot config
-- CodeQL or security scans
+- security scans
 - release and publish workflows
 - local scripts used by workflows
 - existing branch protection and required checks

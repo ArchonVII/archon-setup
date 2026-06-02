@@ -258,7 +258,6 @@ Status: Proposed / Accepted / Superseded by NNN
 - [ ] Add caller workflows from `github-workflows/examples/` as needed:
   - [ ] `pr-policy.yml` (always)
   - [ ] `pr-body-autoinject.yml` (if any bots author PRs)
-  - [ ] `codeql.yml` (any non-trivial code)
   - [ ] `dependency-review.yml` (any dependencies)
   - [ ] `auto-merge-dependabot.yml` + `.github/dependabot.yml` (any dependencies)
   - [ ] `node-ci.yml` / `python-ci.yml` (run lint + typecheck + tests)
