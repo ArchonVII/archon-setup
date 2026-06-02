@@ -1,0 +1,10 @@
+{
+  "$comment": "DESIGN-ONLY STUB — NOT submitted to a Scoop bucket. Reference for a future native Windows install path (#90). The supported path today is the thin npx bootstrap (install.ps1); see docs/WINDOWS_INSTALL.md. Deferred until archon-setup ships a standalone binary (it currently runs via npx).",
+  "version": "0.1.0",
+  "description": "Plug-and-play repo bootstrapper for the ArchonVII ecosystem.",
+  "homepage": "https://github.com/ArchonVII/archon-setup",
+  "license": "MIT",
+  "depends": ["nodejs", "gh"],
+  "bin": [],
+  "notes": "archon-setup currently ships via npx; a real Scoop manifest is deferred until a standalone binary exists. To run today: npx @archonvii/archon-setup"
+}

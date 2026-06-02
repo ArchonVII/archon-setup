@@ -1,0 +1,20 @@
+# DESIGN-ONLY STUB — NOT submitted to winget-pkgs. Reference for a future native
+# Windows install path (#90). The supported path today is the thin npx bootstrap
+# (install.ps1); see docs/WINDOWS_INSTALL.md. A real submission is deferred until
+# archon-setup ships a standalone binary (it currently runs via npx).
+PackageIdentifier: ArchonVII.archon-setup
+PackageVersion: 0.1.0
+PackageName: archon-setup
+Publisher: ArchonVII
+License: MIT
+ShortDescription: Plug-and-play repo bootstrapper for the ArchonVII ecosystem.
+Moniker: archon-setup
+Tags:
+  - scaffold
+  - bootstrap
+  - agents
+# A real manifest would declare Installers pointing at a packaged binary +
+# SHA256. archon-setup has no standalone installer yet, so this is intentionally
+# incomplete and must not be submitted.
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

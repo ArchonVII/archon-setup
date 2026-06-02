@@ -9,6 +9,9 @@ update tooling that scaffold ArchonVII repositories.
 
 - **Source-runnable CLI** - `node bin/archon-setup.mjs`, `npm start`, and
   `npm run dev` launch the local server from a checkout.
+- **Windows `npx` bootstrap** - `install.ps1` checks Node >= 20 + `gh` and
+  launches `npx @archonvii/archon-setup` (with a `-DryRun` switch). Ships in the
+  package; see `docs/WINDOWS_INSTALL.md`. Native installers stay deferred.
 - **Events stream** - a best-effort append-only `.archon/events.jsonl` per repo
   (`{ts,type,actor,ref,detail}`); the executor emits plan/task lifecycle events
   and the ecosystem snapshot renders a "Recent events" section. See
@@ -101,7 +104,10 @@ tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
   directly to `gh secret set` and never touch disk or logs.
 - **Packaged distribution** - publish the npm package and then make `npx` the
   primary quickstart.
-- **Windows installer** - explicitly deferred beyond the initial `npx` releases.
+- **Native Windows installer** - winget/scoop submission is deferred until
+  archon-setup ships a standalone binary; design-only stubs live in
+  `docs/installer/`. The thin `npx` bootstrap (`install.ps1`, shipped) is the
+  supported Windows path until then.
 
 ## Operating Rules
 

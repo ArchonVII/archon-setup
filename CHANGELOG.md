@@ -4,6 +4,12 @@
 
 ### Added
 
+- Added a thin Windows bootstrap `install.ps1` (#90): checks Node >= 20 + `gh`
+  (with install guidance) then runs `npx @archonvii/archon-setup`; supports
+  `-DryRun`. Ships in the package (`files[]` + tarball guard), with
+  `docs/WINDOWS_INSTALL.md` and design-only winget/scoop stubs. Native
+  installers remain deferred.
+
 - Added a hermetic no-remote fresh-repo smoke test that exercises the full
   remote path (repo create + push + readiness poll) against a local bare repo
   via a `gh` mock, creating no real GitHub repo (#43). Backed by a `gh`/`git`

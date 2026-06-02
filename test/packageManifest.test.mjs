@@ -38,6 +38,7 @@ const REQUIRED = [
   "README.md",
   "LICENSE",
   "CHANGELOG.md",
+  "install.ps1", // Windows npx bootstrap (#90)
 ];
 
 test("published tarball includes every runtime file", () => {
