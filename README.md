@@ -42,6 +42,20 @@ npm start
 node bin/archon-setup.mjs
 ```
 
+### Windows bootstrap
+
+On Windows, `install.ps1` checks prerequisites (Node >= 20, `gh`) and then runs
+the `npx` quickstart for you (see [`docs/WINDOWS_INSTALL.md`](./docs/WINDOWS_INSTALL.md)):
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/ArchonVII/archon-setup/main/install.ps1 | iex
+# or, from a checkout, just verify prerequisites:
+./install.ps1 -DryRun
+```
+
+Native winget/scoop installers are deferred; the thin `npx` bootstrap is the
+supported Windows path for now.
+
 Your default browser opens to a local URL. The wizard walks you through:
 
 0. **Doctor** — confirms `git`, `gh`, optional `actionlint`, network, and write permissions are good.
