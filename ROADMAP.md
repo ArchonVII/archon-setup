@@ -104,8 +104,11 @@ tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
 
 ## Planned / Deferred
 
-- **Copilot and secret setup** - deferred until the v0.4 path; secrets must go
-  directly to `gh secret set` and never touch disk or logs.
+- **Copilot and secret setup** - **staged disabled for v0.4.** The
+  `enableCopilot` (org-only + manual checklist) and `setRepoSecrets` tasks are
+  registered (`disabled: true`) and tested; secrets ride `gh secret set` stdin
+  and never touch disk, argv, or logs. Activation (flip `disabled`, org billing,
+  real secret values) is owner-gated.
 - **Packaged distribution** - publish the npm package and then make `npx` the
   primary quickstart.
 - **Native Windows installer** - winget/scoop submission is deferred until

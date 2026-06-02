@@ -4,6 +4,12 @@
 
 ### Added
 
+- Added a staged-disabled Copilot + repo-secrets capability (#92): `enableCopilot`
+  (org-only, with a manual billing/policy checklist; personal accounts blocked)
+  and `setRepoSecrets` (value piped to `gh secret set` via stdin only — never
+  disk, argv, or logs; manifest records name + `wasSet`). Both ship
+  `disabled: true` (v0.4 gate). A `redact.mjs` backstop masks accidental
+  `gh secret set NAME VALUE` argv leaks. See `docs/SECURITY_MODEL.md`.
 - Added the agent-lifecycle baseline (#64): the default `agent-lifecycle.baseline`
   feature installs the four `scripts/agent/*` worktree-lifecycle scripts and
   idempotently merges the three `agent:*` entries into the target `package.json`

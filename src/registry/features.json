@@ -430,6 +430,33 @@
     "advancedDescription": "Installs a `ci-success` no-op job so branch protection has a stable required check name regardless of repo type. Pairs with `actionlint.yml` (issue #16 / F3) for workflow-syntax coverage even when there is no language CI."
   },
   {
+    "id": "copilot.enable-repo",
+    "label": "Enable Copilot for repo",
+    "group": "copilot",
+    "default": false,
+    "disabled": true,
+    "remoteRequirement": "api-target",
+    "capabilitiesNeeded": ["gh.copilotAgentAllowed"],
+    "tasks": ["enableCopilot"],
+    "beginnerDescription": "Enables GitHub Copilot for this repo (v0.4 — requires an org with Copilot billing).",
+    "advancedDescription": "Detects org vs personal via gh api users/<owner>; blocks personal accounts and records a manual billing/policy checklist into the manifest for organizations. Staged disabled until v0.4."
+  },
+  {
+    "id": "copilot.repo-secret",
+    "label": "Set repo Actions secret",
+    "group": "copilot",
+    "default": false,
+    "disabled": true,
+    "remoteRequirement": "api-target",
+    "capabilitiesNeeded": ["gh.actionsSecretsAllowed"],
+    "tasks": ["setRepoSecrets"],
+    "options": {
+      "secretName": { "type": "string", "value": "" }
+    },
+    "beginnerDescription": "Sets a repository Actions secret. The value is piped to `gh secret set` via stdin — it never touches disk, argv, or logs.",
+    "advancedDescription": "Uses the commandRunner stdin seam (`gh secret set NAME --body -`). The value is supplied at execute time (deferred stdin), and the manifest records only the name + wasSet. Staged disabled until v0.4."
+  },
+  {
     "id": "agent-lifecycle.baseline",
     "label": "Agent lifecycle scripts",
     "group": "agent-workflow",

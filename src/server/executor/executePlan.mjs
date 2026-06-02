@@ -21,6 +21,8 @@ import * as applyLabels from "../tasks/applyLabels.mjs";
 import * as applyBaselineBranchProtection from "../tasks/applyBaselineBranchProtection.mjs";
 import * as installWorkflow from "../tasks/installWorkflow.mjs";
 import * as writeSetupManifest from "../tasks/writeSetupManifest.mjs";
+import * as setRepoSecrets from "../tasks/setRepoSecrets.mjs";
+import * as enableCopilot from "../tasks/enableCopilot.mjs";
 import * as writeAgentLifecycle from "../tasks/writeAgentLifecycle.mjs";
 
 const TASKS = {
@@ -45,6 +47,8 @@ const TASKS = {
   applyBaselineBranchProtection,
   installWorkflow,
   writeSetupManifest,
+  setRepoSecrets,
+  enableCopilot,
   writeAgentLifecycle,
 };
 

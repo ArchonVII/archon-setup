@@ -87,7 +87,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 2. **Template walkthrough** — refresh issue forms against the new F2/F10 evidence shape and F7 owner-lane semantics after the strict PR contract lands.
 3. **F7 `.github` policy work** — finish `.github` #14 scoped policy now that the reusable workflow and template pieces are shipped.
 4. **Branch-protection 400 anomaly** — file via the anomaly-triage workflow on next `archon-setup` PR. Reference fix already exists in `archon-setup/src/server/tasks/applyBaselineBranchProtection.mjs`.
-5. **Events-stream rollout** — *archon-setup side shipped (#89):* a best-effort `appendEvent` emitter, `collectEvents`, a "Recent events" render section, and `docs/archon-events-convention.md`. Remaining: the provider-side `.archon/events.jsonl` schema in `repo-template` AGENTS.md (companion PR) and gitignoring `.archon/` in generated repos.
+5. **Events-stream rollout** — _archon-setup side shipped (#89):_ a best-effort `appendEvent` emitter, `collectEvents`, a "Recent events" render section, and `docs/archon-events-convention.md`. Remaining: the provider-side `.archon/events.jsonl` schema in `repo-template` AGENTS.md (companion PR) and gitignoring `.archon/` in generated repos.
 
 ## Recently completed
 

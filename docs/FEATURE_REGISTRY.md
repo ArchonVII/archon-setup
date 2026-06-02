@@ -43,6 +43,18 @@
 - `capabilitiesNeeded` — preflight capability bits (e.g. `gh.repoCreateAllowed`).
 - `conflictsWith` — feature IDs that cannot be co-enabled.
 
+## Staged (disabled) features
+
+Set `disabled: true` (and `default: false`) to register a capability that is
+**not yet active** — the wizard hides it (the UI also hides any feature whose
+group is disabled), and it stays out of default plans, but its tasks are wired
+and tested so flipping `disabled` to `false` activates it. The `copilot` group
+(`copilot.enable-repo`, `copilot.repo-secret`) is staged this way for v0.4;
+secret values flow only through the `gh secret set` stdin seam (see
+`SECURITY_MODEL.md`). Note: the server-side planner has no `disabled` guard, so a
+disabled feature can still be planned by passing its id explicitly (e.g. from a
+test or the headless CLI) — the gate is in the UI.
+
 ## Adding a feature
 
 1. Add an entry to `features.json` (and validate against `schema.json`).
