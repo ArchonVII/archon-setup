@@ -15,6 +15,33 @@ This log records agent-visible repository changes that should be easy to audit l
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-02 - Strict PR ready wrapper scripts
+
+- **Issue/PR:** #36 / (pending)
+- **Branch:** agent/codex/36-strict-pr-ready-wrappers
+- **Changed paths:** package.json, scripts/pr-contract.mjs, scripts/agent-close-preflight.mjs, scripts/agent-pr-ready.mjs, test/pr-contract.test.mjs, README.md, .changelog/unreleased/36-strict-pr-ready-wrappers.md, docs/repo-update-log.md
+- **What changed:** Added repo-owned `agent:close-preflight`, `agent:pr-ready`, and `pr:contract` commands using the shared ArchonVII PR contract implementation, plus node:test coverage and README guidance.
+- **Verification:** `node --check scripts/pr-contract.mjs; node --check scripts/agent-close-preflight.mjs; node --check scripts/agent-pr-ready.mjs` passed; `npm test` passed (24/24); `npm run pr:contract -- --repo ArchonVII/repo-template --pr 35` correctly rejected a generic verification item in draft PR #35; `npm run agent:pr-ready -- --repo ArchonVII/repo-template --pr 35 --dry-run` correctly refused promotion for the same contract violation; `git diff --check` passed.
+- **Propagation:** pending archon-setup snapshot refresh after merge
+
+## 2026-06-02 - Centralized template system baseline
+
+- **Issue/PR:** #34 / (pending)
+- **Branch:** agent/codex/34-centralized-template-system
+- **Changed paths:** README.md, templates/**, styles/**, schemas/**, examples/**, .changelog/unreleased/34-centralized-template-system.md, docs/repo-update-log.md
+- **What changed:** Added the first centralized template-system baseline for reusable agent messages, prompt workflows, findings reports, GitHub artifacts, operations intake, shared partials, style skins, schemas, and filled examples. Root README now points to the template library.
+- **Verification:** `node -e "JSON.parse(...)"` for both schema files passed; metadata sweep passed for 30 `templates/**` and `styles/**` Markdown files; `git diff --check` passed; `npm test` passed (19/19).
+- **Propagation:** pending archon-setup snapshot refresh after merge
+
+## 2026-06-01 - Agent lifecycle command surface
+
+- **Issue/PR:** #27 / (pending)
+- **Branch:** agent/claude/27-agent-lifecycle-commands
+- **Changed paths:** package.json, package-lock.json, scripts/agent/lib.mjs, scripts/agent/start-task.mjs, scripts/agent/status.mjs, scripts/agent/prune.mjs, test/agent/lib.test.mjs, .github/workflows/repo-required-gate.yml, AGENTS.md, .gitignore, .changelog/unreleased/27-agent-lifecycle-commands.md
+- **What changed:** Added repo-owned agent lifecycle commands (`agent:start-task`, `agent:status`, `agent:prune`) as a zero-dependency baseline (repo-template's first `package.json`), with pure tested logic in `scripts/agent/lib.mjs` (19 `node --test` cases) and thin git/gh shims. Switched the required gate from the `minimal` to the `node` stack so `language-ci` runs `npm ci` + `npm test`. Documented the commands in AGENTS.md.
+- **Verification:** `npm ci` (0 deps) + `npm test` (19/19) pass; `node --check` on all three shims; `agent:start-task` happy-path + guard smokes verified end-to-end; `agent:prune` removal/dirty-skip safety verified end-to-end (removed merged+clean, skipped merged+dirty, kept unmerged).
+- **Propagation:** pending archon-setup#64 (downstream snapshot/install/audit of the lifecycle baseline)
+
 ## 2026-05-31 - Strict PR contract ready preflight
 
 - **Issue/PR:** #29 / #30
