@@ -5,21 +5,21 @@
 - **Status:** DRAFT — for owner review. No code written yet. This doc is the review gate before implementation.
 - **Scope source:** archon-setup issues #64 and #43, plus the ROADMAP "In Progress / Planned / Deferred" backlog (npm publication, workflow drift, `.archon/events.jsonl`/status-board, Copilot/secrets, packaged distribution, Windows installer). Owner selected **"everything on the list"** with a **no-remote smoke-test** policy for #43.
 
-> **Honesty flags up front.** Three items cannot be *completed* by an agent — they need owner credentials/decisions: (1) deleting the 5 leaked repos needs an interactive `gh auth refresh -s delete_repo`; (2) `npm publish` needs your npm token + 2FA; (3) real secret values for Copilot/secrets. Everything else is fully codeable and testable. The three are designed as **prep + a clean handoff**.
+> **Honesty flags up front.** Three items cannot be _completed_ by an agent — they need owner credentials/decisions: (1) deleting the 5 leaked repos needs an interactive `gh auth refresh -s delete_repo`; (2) `npm publish` needs your npm token + 2FA; (3) real secret values for Copilot/secrets. Everything else is fully codeable and testable. The three are designed as **prep + a clean handoff**.
 
 ---
 
 ## 1. Lanes overview
 
-| Lane | Issue / roadmap item | Status | Size |
-|------|----------------------|--------|------|
-| **A** | #64 agent-lifecycle install/update/audit baseline | ✅ codeable (gated by #49/#59) | S–M |
-| **B** | #43 no-remote smoke-test policy + leaked-repo guard | ✅ codeable | S |
-| **C** | Workflow drift detection + upgrade | ✅ codeable | M |
-| **D** | `.archon/events.jsonl` conventions + status-board view | ✅ codeable | S |
-| **E** | Packaged distribution / npm publication **prep** | ⚠️ prep; publish is owner-gated | S |
-| **F** | Copilot / secret setup — **staged disabled** for v0.4 | ⚠️ staged; values owner-gated | S |
-| **G** | Windows installer — **thin `npx` bootstrap** slice | ⚠️ depends on E; native deferred | S |
+| Lane  | Issue / roadmap item                                   | Status                           | Size |
+| ----- | ------------------------------------------------------ | -------------------------------- | ---- |
+| **A** | #64 agent-lifecycle install/update/audit baseline      | ✅ codeable (gated by #49/#59)   | S–M  |
+| **B** | #43 no-remote smoke-test policy + leaked-repo guard    | ✅ codeable                      | S    |
+| **C** | Workflow drift detection + upgrade                     | ✅ codeable                      | M    |
+| **D** | `.archon/events.jsonl` conventions + status-board view | ✅ codeable                      | S    |
+| **E** | Packaged distribution / npm publication **prep**       | ⚠️ prep; publish is owner-gated  | S    |
+| **F** | Copilot / secret setup — **staged disabled** for v0.4  | ⚠️ staged; values owner-gated    | S    |
+| **G** | Windows installer — **thin `npx` bootstrap** slice     | ⚠️ depends on E; native deferred | S    |
 
 ---
 
@@ -28,14 +28,15 @@
 `B → E → G → C → D → F → A`
 
 Rationale (from synthesis):
-1. **B** is the keystone *safety* lane — it builds the `commandRunner` binary-injection seam that A's remote-task tests and any future hermetic remote test reuse, and it eliminates the leaked-repo failure mode. Touches **no** shared structural files.
+
+1. **B** is the keystone _safety_ lane — it builds the `commandRunner` binary-injection seam that A's remote-task tests and any future hermetic remote test reuse, and it eliminates the leaked-repo failure mode. Touches **no** shared structural files.
 2. **E** establishes the published-package baseline (version bump, `files[]`, `prepublishOnly`). **G** depends on E (the `npx` bootstrap is inert until the package is published), so E before G.
 3. **C** is a self-contained updater-layer change (no shared structural files).
 4. **D** is additive (new lib + collector + emitter call-sites); merging it before A puts the `executePlan.mjs` import block into its final shape.
-5. **F** adds two *disabled* features + two `auditPlan.mjs` switch cases; least-invasive auditPlan change.
+5. **F** adds two _disabled_ features + two `auditPlan.mjs` switch cases; least-invasive auditPlan change.
 6. **A last** because it has the most cross-cutting coupling: it rebases `auditPlan.mjs` onto #49's output, appends `copyFiles[]` onto #59's output, adds to the `executePlan.mjs` TASKS map after D and F, and requires a snapshot-refresh run that advances the `repoTemplate` SHA to ≥ `4cbb599`.
 
-> **DECISION 1 (order vs. headline):** This order defers your *primary* ask (#64) to the end. Alternative is **headline-first** (A first). A's collisions with #49/#59 are *additive* and low-risk, so A could go first and let #49/#59 rebase onto it — but that pushes rebase work onto the agents holding those worktrees. See §6.
+> **DECISION 1 (order vs. headline):** This order defers your _primary_ ask (#64) to the end. Alternative is **headline-first** (A first). A's collisions with #49/#59 are _additive_ and low-risk, so A could go first and let #49/#59 rebase onto it — but that pushes rebase work onto the agents holding those worktrees. See §6.
 
 ---
 
@@ -46,10 +47,12 @@ Rationale (from synthesis):
 **Goal:** archon-setup can install / update / audit the repo-template agent-lifecycle baseline (shipped upstream in repo-template PR #33, commit `4cbb599`: `scripts/agent/{lib,start-task,status,prune}.mjs` + 3 `agent:*` package.json scripts + an AGENTS.md subsection).
 
 **Create:**
+
 - `src/server/tasks/writeAgentLifecycle.mjs` — snapshot-backed task: copies the 4 scripts (via `writeSnapshotFile`), then **idempotently merges** the 3 `agent:*` entries into the target `package.json` (creates a minimal `{name, type:"module", scripts:{}}` if absent; merges only the 3 entries if present; re-run ⇒ `already-done`). Exports `AGENT_SCRIPTS` const for the audit path.
 - `test/writeAgentLifecycle.test.mjs` — 8 cases: check/apply/verify, package.json absent (creates minimal), present (merges, preserves other keys), entries-present (skips), idempotency (no manifest noise), verify ok/err.
 
 **Modify:**
+
 - `src/registry/features.json` — append `agent-lifecycle.baseline` feature (group `agent-workflow`).
 - `src/server/executor/executePlan.mjs` — import + register `writeAgentLifecycle` in `TASKS`.
 - `src/server/onboard/auditPlan.mjs` — new `expectedBodyFor` case (scripts = exact compare; package.json = **new `comparison:"entries"`** branch reporting present/missing/drifted on the 3 entries).
@@ -61,11 +64,12 @@ Rationale (from synthesis):
 **Docs:** `.changelog/unreleased/` fragment `feat(agent-lifecycle): …(#64)`; `docs/FEATURE_REGISTRY.md`; ROADMAP move #64 → Built.
 
 **Open decisions:**
+
 - **DECISION A1 — minimal package.json shape.** When the target has no `package.json`, write `{name, type:"module", scripts:{}}` only, or also `version`/`private:true`/`engines` to match repo-template exactly? (Recommend: minimal only — adding the rest is opinionated. Tests assert only what we write.)
 - **DECISION A2 — locked vs. default.** `default:true` + unlocked (repos with no npm-scripts convention can opt out), or `locked:true` (every ArchonVII repo must have lifecycle commands)? (Recommend: `default:true`, unlocked.)
 - **DECISION A3 — `creates[]` vs. a `manages[]` field** for `package.json` (since "creates" implies a new file but here it's a merge). Recommend: keep `creates[]` listing the 4 scripts only; do **not** list `package.json` under `creates[]` (it's merged, not created) — avoids misleading the wizard UI.
 
-**Risks:** `safeWriteFile` is overwrite-false, so a hand-edited script won't be re-written (consistent with `writeGithooks`). The new `comparison:"entries"` branch must be inserted so it fires *only* for this task + `package.json`.
+**Risks:** `safeWriteFile` is overwrite-false, so a hand-edited script won't be re-written (consistent with `writeGithooks`). The new `comparison:"entries"` branch must be inserted so it fires _only_ for this task + `package.json`.
 
 ---
 
@@ -74,12 +78,14 @@ Rationale (from synthesis):
 **Policy (owner-decided):** smoke tests must **not** create persistent GitHub repos by default; the remote path runs against a **local bare repo / `gh` mock**. Any live-GitHub smoke test is opt-in (`ARCHON_LIVE_GITHUB_SMOKE=1`), uses **exactly one** repo, and **stops + reports** if it cannot delete. The 5 leaked repos are **one-time manual cleanup** the owner runs.
 
 **Create:**
+
 - `test/mocks/fake-gh.mjs` — emulates `gh repo create` (inits a local bare repo as `origin`) and `gh api`/`repo view` (success), enabling hermetic e2e.
 - `test/smokeFreshRepo.test.mjs` — 4 cases: full fresh-repo onboard through the mock asserts **no** github.com call + working local origin + push.
 - `scripts/cleanup-smoketest-repos.mjs` — `--dry-run` lists `ArchonVII/*-smoketest-*` and prints exact `gh repo delete` commands; refuses to delete unless `--confirm` AND `delete_repo` scope present.
 
 **Modify:**
-- `src/server/lib/commandRunner.mjs` — add `ARCHON_GH_BIN` / `ARCHON_GIT_BIN` (binary override) + an args-prefix seam, as a **pure conditional** (no-op when env absent). **DECISION B1:** use a **JSON-array** env var (`ARCHON_GH_ARGS_PREFIX_JSON`) not space-split — space-split breaks on Windows paths with spaces (e.g. `Program Files`). *(I'd just take the JSON-array form; it's a correctness fix, but flagging it.)*
+
+- `src/server/lib/commandRunner.mjs` — add `ARCHON_GH_BIN` / `ARCHON_GIT_BIN` (binary override) + an args-prefix seam, as a **pure conditional** (no-op when env absent). **DECISION B1:** use a **JSON-array** env var (`ARCHON_GH_ARGS_PREFIX_JSON`) not space-split — space-split breaks on Windows paths with spaces (e.g. `Program Files`). _(I'd just take the JSON-array form; it's a correctness fix, but flagging it.)_
 - `src/server/tasks/ghRepoCreateAndPush.mjs` — skip the live `waitForGitHubRepo` poll when the mock bin is active (clearly commented as test-only).
 - `docs/ecosystem-status.md` — append a **decision-log** row for #43.
 - `docs/HANDOFF-fresh-repo-wizard.md` — replace the "process lesson" prose with the implemented-as-code policy.
@@ -159,40 +165,41 @@ Rationale (from synthesis):
 
 ## 4. Shared seams (build once, reuse)
 
-| Seam | Built by | Reused by |
-|------|----------|-----------|
-| `commandRunner` binary injection (`ARCHON_GH_BIN`/`ARCHON_GIT_BIN` + JSON args-prefix) + `test/mocks/fake-gh.mjs` | **B** | A (remote-task test), F (gh secret), any future remote-task test |
-| `AGENT_SCRIPTS` export from `writeAgentLifecycle.mjs` (precedent: `scrubHookBody` from `writeGithooks`) | A | A's audit path |
-| `export managedWorkflowName` from `updateManagedFiles.mjs` | C | C's `checkWorkflowDrift`, future updater modules |
-| `appendEvent` / `TYPE_*` from `events.mjs` (never-throws contract) | D | D's executor emitter; future task/onboarder callers |
-| snapshot multi-file helper (`checkAllExist`/`verifyAllExist`/`writeSnapshotFile`) | *exists* | A is the 2nd consumer after `writeGithooks` |
-| `npm pack --dry-run --json` manifest gate (`packageManifest.test.mjs`) | E | G (must add `install.ps1` to REQUIRED) |
+| Seam                                                                                                              | Built by | Reused by                                                        |
+| ----------------------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------- |
+| `commandRunner` binary injection (`ARCHON_GH_BIN`/`ARCHON_GIT_BIN` + JSON args-prefix) + `test/mocks/fake-gh.mjs` | **B**    | A (remote-task test), F (gh secret), any future remote-task test |
+| `AGENT_SCRIPTS` export from `writeAgentLifecycle.mjs` (precedent: `scrubHookBody` from `writeGithooks`)           | A        | A's audit path                                                   |
+| `export managedWorkflowName` from `updateManagedFiles.mjs`                                                        | C        | C's `checkWorkflowDrift`, future updater modules                 |
+| `appendEvent` / `TYPE_*` from `events.mjs` (never-throws contract)                                                | D        | D's executor emitter; future task/onboarder callers              |
+| snapshot multi-file helper (`checkAllExist`/`verifyAllExist`/`writeSnapshotFile`)                                 | _exists_ | A is the 2nd consumer after `writeGithooks`                      |
+| `npm pack --dry-run --json` manifest gate (`packageManifest.test.mjs`)                                            | E        | G (must add `install.ps1` to REQUIRED)                           |
 
 ---
 
 ## 5. Conflict matrix (shared files)
 
-| File | Lanes | Resolution |
-|------|-------|-----------|
-| `features.json` | A, F | Append distinct objects; ensure no trailing comma; valid JSON. Neither #49/#59 touch it. |
-| `executePlan.mjs` | A, D, F | A/F add import+TASKS entries; D adds function-body call-sites. Non-overlapping. Order A→F→D. |
-| `auditPlan.mjs` | A, F **+ live #49** | **#49 merges first**, then rebase A and F. Additive switch cases at different locations; inspect manually. |
-| `refresh-snapshots.mjs` | A **+ live #59** | **#59 merges first**, then A appends 4 `copyFiles[]` entries. |
-| `manifest.json` | A **+ live #59** | Machine-generated; never hand-merge. #59 refresh then A refresh; whichever runs last wins. |
-| `package.json` | A, E, G | Distinct keys/slots. Order E→G→A. |
-| `README.md` | E, G | E rewrites Quickstart; G inserts a subsection inside it. E first. |
-| `CHANGELOG.md` | E, G | G adds to Unreleased; E promotes Unreleased→0.1.0 at publish. G before E's bump. |
-| `ROADMAP.md` | B, C, G | Different sections. Any order. |
-| `ecosystem-status.md` | B, D | Different sections (decision log vs. backlog/parking-lot). Any order. |
-| `updateManagedFiles.mjs`, `bin/archon-setup.mjs` | C only | Independent. |
-| `snapshot.mjs`, `renderHtml.mjs` | D only | Independent. |
-| `redact.mjs` | F only | Independent. |
+| File                                             | Lanes               | Resolution                                                                                                 |
+| ------------------------------------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `features.json`                                  | A, F                | Append distinct objects; ensure no trailing comma; valid JSON. Neither #49/#59 touch it.                   |
+| `executePlan.mjs`                                | A, D, F             | A/F add import+TASKS entries; D adds function-body call-sites. Non-overlapping. Order A→F→D.               |
+| `auditPlan.mjs`                                  | A, F **+ live #49** | **#49 merges first**, then rebase A and F. Additive switch cases at different locations; inspect manually. |
+| `refresh-snapshots.mjs`                          | A **+ live #59**    | **#59 merges first**, then A appends 4 `copyFiles[]` entries.                                              |
+| `manifest.json`                                  | A **+ live #59**    | Machine-generated; never hand-merge. #59 refresh then A refresh; whichever runs last wins.                 |
+| `package.json`                                   | A, E, G             | Distinct keys/slots. Order E→G→A.                                                                          |
+| `README.md`                                      | E, G                | E rewrites Quickstart; G inserts a subsection inside it. E first.                                          |
+| `CHANGELOG.md`                                   | E, G                | G adds to Unreleased; E promotes Unreleased→0.1.0 at publish. G before E's bump.                           |
+| `ROADMAP.md`                                     | B, C, G             | Different sections. Any order.                                                                             |
+| `ecosystem-status.md`                            | B, D                | Different sections (decision log vs. backlog/parking-lot). Any order.                                      |
+| `updateManagedFiles.mjs`, `bin/archon-setup.mjs` | C only              | Independent.                                                                                               |
+| `snapshot.mjs`, `renderHtml.mjs`                 | D only              | Independent.                                                                                               |
+| `redact.mjs`                                     | F only              | Independent.                                                                                               |
 
 ---
 
 ## 6. Concurrency plan (live worktrees)
 
 `git worktree list` shows two **other agents'** active worktrees — do **not** stash/revert/commit their work:
+
 - **#49** `agent/codex/49-existing-repo-audit-plan-apply` — touches `auditPlan.mjs`, `headlessOnboard.mjs`.
 - **#59** `agent/codex/59-refresh-workflow-snapshots` — touches `refresh-snapshots.mjs`, regenerates `manifest.json`.
 
@@ -208,12 +215,12 @@ Rationale (from synthesis):
 
 1. **A:** add an explicit regression test that existing `existence`/`exact` audit cases still pass after the new `entries` branch.
 2. **A:** don't silently add `version`/`private`/`engines` to the minimal package.json without DECISION A1 + a test update.
-3. **B:** use JSON-array args env var (Windows path-with-spaces correctness). *(DECISION B1.)*
-4. **C:** state the acceptance criterion for "upgrade discards non-budget customizations". *(DECISION C1.)*
+3. **B:** use JSON-array args env var (Windows path-with-spaces correctness). _(DECISION B1.)_
+4. **C:** state the acceptance criterion for "upgrade discards non-budget customizations". _(DECISION C1.)_
 5. **C:** add a test that a fresh install reports `current` for all 17 snapshot files (header-strip regression).
 6. **D:** pin the live `buildSnapshot` call-site for `eventsJsonlPath` before implementing.
 7. **D:** `TYPE_PLAN_END` currently fires before `writeSetupManifest`; document the known timing skew.
-8. **E:** resolve `CLAUDE.md`/`GEMINI.md` in `files[]`. *(DECISION E1.)*
+8. **E:** resolve `CLAUDE.md`/`GEMINI.md` in `files[]`. _(DECISION E1.)_
 9. **F:** verify the Copilot Preview API endpoint is current; add a `blocked` path for personal (non-org) accounts.
 10. **F:** validate `docs/SECURITY_MODEL.md` current content before editing the threat table.
 11. **Portfolio:** a post-merge `ROADMAP.md` reconciliation pass (move C/D/E/F bullets out of Planned/Deferred) — assign it to the last lane to land.

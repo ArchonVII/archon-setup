@@ -53,7 +53,7 @@ update tooling that scaffold ArchonVII repositories.
   files can receive ArchonVII managed blocks while preserving repo-specific
   content outside the blocks.
 - **Required-gate tightening command** - `node bin/archon-setup.mjs
-  tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
+tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
   required after GitHub has seen the check run.
 - **Global update records** - the Ecosystem screen records shared
   agent/workflow fixes and can dry-run or distribute eligible updates with
