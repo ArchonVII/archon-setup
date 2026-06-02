@@ -4,6 +4,18 @@
 
 ### Added
 
+- Added a hermetic no-remote fresh-repo smoke test that exercises the full
+  remote path (repo create + push + readiness poll) against a local bare repo
+  via a `gh` mock, creating no real GitHub repo (#43). Backed by a `gh`/`git`
+  binary-injection seam in the command runner and a
+  `scripts/cleanup-smoketest-repos.mjs` remediation helper for the repos leaked
+  before the policy landed.
+- Added npm publication prep (#82): a `prepublishOnly` gate
+  (`scripts/prepublish-check.mjs`) that runs tests + bin syntax checks before
+  publish, a `test/packageManifest.test.mjs` guard on the published tarball
+  contents, a manual-dispatch `publish.yml` workflow, and a README quickstart
+  leading with `npx @archonvii/archon-setup`. Actual publish remains owner-gated
+  (NPM_TOKEN + version bump).
 - Added workflow drift detection and upgrade: `archon-setup update --check`
   classifies each managed caller as current / drifted / unmanaged against the
   recorded snapshot (exits non-zero on drift), and `update --upgrade` rewrites

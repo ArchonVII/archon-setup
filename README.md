@@ -27,26 +27,20 @@ For the current coordinator/review/close handoff, see
 
 ## Quickstart
 
-Current source checkout command:
-
-```bash
-npm start
-```
-
-Equivalent direct command:
-
-```bash
-node bin/archon-setup.mjs
-```
-
-The intended published command is:
+The one-line quickstart, once published (tracked in #82), is:
 
 ```bash
 npx @archonvii/archon-setup
 ```
 
-As of 2026-05-28, the package is still pre-release and is not published to npm,
-so use the source checkout commands above.
+The package is **not yet on npm**. Until it is published, run it from a source
+checkout instead:
+
+```bash
+npm start
+# equivalently:
+node bin/archon-setup.mjs
+```
 
 Your default browser opens to a local URL. The wizard walks you through:
 
@@ -72,15 +66,15 @@ the two stay in lockstep:
 npm run onboard -- <targetPath> [options]
 ```
 
-| Option | Effect |
-| --- | --- |
+| Option             | Effect                                                                                                   |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
 | `--features a,b,c` | Override the selection (default: the local baseline — every default feature that needs no GitHub remote) |
-| `--owner <name>` | GitHub owner/account; enables `CODEOWNERS` and the manifest owner |
-| `--repo <name>` | Repo name recorded in `.github/archon-setup.json` |
-| `--visibility <v>` | `private` (default) or `public` |
-| `--audit` | Report planned baseline items as `present`, `missing`, or `drifted` without writing |
-| `--dry-run` | Print the plan and exit without writing |
-| `--json` | Emit the result as JSON instead of human-readable text |
+| `--owner <name>`   | GitHub owner/account; enables `CODEOWNERS` and the manifest owner                                        |
+| `--repo <name>`    | Repo name recorded in `.github/archon-setup.json`                                                        |
+| `--visibility <v>` | `private` (default) or `public`                                                                          |
+| `--audit`          | Report planned baseline items as `present`, `missing`, or `drifted` without writing                      |
+| `--dry-run`        | Print the plan and exit without writing                                                                  |
+| `--json`           | Emit the result as JSON instead of human-readable text                                                   |
 
 `--dry-run` shows exactly what the wizard's Review screen would, and onboarding
 writes the same baseline — including the F19-scrubbed `.githooks/`. This is the
