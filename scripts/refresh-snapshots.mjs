@@ -30,6 +30,8 @@ const SOURCES = [
     copyFiles: [
       "AGENTS.md",
       "docs/repo-update-log.md",
+      "package.json",
+      "package-lock.json",
       ".agent/check-map.yml",
       ".agent/coordination/README.md",
       ".agent/coordination/board.md",
@@ -48,6 +50,14 @@ const SOURCES = [
       ".github/PULL_REQUEST_TEMPLATE.md",
       ".github/dependabot.yml",
       ".github/workflows/actionlint.yml",
+    ],
+    copyDirs: [
+      "examples",
+      "schemas",
+      "scripts",
+      "styles",
+      "templates",
+      "test",
     ],
     snapshotDir: "repo-template",
     ref: "main",
@@ -81,6 +91,11 @@ async function run() {
       for (const f of s.copyFiles) {
         await mkdir(dirname(join(dest, f)), { recursive: true });
         await cp(join(s.localPath, f), join(dest, f), { recursive: false });
+      }
+    }
+    if (s.copyDirs) {
+      for (const d of s.copyDirs) {
+        await cp(join(s.localPath, d), join(dest, d), { recursive: true });
       }
     }
     manifest.snapshots[s.key] = {

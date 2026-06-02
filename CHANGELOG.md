@@ -21,6 +21,8 @@
   commands.
 - Added repo-local `agent:close-preflight` and `agent:pr-ready` wrappers so
   archon-setup can follow its own strict PR-ready contract.
+- Added repo-template snapshot coverage for reusable template-system artifacts
+  and repo-owned PR readiness wrapper source files.
 
 ### Changed
 
@@ -30,3 +32,5 @@
   PR contract rollout.
 - Refreshed the recorded `github-workflows@v1` provider SHA after the required
   gate disabled-input fix.
+- Refreshed the recorded `repo-template` provider SHA after the strict PR-ready
+  wrapper and centralized template-system baseline landed.
