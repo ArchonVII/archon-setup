@@ -12,6 +12,12 @@ update tooling that scaffold ArchonVII repositories.
 - **Update command** - `node bin/archon-setup.mjs update --target <repo>`
   refreshes managed workflow callers that reference
   `ArchonVII/github-workflows@v1`.
+- **Workflow drift detection + upgrade** - `update --check` classifies each
+  managed caller as current / drifted / unmanaged against the recorded snapshot
+  (exits non-zero on drift, so it gates CI / pre-push); `update --upgrade`
+  rewrites drifted callers to the snapshot, re-injecting budget defaults. Both
+  honor `--dry-run`. Customizations beyond budget defaults are discarded on
+  upgrade — use plain `update` to preserve custom inputs.
 - **Token-gated local server** - binds to `127.0.0.1`, generates a per-launch
   session token, validates RPC Origin/Host, and requires POST for
   state-changing RPCs.
@@ -84,8 +90,6 @@ update tooling that scaffold ArchonVII repositories.
 
 ## Planned / Deferred
 
-- **Workflow drift upgrades** - use recorded snapshot SHAs to identify and
-  upgrade stale managed workflows.
 - **Events stream support** - add `.archon/events.jsonl` conventions and a
   status-board view once real events accumulate.
 - **Copilot and secret setup** - deferred until the v0.4 path; secrets must go

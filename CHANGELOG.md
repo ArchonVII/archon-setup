@@ -4,6 +4,12 @@
 
 ### Added
 
+- Added workflow drift detection and upgrade: `archon-setup update --check`
+  classifies each managed caller as current / drifted / unmanaged against the
+  recorded snapshot (exits non-zero on drift), and `update --upgrade` rewrites
+  drifted callers to the snapshot, re-injecting budget defaults. Both honor
+  `--dry-run`; customizations beyond budget defaults are discarded on upgrade.
+
 - Added global update records for shared agent/workflow fixes, starting with the
   2026-05-31 Browser backend preflight policy.
 - Added a global update record for the strict PR ready-for-review contract that
