@@ -10,6 +10,11 @@
   disk, argv, or logs; manifest records name + `wasSet`). Both ship
   `disabled: true` (v0.4 gate). A `redact.mjs` backstop masks accidental
   `gh secret set NAME VALUE` argv leaks. See `docs/SECURITY_MODEL.md`.
+- Added the agent-lifecycle baseline (#64): the default `agent-lifecycle.baseline`
+  feature installs the four `scripts/agent/*` worktree-lifecycle scripts and
+  idempotently merges the three `agent:*` entries into the target `package.json`
+  (minimal one created if absent; other keys preserved). Existing-repo audit
+  gains an `entries` comparison reporting those entries present/missing/drifted.
 
 - Added a thin Windows bootstrap `install.ps1` (#90): checks Node >= 20 + `gh`
   (with install guidance) then runs `npx @archonvii/archon-setup`; supports

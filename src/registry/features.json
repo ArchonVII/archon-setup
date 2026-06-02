@@ -455,5 +455,21 @@
     },
     "beginnerDescription": "Sets a repository Actions secret. The value is piped to `gh secret set` via stdin — it never touches disk, argv, or logs.",
     "advancedDescription": "Uses the commandRunner stdin seam (`gh secret set NAME --body -`). The value is supplied at execute time (deferred stdin), and the manifest records only the name + wasSet. Staged disabled until v0.4."
+  },
+  {
+    "id": "agent-lifecycle.baseline",
+    "label": "Agent lifecycle scripts",
+    "group": "agent-workflow",
+    "default": true,
+    "creates": [
+      "scripts/agent/lib.mjs",
+      "scripts/agent/start-task.mjs",
+      "scripts/agent/status.mjs",
+      "scripts/agent/prune.mjs",
+      "package.json"
+    ],
+    "tasks": ["writeAgentLifecycle"],
+    "beginnerDescription": "Installs the agent worktree-lifecycle scripts (agent:start-task / status / prune) and wires their npm script entries.",
+    "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune}.mjs from the repo-template snapshot and idempotently MERGES the 3 agent:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison."
   }
 ]

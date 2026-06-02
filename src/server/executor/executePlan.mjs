@@ -23,6 +23,7 @@ import * as installWorkflow from "../tasks/installWorkflow.mjs";
 import * as writeSetupManifest from "../tasks/writeSetupManifest.mjs";
 import * as setRepoSecrets from "../tasks/setRepoSecrets.mjs";
 import * as enableCopilot from "../tasks/enableCopilot.mjs";
+import * as writeAgentLifecycle from "../tasks/writeAgentLifecycle.mjs";
 
 const TASKS = {
   writeReadme,
@@ -48,6 +49,7 @@ const TASKS = {
   writeSetupManifest,
   setRepoSecrets,
   enableCopilot,
+  writeAgentLifecycle,
 };
 
 // Executes a plan from the planner. Streams events via onEvent.

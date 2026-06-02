@@ -74,11 +74,17 @@ tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
 - **Strict PR contract snapshots** - provider snapshots include the shared
   strict PR-ready contract, wrapper guidance, and updated PR templates from
   `github-workflows`, `repo-template`, and `.github`.
+- **Agent lifecycle baseline (#64)** - the default `agent-lifecycle.baseline`
+  feature installs the four `scripts/agent/*` lifecycle scripts and merges the
+  three `agent:*` npm entries into the target `package.json`; existing-repo
+  audit reports them via the `entries` comparison (present/missing/drifted).
 
 ## In Progress
 
-- **npm publication** - `npx @archonvii/archon-setup` is the intended launch
-  command, but the package is not published to npm yet.
+- **npm publication** - the publication prep merged (#82/#83): `npx` quickstart,
+  a `prepublishOnly` gate, the `npm pack` tarball guard, and a manual-dispatch
+  `publish.yml`. The actual `npm publish` stays owner-gated (NPM_TOKEN + version
+  bump).
 - **End-to-end wizard hardening** - the fresh-repo remote path now has a
   hermetic smoke test (`test/smokeFreshRepo.test.mjs`) that runs against a local
   bare repo via a `gh` mock, creating no real GitHub repo (#43). Policy: smoke
@@ -90,11 +96,9 @@ tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
   browser wizard.
 - **Branch protection/ruleset audit** - issue #65 tracks making hub repo
   protection and ruleset state visible in audit/status output.
-- **Agent lifecycle baseline** - issue #64 tracks installing, updating, and
-  auditing lifecycle files after the provider repos own the command surface.
 - **Roadmap/status reconciliation** - `docs/ecosystem-status.md` remains the
   cross-repo ecosystem status file; this roadmap is the product roadmap for this
-  repo.
+  repo. Reconciled with the distribution/lifecycle rollout 2026-06-02.
 - **Test guidance cleanup** - `docs/FEATURE_REGISTRY.md` still references a
   future `test/golden/` pattern while current tests live under `test/*.test.mjs`.
 
