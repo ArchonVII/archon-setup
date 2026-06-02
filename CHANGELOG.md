@@ -4,6 +4,12 @@
 
 ### Added
 
+- Added a hermetic no-remote fresh-repo smoke test that exercises the full
+  remote path (repo create + push + readiness poll) against a local bare repo
+  via a `gh` mock, creating no real GitHub repo (#43). Backed by a `gh`/`git`
+  binary-injection seam in the command runner and a
+  `scripts/cleanup-smoketest-repos.mjs` remediation helper for the repos leaked
+  before the policy landed.
 - Added npm publication prep (#82): a `prepublishOnly` gate
   (`scripts/prepublish-check.mjs`) that runs tests + bin syntax checks before
   publish, a `test/packageManifest.test.mjs` guard on the published tarball

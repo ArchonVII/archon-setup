@@ -66,15 +66,15 @@ the two stay in lockstep:
 npm run onboard -- <targetPath> [options]
 ```
 
-| Option | Effect |
-| --- | --- |
+| Option             | Effect                                                                                                   |
+| ------------------ | -------------------------------------------------------------------------------------------------------- |
 | `--features a,b,c` | Override the selection (default: the local baseline — every default feature that needs no GitHub remote) |
-| `--owner <name>` | GitHub owner/account; enables `CODEOWNERS` and the manifest owner |
-| `--repo <name>` | Repo name recorded in `.github/archon-setup.json` |
-| `--visibility <v>` | `private` (default) or `public` |
-| `--audit` | Report planned baseline items as `present`, `missing`, or `drifted` without writing |
-| `--dry-run` | Print the plan and exit without writing |
-| `--json` | Emit the result as JSON instead of human-readable text |
+| `--owner <name>`   | GitHub owner/account; enables `CODEOWNERS` and the manifest owner                                        |
+| `--repo <name>`    | Repo name recorded in `.github/archon-setup.json`                                                        |
+| `--visibility <v>` | `private` (default) or `public`                                                                          |
+| `--audit`          | Report planned baseline items as `present`, `missing`, or `drifted` without writing                      |
+| `--dry-run`        | Print the plan and exit without writing                                                                  |
+| `--json`           | Emit the result as JSON instead of human-readable text                                                   |
 
 `--dry-run` shows exactly what the wizard's Review screen would, and onboarding
 writes the same baseline — including the F19-scrubbed `.githooks/`. This is the
@@ -200,8 +200,8 @@ Planned agent-facing capabilities:
   PR body updates, merge readiness, changelog fragments, and post-merge cleanup.
 - **Status board agent** - render `.archon/events.jsonl`, manifests, PR state,
   and rollout status inside the local wizard once real event streams exist.
-- **Security and dependency steward** - wire CodeQL, dependency review,
-  Dependabot, auto-merge policy, least-privilege Actions permissions, and
+- **Dependency steward** - wire dependency review, Dependabot,
+  auto-merge policy, least-privilege Actions permissions, and
   action pinning into a reviewable upgrade path.
 - **Copilot and secret setup** - enable the v0.4 path for Copilot-related
   repository settings and Actions secrets, with secret values streamed directly
@@ -365,8 +365,8 @@ Planned expansion:
 
 - Make `repo-required-gate / decision` the preferred required check for new
   repos after its first successful run.
-- Add security and dependency workflows: CodeQL, dependency review, Dependabot,
-  and Dependabot auto-merge.
+- Add security and dependency workflows: dependency review, Dependabot, and
+  Dependabot auto-merge.
 - Add hygiene workflows: stale issue handling, locked-thread policy, and
   anomaly-to-issue conversion.
 - Harden workflow callers with least-privilege permissions, pinned external
