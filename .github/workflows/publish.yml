@@ -1,0 +1,35 @@
+name: publish
+
+# Manual-only npm publish for @archonvii/archon-setup. Never runs on push or PR.
+# The owner dispatches this after bumping the version and creating the NPM_TOKEN
+# secret (issue #82). `npm publish` runs the package's prepublishOnly gate
+# (tests + bin syntax checks) automatically before publishing.
+#
+# To add a manual-approval gate (issue #82, decision E4), create a GitHub
+# environment named "npm-publish" with required reviewers and add
+# `environment: npm-publish` to the job below.
+on:
+  workflow_dispatch:
+    inputs:
+      dist-tag:
+        description: 'npm dist-tag to publish under (e.g. latest, next)'
+        required: false
+        default: 'latest'
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance attestation
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+      - name: Publish to npm
+        run: npm publish --provenance --access public --tag "${{ inputs.dist-tag }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
