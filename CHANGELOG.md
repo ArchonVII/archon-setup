@@ -69,6 +69,11 @@
 
 ### Changed
 
+- Fixed staged secret handling before Copilot activation (#96): `gh secret set`
+  now reads the value from stdin by omitting `--body`, secret values are stripped
+  from serialized plan/execution data and require a runtime-only provider, and
+  `enableCopilot` is documented as manual-only until mutation semantics are
+  proven.
 - Documented that agents must ask before disseminating global fixes across the
   ecosystem and must report explicit per-repo outcomes.
 - Refreshed workflow, repo-template, and org-default snapshots for the strict

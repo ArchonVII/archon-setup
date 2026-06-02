@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { resolveRepoTarget, applyResolvedRepoTarget, isBlockingWarning } from "./repoTarget.mjs";
+import { serializableFeatureOptions } from "./secretOptions.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REGISTRY_DIR = join(__dirname, "..", "..", "registry");
@@ -178,7 +179,7 @@ export async function buildPlan({ selection, options = {}, context }) {
       plan.ordered.push({
         featureId: f.id,
         taskId,
-        options: { ...defaultOptionsFor(f), ...(options[f.id] || {}) },
+        options: serializableFeatureOptions(f, { ...defaultOptionsFor(f), ...(options[f.id] || {}) }),
       });
     }
     for (const c of f.creates || []) {

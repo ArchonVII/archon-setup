@@ -1,12 +1,13 @@
 import { runCommand } from "../lib/commandRunner.mjs";
 
-// Build the `gh secret set` invocation. The value rides STDIN (`--body -`),
-// NEVER argv — so it cannot leak via process listings, logs, shell history, or
-// the serialized plan. This is the single security-critical seam of lane F.
+// Build the `gh secret set` invocation. Current gh semantics read stdin only
+// when `--body` is omitted; `--body -` would set the literal string "-".
+// The value rides stdin, NEVER argv, so it cannot leak via process listings,
+// shell history, or the serialized plan.
 export function buildSecretSetCommand({ name, value, owner, repo }) {
   return {
     cmd: "gh",
-    args: ["secret", "set", name, "--repo", `${owner}/${repo}`, "--body", "-"],
+    args: ["secret", "set", name, "--repo", `${owner}/${repo}`],
     stdin: value,
   };
 }
@@ -22,27 +23,34 @@ export function check() {
   return "needs-apply";
 }
 
+async function resolveSecretValue(ctx, name) {
+  if (!name) return null;
+  if (typeof ctx.secretProvider === "function") {
+    return ctx.secretProvider({ name, owner: ctx.owner, repo: ctx.repo, featureId: ctx.featureId });
+  }
+  return null;
+}
+
 export async function apply(ctx) {
   const name = ctx.taskOptions?.secretName;
-  // F1: the value is supplied at execute time (deferred stdin), never embedded
-  // in the serialized plan/RPC payload.
-  const value = ctx.taskOptions?.secretValue;
+  const value = await resolveSecretValue(ctx, name);
   if (!name || value == null || value === "") {
+    const reason = name ? "no runtime secret value provided" : "no secret name provided";
     ctx.manifest.remoteActions.push({
       type: "secret.set",
       name: name || null,
       wasSet: false,
       result: "skipped",
-      reason: "no secret name/value provided",
+      reason,
     });
-    return { result: "skipped", reason: "no secret name/value provided" };
+    return { status: "skipped", reason };
   }
 
-  const { cmd, args, stdin } = buildSecretSetCommand({ name, value, owner: ctx.owner, repo: ctx.repo });
+  const secretText = typeof value === "string" ? value : String(value);
+  const { cmd, args, stdin } = buildSecretSetCommand({ name, value: secretText, owner: ctx.owner, repo: ctx.repo });
   const res = await runCommand(cmd, args, { stdin, timeoutMs: 15_000 });
   if (res.code !== 0) {
-    // res.stderr is gh's own message and does not echo the piped value.
-    throw new Error(`gh secret set ${name} failed: ${res.stderr}`);
+    throw new Error(`gh secret set ${name} failed with exit code ${res.code}`);
   }
   ctx.manifest.remoteActions.push(secretRemoteAction(name));
   return { result: "applied" };

@@ -50,10 +50,14 @@ Set `disabled: true` (and `default: false`) to register a capability that is
 group is disabled), and it stays out of default plans, but its tasks are wired
 and tested so flipping `disabled` to `false` activates it. The `copilot` group
 (`copilot.enable-repo`, `copilot.repo-secret`) is staged this way for v0.4;
-secret values flow only through the `gh secret set` stdin seam (see
-`SECURITY_MODEL.md`). Note: the server-side planner has no `disabled` guard, so a
-disabled feature can still be planned by passing its id explicitly (e.g. from a
-test or the headless CLI) — the gate is in the UI.
+secret values flow only through a runtime-only `gh secret set` stdin seam with
+`--body` omitted, because current `gh` reads stdin only when `--body` is not
+specified (see `SECURITY_MODEL.md`). `enableCopilot` is manual-only for now: it
+classifies the owner with `gh api users/<owner>` and records the owner checklist,
+but does not mutate Copilot settings until the API/billing/seat semantics are
+proven. Note: the server-side planner has no `disabled` guard, so a disabled
+feature can still be planned by passing its id explicitly (e.g. from a test or
+the headless CLI) — the gate is in the UI.
 
 ## Adding a feature
 

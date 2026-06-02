@@ -141,13 +141,13 @@ Rationale (from synthesis):
 
 **Goal:** register the capability but ship it `disabled:true` (v0.4 gate). **Hard constraint:** secrets go only through `gh secret set` via **stdin**, never disk/logs; manifest records only the NAME + `wasSet`, never the value.
 
-**Create:** `src/server/tasks/setRepoSecrets.mjs` (pipes value via existing `commandRunner` stdin path); `src/server/tasks/enableCopilot.mjs` (flips the repo setting via `gh api` + a manual checklist for billing/browser steps); `test/copilotSecrets.test.mjs` (9).
+**Create:** `src/server/tasks/setRepoSecrets.mjs` (pipes value via existing `commandRunner` stdin path); `src/server/tasks/enableCopilot.mjs` (manual-only activation for now: classifies owner type via `gh api users/<owner>`, blocks personal accounts, and records an org billing/browser checklist without mutating Copilot settings); `test/copilotSecrets.test.mjs` (9).
 
 **Modify:** `features.json` (+2 `disabled:true` features, `group:"copilot"`); `executePlan.mjs` (register both tasks); `redact.mjs` (+1 pattern to catch accidental `gh secret set NAME VALUE` command-line leaks); `auditPlan.mjs` (+2 null-returning cases — pure remote-mutation, no files); `docs/SECURITY_MODEL.md` + `docs/FEATURE_REGISTRY.md`.
 
 **Blocked on you:** real secret values (at v0.4 activation); the decision to flip `disabled`; Copilot billing tier; `gh` token `repo`/secrets scope.
 
-**Open decisions:** F1 — secret values via plan options (in-memory plan object) vs. a **deferred-stdin prompt** at execute time? (Recommend: deferred-stdin for v0.4 — keeps values out of plan/RPC payloads.) **Gap:** `enableCopilot` uses the Preview `orgs/{owner}/copilot/billing` endpoint — verify it's still valid before writing; add a `blocked` path when `owner` is a personal (non-org) account.
+**Resolved by #96:** F1 uses a runtime-only secret provider/deferred stdin path; secret values are stripped from serialized plan/RPC data. `enableCopilot` is manual-only for now: no Copilot mutation endpoint is called until API, billing, and seat semantics are validated; personal accounts are blocked and organizations get a checklist.
 
 ---
 
