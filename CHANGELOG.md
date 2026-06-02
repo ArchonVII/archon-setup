@@ -16,6 +16,11 @@
   contents, a manual-dispatch `publish.yml` workflow, and a README quickstart
   leading with `npx @archonvii/archon-setup`. Actual publish remains owner-gated
   (NPM_TOKEN + version bump).
+- Added workflow drift detection and upgrade: `archon-setup update --check`
+  classifies each managed caller as current / drifted / unmanaged against the
+  recorded snapshot (exits non-zero on drift), and `update --upgrade` rewrites
+  drifted callers to the snapshot, re-injecting budget defaults. Both honor
+  `--dry-run`; customizations beyond budget defaults are discarded on upgrade.
 
 - Added global update records for shared agent/workflow fixes, starting with the
   2026-05-31 Browser backend preflight policy.

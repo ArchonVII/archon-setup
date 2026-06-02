@@ -95,6 +95,29 @@ repo that already has a GitHub `origin` and select GitHub features without
 `remote.github`. Pass `--owner`/`--repo` to target a specific repo (e.g. an
 upstream instead of a fork); explicit values win over the detected origin.
 
+### Updating managed workflows
+
+Once a repo is onboarded, keep its managed workflow callers in step with the
+recorded `github-workflows` snapshot:
+
+```bash
+# Refresh budget defaults in existing managed callers (preserves custom inputs):
+node bin/archon-setup.mjs update --target <repo>
+
+# Report drift vs the recorded snapshot (exits non-zero if anything is drifted):
+node bin/archon-setup.mjs update --check --target <repo>
+
+# Rewrite drifted callers to the current snapshot (re-injects budget defaults):
+node bin/archon-setup.mjs update --upgrade --target <repo>
+```
+
+`--check` classifies each caller as `current`, `drifted`, or `unmanaged` and is
+safe to run in CI or a pre-push hook (it never writes). `--upgrade` **fully
+replaces** drifted managed callers with the snapshot body, so any customization
+beyond the standard budget defaults is discarded — use plain `update` when you
+need to preserve custom inputs. Both `--check` and `--upgrade` accept
+`--dry-run`, and `--target` defaults to the current directory.
+
 ## Canonical New-Repo Setup
 
 Use `archon-setup` as the canonical path for new ArchonVII repos. It wraps the
