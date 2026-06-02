@@ -11,7 +11,7 @@ The wizard runs a local HTTP server with the power to write files, init git, pus
 - **Origin / Host pinning.** Requests with mismatched Host or Origin headers are rejected.
 - **No CORS headers.** Same-origin only.
 - **Path traversal guard.** `safeJoin(root, rel)` rejects any resolved path that escapes the chosen project root.
-- **Secret values never on disk or in logs.** They are piped to `gh secret set` stdin in v0.4 only.
+- **Secret values never on disk, argv, or logs.** The `setRepoSecrets` task (staged `disabled:true` for v0.4) pipes the value to `gh secret set NAME --body -` via the commandRunner **stdin** seam. The value is supplied at execute time (deferred stdin), never embedded in the serialized plan/RPC payload, and the manifest records only the secret **name + `wasSet`**, never the value.
 
 ## What we don't try to do
 
@@ -26,4 +26,6 @@ The wizard runs a local HTTP server with the power to write files, init git, pus
 | Malicious site posts to `127.0.0.1` via DNS rebinding   | Host header pinning + token gate            |
 | Path traversal via crafted target path                  | `safeJoin` + preflight target check         |
 | Secret leak via crash logs                              | Logger redacts `{secret: true}` fields      |
+| Secret value piped to `gh secret set`                   | Value on **stdin** (`--body -`), never argv; manifest stores name + `wasSet` only |
+| Accidental `gh secret set NAME VALUE` argv leak in output | `redact.mjs` masks the value as a defence-in-depth backstop |
 | `gh` command runs with attacker-controlled args         | Arg lists hard-coded; no string concat exec |

@@ -4,6 +4,13 @@
 
 ### Added
 
+- Added a staged-disabled Copilot + repo-secrets capability (#92): `enableCopilot`
+  (org-only, with a manual billing/policy checklist; personal accounts blocked)
+  and `setRepoSecrets` (value piped to `gh secret set` via stdin only — never
+  disk, argv, or logs; manifest records name + `wasSet`). Both ship
+  `disabled: true` (v0.4 gate). A `redact.mjs` backstop masks accidental
+  `gh secret set NAME VALUE` argv leaks. See `docs/SECURITY_MODEL.md`.
+
 - Added a thin Windows bootstrap `install.ps1` (#90): checks Node >= 20 + `gh`
   (with install guidance) then runs `npx @archonvii/archon-setup`; supports
   `-DryRun`. Ships in the package (`files[]` + tarball guard), with
