@@ -87,10 +87,11 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 2. **Template walkthrough** — refresh issue forms against the new F2/F10 evidence shape and F7 owner-lane semantics after the strict PR contract lands.
 3. **F7 `.github` policy work** — finish `.github` #14 scoped policy now that the reusable workflow and template pieces are shipped.
 4. **Branch-protection 400 anomaly** — file via the anomaly-triage workflow on next `archon-setup` PR. Reference fix already exists in `archon-setup/src/server/tasks/applyBaselineBranchProtection.mjs`.
-5. **Events-stream rollout** — `.archon/events.jsonl` schema in `repo-template` AGENTS.md + `agent-workflow.events-stream` feature in `archon-setup`. Same three-PR pattern as anomaly-triage; renderer (status board UI inside archon-setup's local server) deferred to v0.2.
+5. **Events-stream rollout** — *archon-setup side shipped (#89):* a best-effort `appendEvent` emitter, `collectEvents`, a "Recent events" render section, and `docs/archon-events-convention.md`. Remaining: the provider-side `.archon/events.jsonl` schema in `repo-template` AGENTS.md (companion PR) and gitignoring `.archon/` in generated repos.
 
 ## Recently completed
 
+- **2026-06-02** — Distribution/lifecycle rollout landed in `archon-setup`: no-remote smoke-test policy + leaked-repo cleanup (#81), npm publication prep (#83), workflow drift detection + upgrade (#87), `.archon/events.jsonl` stream + ecosystem "Recent events" view (#89), thin Windows `npx` bootstrap `install.ps1` (#91), staged-disabled Copilot/secrets (#93), and the agent-lifecycle baseline (#64). Owner-gated remainder: delete the five leaked smoke-test repos, `npm publish`, and real secret values.
 - **2026-05-31** — `archon-setup` issue #59 completed through merged PR #60; snapshot manifest now records `github-workflows@v1` `00fbaab`, `repo-template` `7aa1e91`, and `.github` `0717902`.
 - **2026-05-31** — Strict PR contract provider rollout landed across `github-workflows` #39, `repo-template` #30, and `.github` #23; `archon-setup` #67 refreshed snapshots to `github-workflows@90c0a89`, `repo-template@a328461`, and `.github@792fc81`.
 - **2026-05-29** — Moved `github-workflows` `v1` to `007ad49` after the F14/F7 workflow merges and shipped `archon-setup` #29 to refresh snapshots for #28.
@@ -123,8 +124,8 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 Ideas discussed but not yet planned:
 
-- **Windows installer** for `archon-setup` (Inno Setup `.iss` + release-build workflow + Start Menu shortcut). Workstream B of v0.1.1; not started.
-- **Status board UI** inside archon-setup's existing local server, rendering `.archon/events.jsonl`. Deferred to v0.2 once real events accumulate.
+- **Native Windows installer** for `archon-setup` (winget/scoop or Inno Setup `.iss`). The thin `npx` bootstrap (`install.ps1`, #91) shipped; native installers stay deferred (design-only stubs in `docs/installer/`).
+- **Status board UI** — a minimal "Recent events" section now renders in the ecosystem snapshot (#89); a richer interactive board remains deferred to v0.2 once real events accumulate.
 - **`rollout-playbooks/` subdirectory** — split out per-capability playbooks if more than one accumulates. Single inline playbook above is sufficient for now.
 - **Re-enable `react/no-unescaped-entities`** in `comfyui-companion` after fixing the apostrophes in `web/src/{FilesBrowser,Groups}.tsx`.
 

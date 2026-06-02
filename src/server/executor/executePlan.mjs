@@ -21,6 +21,7 @@ import * as applyLabels from "../tasks/applyLabels.mjs";
 import * as applyBaselineBranchProtection from "../tasks/applyBaselineBranchProtection.mjs";
 import * as installWorkflow from "../tasks/installWorkflow.mjs";
 import * as writeSetupManifest from "../tasks/writeSetupManifest.mjs";
+import * as writeAgentLifecycle from "../tasks/writeAgentLifecycle.mjs";
 
 const TASKS = {
   writeReadme,
@@ -44,6 +45,7 @@ const TASKS = {
   applyBaselineBranchProtection,
   installWorkflow,
   writeSetupManifest,
+  writeAgentLifecycle,
 };
 
 // Executes a plan from the planner. Streams events via onEvent.

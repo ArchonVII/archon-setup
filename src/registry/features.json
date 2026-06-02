@@ -428,5 +428,21 @@
     "validations": ["workflowReferencesPinnedV1"],
     "beginnerDescription": "A no-op check that always passes. Pick this for docs-only or snapshot repos that have no build or test.",
     "advancedDescription": "Installs a `ci-success` no-op job so branch protection has a stable required check name regardless of repo type. Pairs with `actionlint.yml` (issue #16 / F3) for workflow-syntax coverage even when there is no language CI."
+  },
+  {
+    "id": "agent-lifecycle.baseline",
+    "label": "Agent lifecycle scripts",
+    "group": "agent-workflow",
+    "default": true,
+    "creates": [
+      "scripts/agent/lib.mjs",
+      "scripts/agent/start-task.mjs",
+      "scripts/agent/status.mjs",
+      "scripts/agent/prune.mjs",
+      "package.json"
+    ],
+    "tasks": ["writeAgentLifecycle"],
+    "beginnerDescription": "Installs the agent worktree-lifecycle scripts (agent:start-task / status / prune) and wires their npm script entries.",
+    "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune}.mjs from the repo-template snapshot and idempotently MERGES the 3 agent:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison."
   }
 ]
