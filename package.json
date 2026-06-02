@@ -23,6 +23,7 @@
   "files": [
     "bin/",
     "src/",
+    "install.ps1",
     "AGENTS.md",
     "CLAUDE.md",
     "GEMINI.md",
