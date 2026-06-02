@@ -206,8 +206,8 @@ Planned agent-facing capabilities:
   PR body updates, merge readiness, changelog fragments, and post-merge cleanup.
 - **Status board agent** - render `.archon/events.jsonl`, manifests, PR state,
   and rollout status inside the local wizard once real event streams exist.
-- **Security and dependency steward** - wire CodeQL, dependency review,
-  Dependabot, auto-merge policy, least-privilege Actions permissions, and
+- **Dependency steward** - wire dependency review, Dependabot,
+  auto-merge policy, least-privilege Actions permissions, and
   action pinning into a reviewable upgrade path.
 - **Copilot and secret setup** - enable the v0.4 path for Copilot-related
   repository settings and Actions secrets, with secret values streamed directly
@@ -371,8 +371,8 @@ Planned expansion:
 
 - Make `repo-required-gate / decision` the preferred required check for new
   repos after its first successful run.
-- Add security and dependency workflows: CodeQL, dependency review, Dependabot,
-  and Dependabot auto-merge.
+- Add security and dependency workflows: dependency review, Dependabot, and
+  Dependabot auto-merge.
 - Add hygiene workflows: stale issue handling, locked-thread policy, and
   anomaly-to-issue conversion.
 - Harden workflow callers with least-privilege permissions, pinned external

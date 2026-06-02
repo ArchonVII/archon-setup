@@ -34,7 +34,7 @@
   {
     "id": "workflows.security",
     "label": "Security & dependencies (v0.2)",
-    "description": "CodeQL, dependency review, Dependabot auto-merge.",
+    "description": "Dependency review and Dependabot auto-merge.",
     "order": 40,
     "disabled": true
   },
