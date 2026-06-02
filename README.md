@@ -27,26 +27,20 @@ For the current coordinator/review/close handoff, see
 
 ## Quickstart
 
-Current source checkout command:
-
-```bash
-npm start
-```
-
-Equivalent direct command:
-
-```bash
-node bin/archon-setup.mjs
-```
-
-The intended published command is:
+The one-line quickstart, once published (tracked in #82), is:
 
 ```bash
 npx @archonvii/archon-setup
 ```
 
-As of 2026-05-28, the package is still pre-release and is not published to npm,
-so use the source checkout commands above.
+The package is **not yet on npm**. Until it is published, run it from a source
+checkout instead:
+
+```bash
+npm start
+# equivalently:
+node bin/archon-setup.mjs
+```
 
 Your default browser opens to a local URL. The wizard walks you through:
 
