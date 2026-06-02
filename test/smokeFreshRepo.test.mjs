@@ -18,11 +18,27 @@ function bareRepoPath(remoteDir, owner, repo) {
 
 // Run the body with the gh-mock seam wired in, restoring env afterwards.
 async function withMockGh(remoteDir, fn) {
-  const keys = ["ARCHON_GH_BIN", "ARCHON_GH_ARGS_PREFIX_JSON", "ARCHON_FAKE_GH_REMOTE_DIR"];
+  const keys = [
+    "ARCHON_GH_BIN",
+    "ARCHON_GH_ARGS_PREFIX_JSON",
+    "ARCHON_FAKE_GH_REMOTE_DIR",
+    // CI runners have no global git identity, and the wizard commits into a
+    // fresh temp repo (no repo-local config), so `git commit` fails with
+    // "empty ident name". Inject a deterministic identity for the smoke test
+    // only — restored in finally — so the hermetic run matches local + CI.
+    "GIT_AUTHOR_NAME",
+    "GIT_AUTHOR_EMAIL",
+    "GIT_COMMITTER_NAME",
+    "GIT_COMMITTER_EMAIL",
+  ];
   const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
   process.env.ARCHON_GH_BIN = process.execPath; // run the mock with node
   process.env.ARCHON_GH_ARGS_PREFIX_JSON = JSON.stringify([FAKE_GH]);
   process.env.ARCHON_FAKE_GH_REMOTE_DIR = remoteDir;
+  process.env.GIT_AUTHOR_NAME = "Archon Smoke"; // test fixture identity (#43)
+  process.env.GIT_AUTHOR_EMAIL = "smoke@archonvii.test";
+  process.env.GIT_COMMITTER_NAME = "Archon Smoke";
+  process.env.GIT_COMMITTER_EMAIL = "smoke@archonvii.test";
   try {
     return await fn();
   } finally {
