@@ -19,6 +19,8 @@
   explicit write confirmation, no-create workflow/label/protection targeting,
   execution result summaries, and AGENTS/CLAUDE plus required-gate handoff
   commands.
+- Added repo-local `agent:close-preflight` and `agent:pr-ready` wrappers so
+  archon-setup can follow its own strict PR-ready contract.
 
 ### Changed
 
@@ -26,3 +28,5 @@
   ecosystem and must report explicit per-repo outcomes.
 - Refreshed workflow, repo-template, and org-default snapshots for the strict
   PR contract rollout.
+- Refreshed the recorded `github-workflows@v1` provider SHA after the required
+  gate disabled-input fix.
