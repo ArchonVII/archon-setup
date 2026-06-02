@@ -9,6 +9,10 @@ update tooling that scaffold ArchonVII repositories.
 
 - **Source-runnable CLI** - `node bin/archon-setup.mjs`, `npm start`, and
   `npm run dev` launch the local server from a checkout.
+- **Events stream** - a best-effort append-only `.archon/events.jsonl` per repo
+  (`{ts,type,actor,ref,detail}`); the executor emits plan/task lifecycle events
+  and the ecosystem snapshot renders a "Recent events" section. See
+  `docs/archon-events-convention.md`.
 - **Update command** - `node bin/archon-setup.mjs update --target <repo>`
   refreshes managed workflow callers that reference
   `ArchonVII/github-workflows@v1`.
@@ -93,8 +97,6 @@ tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
 
 ## Planned / Deferred
 
-- **Events stream support** - add `.archon/events.jsonl` conventions and a
-  status-board view once real events accumulate.
 - **Copilot and secret setup** - deferred until the v0.4 path; secrets must go
   directly to `gh secret set` and never touch disk or logs.
 - **Packaged distribution** - publish the npm package and then make `npx` the

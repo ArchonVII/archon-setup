@@ -38,3 +38,23 @@ test("renderHtml emits a self-contained document with the key facts", () => {
   assert.match(html, /offline/i);
   assert.doesNotMatch(html, /<script src=/); // self-contained, no external scripts
 });
+
+test("renderHtml shows a Recent events section when events are present", () => {
+  const html = renderHtml({
+    ...SNAP,
+    events: {
+      recent: [
+        { ts: "2026-06-02T00:00:00.000Z", type: "plan-end", actor: "archon-setup", ref: "ArchonVII/demo", detail: "7/7 ok" },
+      ],
+    },
+  });
+  assert.match(html, /Recent events/);
+  assert.match(html, /plan-end/);
+  assert.match(html, /ArchonVII\/demo/);
+});
+
+test("renderHtml renders the Recent events section with a graceful empty state", () => {
+  const html = renderHtml(SNAP); // SNAP has no events field
+  assert.match(html, /Recent events/);
+  assert.match(html, /Recent events<\/h2><ul><li>none<\/li>/);
+});

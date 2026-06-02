@@ -1,4 +1,5 @@
 import { runTask } from "./taskRunner.mjs";
+import { appendEvent, TYPE_PLAN_START, TYPE_TASK_APPLIED, TYPE_PLAN_END } from "../lib/events.mjs";
 import * as writeReadme from "../tasks/writeReadme.mjs";
 import * as writeLicense from "../tasks/writeLicense.mjs";
 import * as writeGitignore from "../tasks/writeGitignore.mjs";
@@ -64,6 +65,17 @@ export async function executePlan(plan, { onEvent } = {}) {
     postChecks: plan.postChecks,
   };
 
+  // Best-effort event stream into the target repo's .archon/events.jsonl.
+  // appendEvent never throws (see events.mjs); awaited only so the log is
+  // deterministic for callers/tests, never to gate the onboarding flow.
+  const targetPath = plan.context.targetPath;
+  const eventRef = `${plan.context.owner ?? ""}/${plan.context.repo ?? ""}`;
+  await appendEvent(targetPath, {
+    type: TYPE_PLAN_START,
+    ref: eventRef,
+    detail: `${plan.ordered.length} task(s) planned`,
+  });
+
   for (const unit of plan.ordered) {
     const mod = TASKS[unit.taskId];
     if (!mod) {
@@ -81,6 +93,9 @@ export async function executePlan(plan, { onEvent } = {}) {
     };
     const res = await runTask({ ...mod, id: unit.taskId }, ctx);
     results.push({ ...res, unit });
+    if (res.ok && res.status === "applied") {
+      await appendEvent(targetPath, { type: TYPE_TASK_APPLIED, ref: eventRef, detail: unit.taskId });
+    }
     if (!res.ok) {
       return { ok: false, results, manifest };
     }
@@ -91,6 +106,14 @@ export async function executePlan(plan, { onEvent } = {}) {
     const ctx = { ...plan.context, manifest, onEvent };
     await runTask({ ...writeSetupManifest, id: "writeSetupManifest" }, ctx);
   }
+
+  // plan-end fires after the manifest write completes (no skew on the success
+  // path). The early-return failure path above intentionally emits no plan-end.
+  await appendEvent(targetPath, {
+    type: TYPE_PLAN_END,
+    ref: eventRef,
+    detail: `${results.filter((r) => r.ok).length}/${results.length} task(s) ok`,
+  });
 
   return { ok: true, results, manifest };
 }

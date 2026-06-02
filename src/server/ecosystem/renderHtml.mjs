@@ -14,6 +14,9 @@ export function renderHtml(snap) {
     `<small>classic: ${esc(r.classic?.status)} · rulesets: ${esc(r.rulesets?.status)} · PR: ${esc(r.posture?.prRequired)} · direct push: ${esc(r.posture?.directPush)} · force push: ${esc(r.posture?.forcePush)} · deletion: ${esc(r.posture?.deletion)} · required gate: ${esc(r.posture?.requiredGate)}</small></li>`
   ).join("");
   const recent = (snap.signals.recent || []).map((s) => `<li>${esc(s)}</li>`).join("");
+  const events = (snap.events?.recent || []).map((e) =>
+    `<li><small>${esc(e.ts)}</small> <b>${esc(e.type)}</b> ${esc(e.ref)} <small>${esc(e.detail)}</small></li>`
+  ).join("");
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <title>AI Ecosystem</title><style>
   body{font:14px/1.5 system-ui,sans-serif;background:#0b0e14;color:#d6deeb;margin:0;padding:24px;max-width:1100px}
@@ -29,5 +32,6 @@ export function renderHtml(snap) {
 <h2>Repos</h2><ul>${repos || "<li>none</li>"}</ul>
 <h2>Repository governance</h2><ul>${governance || "<li>none</li>"}</ul>
 <h2>Recent signals</h2><ul>${recent || "<li>none</li>"}</ul>
+<h2>Recent events</h2><ul>${events || "<li>none</li>"}</ul>
 </body></html>`;
 }
