@@ -137,11 +137,13 @@ test("upgradeWorkflowCallers --dry-run reports would-upgrade without writing", a
 test("upgradeWorkflowCallers re-injects budget defaults stripped from a drifted caller", async () => {
   const root = await makeWorkflowTarget();
   // A caller installed before budget defaults existed: drop the draft-skip line.
-  const draftSkip =
-    "    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false\r\n";
+  // Line-ending agnostic — the snapshot is CRLF in a Windows working tree but
+  // LF on a Linux CI checkout (no .gitattributes pins it).
+  const draftSkipRe =
+    /[ \t]*if: github\.event_name != 'pull_request' \|\| github\.event\.pull_request\.draft == false\r?\n/;
   const snapshot = await snapshotBody("node-ci.yml");
-  assert.ok(snapshot.includes(draftSkip), "fixture precondition: snapshot has the draft-skip line");
-  await writeFile(callerPath(root, "node-ci.yml"), snapshot.replace(draftSkip, ""));
+  assert.ok(draftSkipRe.test(snapshot), "fixture precondition: snapshot has the draft-skip line");
+  await writeFile(callerPath(root, "node-ci.yml"), snapshot.replace(draftSkipRe, ""));
 
   const result = await upgradeWorkflowCallers({ targetPath: root });
   const after = await readFile(callerPath(root, "node-ci.yml"), "utf8");
