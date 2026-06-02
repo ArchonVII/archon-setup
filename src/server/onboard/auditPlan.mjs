@@ -9,6 +9,7 @@ import { template as readmeTemplate } from "../tasks/writeReadme.mjs";
 import { TEMPLATE as CLAUDE_TEMPLATE } from "../tasks/writeClaudeMd.mjs";
 import { TEMPLATE as GEMINI_TEMPLATE } from "../tasks/writeGeminiMd.mjs";
 import { scrubHookBody } from "../tasks/writeGithooks.mjs";
+import { AGENT_SCRIPTS } from "../tasks/writeAgentLifecycle.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GITHUB_WORKFLOWS_SNAPSHOT = join(__dirname, "..", "..", "snapshots", "github-workflows");
@@ -66,6 +67,11 @@ async function expectedBodyFor({ path, unit, context }) {
     }
     case "installWorkflow":
       return workflowBody(unit);
+    case "writeAgentLifecycle":
+      // The 4 agent scripts compare exact against the snapshot; package.json is
+      // a merge, so it gets the "entries" comparison (the 3 agent:* scripts).
+      if (path === "package.json") return { comparison: "entries", entries: AGENT_SCRIPTS };
+      return repoTemplateBody(path);
     default:
       return null;
   }
@@ -93,6 +99,35 @@ export async function auditPlan(plan) {
       exists = true;
     } catch {
       exists = false;
+    }
+
+    // "entries" comparison: the file is merged (e.g. package.json), so audit the
+    // specific managed keys rather than the whole body. Reports each key
+    // present/missing/drifted; absent file => all missing.
+    if (expected && typeof expected === "object" && expected.comparison === "entries") {
+      let scripts = {};
+      if (exists) {
+        try {
+          scripts = JSON.parse(await readFile(fullPath, "utf8")).scripts || {};
+        } catch {
+          scripts = {};
+        }
+      }
+      const entries = Object.entries(expected.entries).map(([key, value]) => ({
+        key,
+        status: scripts[key] === value ? "present" : scripts[key] == null ? "missing" : "drifted",
+      }));
+      const allPresent = entries.every((e) => e.status === "present");
+      const anyDrifted = entries.some((e) => e.status === "drifted");
+      items.push({
+        path: file.path,
+        feature: file.feature,
+        taskId: unit?.taskId || null,
+        status: allPresent ? "present" : anyDrifted ? "drifted" : "missing",
+        comparison: "entries",
+        detail: entries,
+      });
+      continue;
     }
 
     if (!exists) {
