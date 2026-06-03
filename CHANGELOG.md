@@ -84,3 +84,7 @@
   wrapper and centralized template-system baseline landed.
 - Refreshed the recorded `repo-template` provider SHA after the template
   library inventory landed.
+- Refreshed the recorded `repo-template` provider SHA to 2295771 and updated the
+  snapshotted `scripts/agent/prune.mjs` to the Windows-robust version, so the
+  managed agent-lifecycle updater distributes the fixed prune to consumers
+  (repo-template #41).
