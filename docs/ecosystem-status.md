@@ -1,19 +1,19 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-05-31 by Codex_
+_Last updated: 2026-06-02 by Claude_
 
 The canonical "what is the ecosystem doing right now?" document for the four ArchonVII sibling repos. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
 
 ## Topology
 
-Four sibling repos under [@ArchonVII](https://github.com/ArchonVII), hub-and-spoke by data flow — no master repo, but `archon-setup` is the integration hub.
+Four sibling repos under [@ArchonVII](https://github.com/ArchonVII), hub-and-spoke by data flow — no master repo, but `archon-setup` is the integration hub. `archon-setup` is the only ecosystem consumer; the other three are providers.
 
-- [`ArchonVII/.github`](https://github.com/ArchonVII/.github) — org-level community-health defaults
-- [`ArchonVII/github-workflows`](https://github.com/ArchonVII/github-workflows) — reusable workflows pinned at `@v1`
-- [`ArchonVII/repo-template`](https://github.com/ArchonVII/repo-template) — passive baseline; `AGENTS.md` is the canonical cross-tool contract
-- [`ArchonVII/archon-setup`](https://github.com/ArchonVII/archon-setup) — integration hub. Consumes the other three as read-only snapshots under `src/snapshots/`. Hosts this file.
-
-`archon-setup` is the only consumer; the other three are providers.
+| Repo | Role | What it covers | What exists there | What does not belong there | Update / consumption path |
+| --- | --- | --- | --- | --- | --- |
+| [`ArchonVII/.github`](https://github.com/ArchonVII/.github) | Org-level defaults provider | Community-health defaults that GitHub auto-applies to ArchonVII repos when the target repo does not ship its own copy. Use this for organization-wide issue, PR, release, security, profile, and document-policy defaults. | Default PR template, issue forms, issue-template config, release-notes config, `SECURITY.md`, org profile README, and `STARTER.md` document-policy guidance. | Reusable Actions workflow bodies, per-repo caller workflows, branch protection settings, and enforced `CODEOWNERS` files. GitHub does not inherit those from the org default repo. | Edit this repo first when the shared default file itself changes. Repos consume it automatically unless they override locally. `archon-setup` snapshots selected org-default docs under `src/snapshots/org-defaults/`. |
+| [`ArchonVII/github-workflows`](https://github.com/ArchonVII/github-workflows) | Reusable workflow provider | The shared GitHub Actions implementation layer. Use this for workflow logic, example callers, reusable CI/security/PR-policy gates, and repo setup automation that applies GitHub labels or branch protection through `gh api`. | `workflow_call` workflow bodies under `.github/workflows/`, example caller files under `examples/`, workflow helper scripts and tests, `scripts/setup-repo.mjs`, workflow policy parsers, and the consumer-facing `v1` tag. | Repo-specific workflow customizations, generated repo docs, org community-health files, and `archon-setup` embedded snapshots. | Land provider PRs here before refreshing consumers. For compatible reusable-workflow changes, move `v1` to the merge SHA, then refresh `archon-setup` snapshots and/or update consumer caller files. |
+| [`ArchonVII/repo-template`](https://github.com/ArchonVII/repo-template) | Passive baseline provider | The clone-and-go baseline for new repos and the canonical tracked file shape for generated repos. Use this for default repo structure, agent contract text, hooks, check-map defaults, changelog mode, and pre-wired caller workflows. | README skeleton, `AGENTS.md`, `CHANGELOG.md`, `LICENSE`, `.gitignore`, `.agent/check-map.yml`, `.githooks/`, `.github/workflows/` callers, Dependabot config, `CODEOWNERS`, ADR placeholders, and `docs/repo-update-log.md`. | Reusable workflow internals, org default issue/PR templates, local-server onboarding code, and one-off consumer repo overrides. | New repos can start from the GitHub template directly. `archon-setup` also snapshots this repo under `src/snapshots/repo-template/` and uses it as managed baseline material for scaffold/update plans. |
+| [`ArchonVII/archon-setup`](https://github.com/ArchonVII/archon-setup) | Integration hub and consumer | The user-facing onboarding/update tool and the coordination hub for ecosystem state. Use this for the local wizard, headless onboarding, feature registry, planner/executor behavior, managed update records, snapshot refreshes, and this status document. | `bin/archon-setup.mjs`, `bin/onboard.mjs`, the local RPC server, feature registry, task planner/executor modules, tests, source snapshots from the three providers, global update catalog, repo onboarding docs, ecosystem snapshot tooling, and `docs/ecosystem-status.md`. | Source-of-truth workflow bodies, org defaults, and repo-template baseline prose outside `src/snapshots/`. If a snapshot is stale or wrong, fix the provider first and run `npm run refresh-snapshots`. | Pull provider `main` branches, run `npm run refresh-snapshots`, test, and land an `archon-setup` PR. Generated or upgraded repos consume the result through the wizard, `npm run onboard`, or the update/distribution commands. |
 
 ## Rollout playbook
 
