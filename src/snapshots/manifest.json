@@ -3,22 +3,22 @@
     "githubWorkflows": {
       "source": "ArchonVII/github-workflows",
       "ref": "v1",
-      "sha": "00bec970ca74b985e9c63fd471df86dca80555ef",
-      "capturedAt": "2026-06-05T03:11:22.736Z",
+      "sha": "fef8aec7928b8517640597a5919514bd229d9a8e",
+      "capturedAt": "2026-06-05T03:32:30.606Z",
       "path": "src/snapshots/github-workflows/"
     },
     "repoTemplate": {
       "source": "ArchonVII/repo-template",
       "ref": "main",
       "sha": "8fdbc021a95ce0c9908fdfd3db371a92d11753b6",
-      "capturedAt": "2026-06-05T03:11:22.849Z",
+      "capturedAt": "2026-06-05T03:32:30.706Z",
       "path": "src/snapshots/repo-template/"
     },
     "orgDefaults": {
       "source": "ArchonVII/.github",
       "ref": "main",
       "sha": "2fe5739578072492b77fe32cbb8621b4e5623a46",
-      "capturedAt": "2026-06-05T03:11:22.870Z",
+      "capturedAt": "2026-06-05T03:32:30.724Z",
       "path": "src/snapshots/org-defaults/"
     }
   }
