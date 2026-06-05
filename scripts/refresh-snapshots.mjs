@@ -32,6 +32,7 @@ const SOURCES = [
       "AGENTS.md",
       "docs/repo-update-log.md",
       "docs/template-library-inventory.md",
+      "docs/agent-process/doc-sweep.md",
       "package.json",
       "package-lock.json",
       ".agent/check-map.yml",
