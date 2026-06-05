@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import {
-  checkAllExist,
-  verifyAllExist,
+  checkAllMatch,
+  verifyAllMatch,
   writeSnapshotFile,
 } from "./repoTemplateSnapshot.mjs";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
@@ -41,7 +41,9 @@ function entriesAlreadyMerged(pkg) {
 }
 
 export async function check(ctx) {
-  if ((await checkAllExist(ctx, SCRIPT_FILES)) === "needs-apply") return "needs-apply";
+  // Content-aware: a present-but-drifted managed script re-opens the apply path
+  // (#95), not just a missing one.
+  if ((await checkAllMatch(ctx, SCRIPT_FILES)) === "needs-apply") return "needs-apply";
   const pkg = await readTargetPackageJson(ctx.targetPath);
   return pkg && entriesAlreadyMerged(pkg) ? "already-done" : "needs-apply";
 }
@@ -49,7 +51,8 @@ export async function check(ctx) {
 export async function apply(ctx) {
   const results = [];
   for (const file of SCRIPT_FILES) {
-    results.push(await writeSnapshotFile(ctx, file));
+    // overwrite:true so a drifted managed script is REPAIRED, not skipped (#95).
+    results.push(await writeSnapshotFile(ctx, file, { overwrite: true }));
   }
 
   // Merge only the 3 agent:* entries into the target package.json, creating a
@@ -77,7 +80,7 @@ export async function apply(ctx) {
 }
 
 export async function verify(ctx) {
-  const filesOk = await verifyAllExist(ctx, SCRIPT_FILES);
+  const filesOk = await verifyAllMatch(ctx, SCRIPT_FILES);
   if (!filesOk.ok) return filesOk;
   const pkg = await readTargetPackageJson(ctx.targetPath);
   if (!pkg || !entriesAlreadyMerged(pkg)) {

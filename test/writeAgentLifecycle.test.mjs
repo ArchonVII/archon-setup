@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import * as writeAgentLifecycle from "../src/server/tasks/writeAgentLifecycle.mjs";
 import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
+import { REPO_TEMPLATE_SNAPSHOT } from "../src/server/tasks/repoTemplateSnapshot.mjs";
 
 const SCRIPT_FILES = [
   "scripts/agent/lib.mjs",
@@ -24,6 +25,10 @@ function makeCtx(targetPath, extra = {}) {
 
 async function readPkg(targetPath) {
   return JSON.parse(await readFile(join(targetPath, "package.json"), "utf8"));
+}
+
+function snapshotBody(file) {
+  return readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8");
 }
 
 test("apply copies the four agent lifecycle scripts into the target", async () => {
@@ -86,6 +91,37 @@ test("verify passes after apply and fails when an agent:* entry is missing", asy
   await writeFile(join(target, "package.json"), JSON.stringify(pkg, null, 2));
   const v = await writeAgentLifecycle.verify(makeCtx(target));
   assert.equal(v.ok, false);
+});
+
+test("check reports needs-apply when a managed script has drifted (not just missing)", async () => {
+  const target = await makeTarget();
+  await writeAgentLifecycle.apply(makeCtx(target));
+  assert.equal(await writeAgentLifecycle.check(makeCtx(target)), "already-done");
+  // A present-but-drifted managed script must re-open the apply path (#95).
+  await writeFile(join(target, "scripts/agent/status.mjs"), "// drifted by hand\n");
+  assert.equal(await writeAgentLifecycle.check(makeCtx(target)), "needs-apply");
+});
+
+test("verify fails when a managed script has drifted from the snapshot", async () => {
+  const target = await makeTarget();
+  await writeAgentLifecycle.apply(makeCtx(target));
+  await writeFile(join(target, "scripts/agent/prune.mjs"), "// drifted by hand\n");
+  const v = await writeAgentLifecycle.verify(makeCtx(target));
+  assert.equal(v.ok, false, "drifted script must fail verification");
+});
+
+test("apply repairs a drifted managed script by overwriting it from the snapshot", async () => {
+  const target = await makeTarget();
+  await writeAgentLifecycle.apply(makeCtx(target));
+  const file = "scripts/agent/lib.mjs";
+  await writeFile(join(target, file), "// drifted by hand\n");
+  await writeAgentLifecycle.apply(makeCtx(target));
+  assert.equal(
+    await readFile(join(target, file), "utf8"),
+    await snapshotBody(file),
+    "drifted script restored to the snapshot body"
+  );
+  assert.equal(await writeAgentLifecycle.check(makeCtx(target)), "already-done");
 });
 
 test("AGENT_SCRIPTS exports exactly the three lifecycle entries", () => {
