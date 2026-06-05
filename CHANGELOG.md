@@ -69,6 +69,13 @@
 
 ### Changed
 
+- Fixed agent-lifecycle drift repair after baseline install (#95): the
+  `writeAgentLifecycle` `check()`/`verify()` paths now compare the four managed
+  `scripts/agent/*` files against the repo-template snapshot by content (not just
+  existence), and `apply()` overwrites a drifted managed script to repair it.
+  Previously a present-but-drifted script reported `already-done`/`ok`, so an
+  existing repo could retain stale lifecycle scripts while the install claimed
+  success. New `checkAllMatch`/`verifyAllMatch` helpers back the comparison.
 - Refreshed repo-template snapshots after Owner Maintenance Lane docs coverage
   expanded to add-only `docs/**` by default while preserving explicit unsafe
   docs paths; added the matching global update record.

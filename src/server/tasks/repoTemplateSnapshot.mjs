@@ -36,13 +36,46 @@ export async function verifyAllExist(ctx, relativePaths) {
   }
 }
 
+// Content-aware variants of the *Exist helpers (#95). A managed file that is
+// present but has drifted from its snapshot must NOT report as already-done —
+// existence alone is too weak a signal for files we own byte-for-byte. The
+// snapshot is read live (never a hardcoded string) so the comparison stays
+// consistent whether line endings are CRLF (local) or LF (CI).
+async function targetMatchesSnapshot(ctx, relativePath) {
+  let actual;
+  try {
+    actual = await readFile(safeJoin(ctx.targetPath, relativePath), "utf8");
+  } catch {
+    return false; // missing counts as a mismatch
+  }
+  const expected = await readFile(join(REPO_TEMPLATE_SNAPSHOT, relativePath), "utf8");
+  return actual === expected;
+}
+
+export async function checkAllMatch(ctx, relativePaths) {
+  for (const relativePath of relativePaths) {
+    if (!(await targetMatchesSnapshot(ctx, relativePath))) return "needs-apply";
+  }
+  return "already-done";
+}
+
+export async function verifyAllMatch(ctx, relativePaths) {
+  for (const relativePath of relativePaths) {
+    if (!(await targetMatchesSnapshot(ctx, relativePath))) {
+      return { ok: false, error: `${relativePath} is missing or has drifted from the repo-template baseline` };
+    }
+  }
+  return { ok: true };
+}
+
 export async function writeSnapshotFile(ctx, relativePath, {
   snapshotPath = relativePath,
   source = `snapshot:repo-template/${snapshotPath}`,
   transform = (body) => body,
+  overwrite = false,
 } = {}) {
   const body = transform(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8"));
-  const result = await safeWriteFile(ctx.targetPath, relativePath, body);
+  const result = await safeWriteFile(ctx.targetPath, relativePath, body, { overwrite });
   recordCreatedFile(ctx, result, { path: relativePath, source });
   return result;
 }
