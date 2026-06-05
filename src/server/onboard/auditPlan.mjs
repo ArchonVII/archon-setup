@@ -72,6 +72,9 @@ async function expectedBodyFor({ path, unit, context }) {
       // a merge, so it gets the "entries" comparison (the 3 agent:* scripts).
       if (path === "package.json") return { comparison: "entries", entries: AGENT_SCRIPTS };
       return repoTemplateBody(path);
+    case "writeDocSweep":
+      // Runner + spec are exact snapshot copies — exact content comparison.
+      return repoTemplateBody(path);
     default:
       return null;
   }

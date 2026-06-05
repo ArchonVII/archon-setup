@@ -394,3 +394,50 @@ test("api-target + will-create with empty identity -> blocking error", async () 
   });
   assert.ok(plan.warnings.some((w) => w.feature === "remote.labels" && w.severity === "error"));
 });
+
+// --- #103: doc-sweep feature ---
+
+test("doc-sweep is a locked default agent-workflow feature installing the runner + spec", async () => {
+  const { features } = await loadRegistry();
+  const ds = features.find((f) => f.id === "agent-workflow.doc-sweep");
+  assert.ok(ds, "agent-workflow.doc-sweep feature missing");
+  assert.equal(ds.group, "agent-workflow");
+  assert.equal(ds.default, true);
+  assert.equal(ds.locked, true);
+  assert.equal(ds.tasks[0], "writeDocSweep");
+  for (const f of [
+    "scripts/doc-sweep/lib.mjs",
+    "scripts/doc-sweep/git.mjs",
+    "scripts/doc-sweep/sweep.mjs",
+    "docs/agent-process/doc-sweep.md",
+  ]) {
+    assert.ok(ds.creates.includes(f), `doc-sweep creates ${f}`);
+  }
+  assert.ok(!(ds.requires || []).includes("remote.github"), "doc-sweep must not pull in repo-create");
+});
+
+test("doc-sweep points at existing snapshot files and lands in the initial commit", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const snapDir = join(here, "..", "src", "snapshots", "repo-template");
+  for (const f of ["scripts/doc-sweep/lib.mjs", "scripts/doc-sweep/sweep.mjs", "docs/agent-process/doc-sweep.md"]) {
+    const body = await readFile(join(snapDir, f), "utf8");
+    assert.ok(body.length > 0, `${f} snapshot present`);
+  }
+  const agents = await readFile(join(snapDir, "AGENTS.md"), "utf8");
+  assert.ok(agents.includes("## Doc Sweep-Up"), "AGENTS.md snapshot ships the Doc Sweep-Up contract");
+
+  const plan = await buildPlan({
+    selection: ["agent-workflow.doc-sweep", "foundation.git-init"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: {} },
+  });
+  const tasks = plan.ordered.map((u) => u.taskId);
+  assert.ok(tasks.includes("writeDocSweep"), "writeDocSweep should be planned");
+  assert.ok(
+    tasks.indexOf("writeDocSweep") < tasks.indexOf("initGitAndCommit"),
+    "the doc-sweep runner must land in the initial commit"
+  );
+});

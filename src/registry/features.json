@@ -471,5 +471,21 @@
     "tasks": ["writeAgentLifecycle"],
     "beginnerDescription": "Installs the agent worktree-lifecycle scripts (agent:start-task / status / prune) and wires their npm script entries.",
     "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune}.mjs from the repo-template snapshot and idempotently MERGES the 3 agent:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison."
+  },
+  {
+    "id": "agent-workflow.doc-sweep",
+    "label": "Doc Sweep-Up",
+    "group": "agent-workflow",
+    "default": true,
+    "locked": true,
+    "creates": [
+      "scripts/doc-sweep/lib.mjs",
+      "scripts/doc-sweep/git.mjs",
+      "scripts/doc-sweep/sweep.mjs",
+      "docs/agent-process/doc-sweep.md"
+    ],
+    "tasks": ["writeDocSweep"],
+    "beginnerDescription": "Installs the doc-sweep runner so agents recover and preserve docs across sessions (sweep-on-open / flush-on-close) instead of stranding them when a session dies.",
+    "advancedDescription": "Copies scripts/doc-sweep/{lib,git,sweep}.mjs and docs/agent-process/doc-sweep.md from the repo-template snapshot, content-aware (drift-repairing, shares the agent-lifecycle checkAllMatch/verifyAllMatch helpers). The `## Doc Sweep-Up` AGENTS.md contract ships via the repo-template AGENTS.md snapshot; the github-workflows `doc-orphan-detector.yml@v1` cron backstop is a separate opt-in. Full spec: docs/agent-process/doc-sweep.md."
   }
 ]

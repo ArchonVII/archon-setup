@@ -25,6 +25,7 @@ import * as writeSetupManifest from "../tasks/writeSetupManifest.mjs";
 import * as setRepoSecrets from "../tasks/setRepoSecrets.mjs";
 import * as enableCopilot from "../tasks/enableCopilot.mjs";
 import * as writeAgentLifecycle from "../tasks/writeAgentLifecycle.mjs";
+import * as writeDocSweep from "../tasks/writeDocSweep.mjs";
 
 const TASKS = {
   writeReadme,
@@ -51,6 +52,7 @@ const TASKS = {
   setRepoSecrets,
   enableCopilot,
   writeAgentLifecycle,
+  writeDocSweep,
 };
 
 // Executes a plan from the planner. Streams events via onEvent.
