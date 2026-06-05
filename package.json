@@ -1,6 +1,6 @@
 {
   "name": "@archonvii/archon-setup",
-  "version": "0.1.0-pre",
+  "version": "0.1.0",
   "description": "Plug-and-play repo bootstrapper for the ArchonVII ecosystem. Local browser wizard that scaffolds a new repo with AGENTS.md, workflows, labels, and branch protection.",
   "type": "module",
   "bin": {

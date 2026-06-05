@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0 - 2026-06-05
+
 ### Added
 
 - Added the `agent-workflow.doc-sweep` feature (#103, locked default): every
