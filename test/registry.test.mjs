@@ -441,3 +441,40 @@ test("doc-sweep points at existing snapshot files and lands in the initial commi
     "the doc-sweep runner must land in the initial commit"
   );
 });
+
+test("doc-orphan-detector is an opt-in runtime cron caller pinned to @v1", async () => {
+  const { features } = await loadRegistry();
+  const cron = features.find((f) => f.id === "agent-workflow.doc-orphan-detector");
+  assert.ok(cron, "agent-workflow.doc-orphan-detector feature missing");
+  assert.equal(cron.group, "agent-workflow");
+  assert.equal(cron.default, false);
+  assert.ok(!cron.locked, "the cron backstop is opt-in, not locked");
+  assert.equal(cron.remoteRequirement, "runtime");
+  assert.ok(!(cron.requires || []).includes("remote.github"));
+  assert.equal(cron.tasks[0], "installWorkflow");
+  assert.equal(cron.options.workflowName.value, "doc-orphan-detector");
+  assert.ok(cron.creates.includes(".github/workflows/doc-orphan-detector.yml"));
+
+  const { readFile } = await import("node:fs/promises");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const body = await readFile(
+    join(here, "..", "src", "snapshots", "github-workflows", "doc-orphan-detector.yml"),
+    "utf8"
+  );
+  assert.ok(body.includes("@v1"), "caller must reference the reusable at @v1 (workflowReferencesPinnedV1)");
+});
+
+test("planning doc-orphan-detector installs the caller without repo-create", async () => {
+  const plan = await buildPlan({
+    selection: ["agent-workflow.doc-orphan-detector"],
+    options: {},
+    context: { targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {} },
+  });
+  assert.ok(!plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
+  assert.ok(
+    plan.files.some((f) => f.path === ".github/workflows/doc-orphan-detector.yml"),
+    "doc-orphan-detector caller should be planned for creation"
+  );
+});

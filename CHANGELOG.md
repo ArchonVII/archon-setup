@@ -7,9 +7,12 @@
 - Added the `agent-workflow.doc-sweep` feature (#103, locked default): every
   onboarded repo gets the doc-sweep runner (`scripts/doc-sweep/{lib,git,sweep}.mjs`)
   and full spec (`docs/agent-process/doc-sweep.md`) via the new `writeDocSweep` task,
-  content-aware drift repair (reuses the `checkAllMatch`/`verifyAllMatch` helpers).
-  The `## Doc Sweep-Up` AGENTS.md contract ships with the agent foundations; the
-  `doc-orphan-detector.yml@v1` cron backstop is a separate opt-in.
+  with self-contained content-aware drift repair. The `## Doc Sweep-Up` AGENTS.md
+  contract ships with the agent foundations.
+- Added the `agent-workflow.doc-orphan-detector` opt-in (#103): a weekly cron caller
+  to `github-workflows/doc-orphan-detector.yml@v1` (doc-sweep §4.7) that opens a
+  tracking issue for committed docs stranded on stale, PR-less branches. Detection
+  only; pairs with the locked doc-sweep runner that recovers them.
 
 - Added a staged-disabled Copilot + repo-secrets capability (#92): `enableCopilot`
   (org-only, with a manual billing/policy checklist; personal accounts blocked)

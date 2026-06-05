@@ -487,5 +487,20 @@
     "tasks": ["writeDocSweep"],
     "beginnerDescription": "Installs the doc-sweep runner so agents recover and preserve docs across sessions (sweep-on-open / flush-on-close) instead of stranding them when a session dies.",
     "advancedDescription": "Copies scripts/doc-sweep/{lib,git,sweep}.mjs and docs/agent-process/doc-sweep.md from the repo-template snapshot, content-aware (drift-repairing, shares the agent-lifecycle checkAllMatch/verifyAllMatch helpers). The `## Doc Sweep-Up` AGENTS.md contract ships via the repo-template AGENTS.md snapshot; the github-workflows `doc-orphan-detector.yml@v1` cron backstop is a separate opt-in. Full spec: docs/agent-process/doc-sweep.md."
+  },
+  {
+    "id": "agent-workflow.doc-orphan-detector",
+    "label": "Doc orphan detector (cron)",
+    "group": "agent-workflow",
+    "default": false,
+    "remoteRequirement": "runtime",
+    "creates": [".github/workflows/doc-orphan-detector.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "doc-orphan-detector" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "Optional weekly backstop: scans branches with no open PR and opens a tracking issue for committed docs that look stranded, so nothing slips through between sessions.",
+    "advancedDescription": "Caller to ArchonVII/github-workflows/doc-orphan-detector.yml@v1 (doc-sweep §4.7). Detection only — opens/updates a per-branch tracking issue listing orphaned allow-list doc paths older than the staleness threshold; never commits or reads file contents. Pairs with the locked agent-workflow.doc-sweep runner that recovers them."
   }
 ]
