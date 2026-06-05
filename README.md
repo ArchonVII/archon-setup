@@ -27,19 +27,20 @@ For the current coordinator/review/close handoff, see
 
 ## Quickstart
 
-The one-line quickstart, once published (tracked in #82), is:
-
-```bash
-npx @archonvii/archon-setup
-```
-
-The package is **not yet on npm**. Until it is published, run it from a source
-checkout instead:
+`archon-setup` is **freshly built and under active testing before its first npm
+release** — it is **not yet on npm**. Run it from a source checkout:
 
 ```bash
 npm start
 # equivalently:
 node bin/archon-setup.mjs
+```
+
+The one-line `npx` quickstart is the goal once `0.1.0` is published (tracked in
+#82); until then it will not resolve:
+
+```bash
+npx @archonvii/archon-setup   # after publication
 ```
 
 ### Windows bootstrap
@@ -353,8 +354,10 @@ Today, bootstrapping an ArchonVII repo is a 5-step manual recipe (clone template
 
 ## Status
 
-`0.1.0-pre`. Source-runnable local wizard and update command exist. Public npm
-publication and the final `npx` path are still pending.
+`0.1.0-pre` — freshly built, source-runnable, and under active testing and
+refinement before its first npm release. The local wizard and update command
+work from a checkout; public npm publication and the final `npx` path are
+deliberately held until that shakedown is done.
 
 See [ROADMAP.md](./ROADMAP.md) for what is already built and what remains in
 progress.
