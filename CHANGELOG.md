@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Changed
+
+- Refreshed the `repo-template` snapshot to `98c871b`, so the managed `.githooks`
+  now carry the append-log ledger Owner Maintenance Lane (`repo-template#50`):
+  `archon-setup update` propagates the lane (`.claude/noticed.md` and
+  `.claude/napkin.md` addable/modifiable on `main`) instead of writing the stale
+  hook and regressing it. (#110)
+
 ### Added
 
 - Added the `agent-workflow.doc-sweep` feature (#103, locked default): every
