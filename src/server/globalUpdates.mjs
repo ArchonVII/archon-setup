@@ -4,6 +4,7 @@ import { collectRepos } from "./ecosystem/collectRepos.mjs";
 
 const BROWSER_BACKEND_UPDATE_ID = "2026-05-31-browser-backend-preflight";
 const STRICT_PR_READY_UPDATE_ID = "2026-05-31-strict-pr-ready-contract";
+const OWNER_DOCS_SAFE_PATHS_UPDATE_ID = "2026-06-05-owner-docs-safe-paths";
 
 const GLOBAL_UPDATES = [
   {
@@ -74,6 +75,37 @@ const GLOBAL_UPDATES = [
         "- The PR title must use Conventional Commits. The branch must match the repo branch pattern.",
         "- Remove placeholder text such as TODO, TBD, N/A, and unset issue markers before promotion.",
         "- Check a verification box only after the command, CI check, or manual smoke test actually passed and is recorded in Verification Notes.",
+      ].join("\n"),
+    },
+  },
+  {
+    id: OWNER_DOCS_SAFE_PATHS_UPDATE_ID,
+    date: "2026-06-05",
+    status: "ready",
+    title: "Owner Maintenance Lane docs safe paths",
+    summary:
+      "Records that add-only docs folders are owner-maintenance safe by default, while explicit unsafe paths still require normal PR lanes.",
+    source: [
+      "ArchonVII/repo-template .githooks/scripts/owner-maintenance.sh",
+      "ArchonVII/repo-template AGENTS.md",
+      "ArchonVII/repo-template PR #47",
+      "ArchonVII/archon-setup issue #100",
+    ],
+    agentInstruction:
+      "Agents must check repo-local owner-maintenance predicates before stopping on protected main, and must not broaden explicit unsafe paths by inference.",
+    confirmationPhrase: `DISTRIBUTE ${OWNER_DOCS_SAFE_PATHS_UPDATE_ID}`,
+    distribution: {
+      kind: "agents-managed-block",
+      targetPath: "AGENTS.md",
+      protectedBranches: ["main", "master"],
+      heading: "Owner Maintenance Docs Safe Paths",
+      body: [
+        "## Owner Maintenance Docs Safe Paths",
+        "",
+        "- In repos with the ArchonVII Owner Maintenance Lane, add-only `docs/**` files are safe by default for owner-maintenance commits.",
+        "- Explicit unsafe paths still win. Protected policy/architecture/process docs, code, config, modifications, deletes, renames, copies, and unclear files require the normal issue -> branch -> worktree -> PR lifecycle.",
+        "- Prefer the repo-owned predicate, usually `.githooks/scripts/owner-maintenance.sh`, over retyping path globs.",
+        "- Use the repo-prescribed direct commit format, such as `docs(owner): ...` or `chore(owner): ...`, and stage only exact safe files.",
       ].join("\n"),
     },
   },

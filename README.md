@@ -310,6 +310,9 @@ Current recorded global fixes include:
   from live browser backend availability and requires browser preflight.
 - `2026-05-31-strict-pr-ready-contract` - forbids direct `gh pr ready` and
   requires the shared PR contract wrapper before ready-for-review.
+- `2026-06-05-owner-docs-safe-paths` - records that add-only `docs/**` files are
+  owner-maintenance safe by default while explicit unsafe paths still require
+  normal PR lanes.
 
 ## Local Workflow Validation
 
