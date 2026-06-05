@@ -15,6 +15,15 @@ This log records agent-visible repository changes that should be easy to audit l
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-05 - Owner Maintenance Lane append-log ledgers
+
+- **Issue/PR:** #50 / (pending)
+- **Branch:** agent/claude/50-owner-append-log-ledgers
+- **Changed paths:** .githooks/scripts/owner-maintenance.sh, .githooks/scripts/test-owner-maintenance.sh, .githooks/commit-msg, .githooks/pre-commit, AGENTS.md, .changelog/unreleased/50-owner-append-log-ledgers.md, docs/repo-update-log.md
+- **What changed:** Added a narrow, named append-log ledger allowlist (`.claude/noticed.md`, `.claude/napkin.md`) that may be added OR modified directly on `main` under the Owner Maintenance Lane, with the issue-ref requirement waived when every staged path is a ledger. All other paths keep the strict add-only + unsafe-set rules; ledger renames/copies/deletes still require a PR. Also corrected stale `docs/research|notes|assets` help text to `docs/**` (aligning with #46).
+- **Verification:** `bash .githooks/scripts/test-owner-maintenance.sh` passed (incl. 7 new ledger cases); `npm test` passed (84/84); `bash -n .githooks/commit-msg .githooks/pre-commit .githooks/scripts/*.sh` passed.
+- **Propagation:** pending — consumer repos (jma-history et al.) pick up the new lane on the next archon-ecosystem-sync / archon-setup snapshot refresh; tracked by repo-template#50.
+
 ## 2026-06-04 - Doc Sweep-Up capability (Phase 2)
 
 - **Issue/PR:** #48 / (pending)
@@ -41,6 +50,15 @@ This log records agent-visible repository changes that should be easy to audit l
 - **What changed:** Added a `## Reference precision` clause to the cross-tool agent contract requiring unambiguous git refs in durable artifacts (`origin/main` for the remote branch, "the local default branch" for local state; no bare `main` when the local-vs-remote distinction is load-bearing), generalized to other distinction-bearing terms. Prompted by a Copilot PR review flagging an ambiguous bare `main` in a decision-log entry.
 - **Verification:** docs-only contract change; `git diff --check` and `git diff origin/main...HEAD --check` clean; `npm test` (node:test) passes.
 - **Propagation:** pending archon-setup snapshot refresh (`archon-setup/src/snapshots/repo-template/AGENTS.md`) after merge
+
+## 2026-06-02 - Branch retirement policy
+
+- **Issue/PR:** #31 / #pr
+- **Branch:** agent/codex/31-branch-retirement-policy
+- **Changed paths:** AGENTS.md, docs/repo-update-log.md
+- **What changed:** Clarified that each workflow phase gets one active branch/worktree/PR, and that a branch with a merged or closed PR is retired. Follow-up phases for the same issue now start from the default branch in a new phase-specific lane.
+- **Verification:** `git diff --check` and `git diff origin/main...HEAD --check` passed.
+- **Propagation:** pending archon-setup snapshots
 
 ## 2026-06-02 - Template library inventory
 

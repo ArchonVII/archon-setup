@@ -12,7 +12,7 @@ Cross-tool contract for AI agents (Claude, Codex, Copilot, Gemini, etc.) working
 ## Workflow
 
 1. **Issue first.** Create a GitHub issue with explicit `Acceptance Criteria` before branching. Use the `Task` issue form.
-2. **One issue → one branch (in a linked worktree) → one PR.** Branch name: `agent/<tool>/<issue>-<slug>` (e.g. `agent/claude/42-oauth-flow`); quick fixes without an issue use `agent/<tool>/<YYYY-MM-DD>-<slug>`. Create the branch with `git worktree add`, not `git switch -c` in the primary checkout — see "Checkout role / worktrees".
+2. **One issue → one active branch (in a linked worktree) → one PR per phase.** Branch name: `agent/<tool>/<issue>-<slug>` (e.g. `agent/claude/42-oauth-flow`); quick fixes without an issue use `agent/<tool>/<YYYY-MM-DD>-<slug>`. Create the branch with `git worktree add`, not `git switch -c` in the primary checkout — see "Checkout role / worktrees". A branch with a merged or closed PR is retired: do not commit, push, add docs/plans/handoffs, perform cleanup, or open another PR from it. Follow-up phases for the same issue must start from the default branch in a new phase-specific branch/worktree. Before reusing an existing issue branch, check `gh pr list --head <branch> --state all --json number,state,url,mergedAt`.
 3. **Never commit to `main`.** Branch protection enforces this. Repo-facing docs, planning notes, prompts, ADRs, and shared markdown use the same branch/PR path when they are committed to the repo.
 4. **Conventional Commits** for messages: `<type>(<scope>): <description>` where `<type>` is one of `feat fix refactor test docs style chore perf ci build revert`.
 5. **PR metadata must pass the shared contract before ready-for-review.** Non-doc PRs must use this exact body order: `## Summary`, `## Verification`, `### Verification Notes`, `## Docs / Changelog`, and an issue link (`Closes #N`, `Fixes #N`, or `Refs #N`). The PR title must use Conventional Commits. Each checked verification box must be backed by concrete command/check/manual evidence, and placeholders such as TODO/TBD/N/A must be gone. Doc-only PRs (every file matches `*.md`, `*.txt`, an image extension, or `.changelog/**`) skip the body ceremony but still need a valid title and branch.
@@ -33,6 +33,7 @@ This repo uses the **checkout-role** model, enforced by `.githooks/pre-commit`:
 
   Commit, push, and open the PR from that folder. After the PR merges, retire the
   worktree with **`npm run agent:prune`** (see below) — not bare `git worktree remove`.
+
 - **Do not run `git switch -c` in the primary checkout.** A feature-branch commit
   there is blocked and redirected to `git worktree add`.
 - Unsure where you are? Run `bash .githooks/scripts/checkout-doctor.sh`.
@@ -67,7 +68,16 @@ Safe owner-maintenance paths are:
 - image files (`png`, `jpg`, `jpeg`, `gif`, `webp`, `svg`)
 - `.changelog/**`
 
-The lane is add-only. If any unsafe file is staged or any file is modified, deleted, renamed, or copied, stop and report. Unsafe paths include `README.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/**`, `.githooks/**`, `.claude/**`, `.agent/schema/**`, `package*.json`, `src/**`, `scripts/**`, `docs/process/**`, and `docs/architecture/**`.
+The lane is otherwise add-only. If any unsafe file is staged, or any non-ledger file is modified, deleted, renamed, or copied, stop and report. Unsafe paths include `README.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.github/**`, `.githooks/**`, `.claude/**` (except the named append-log ledgers below), `.agent/schema/**`, `package*.json`, `src/**`, `scripts/**`, `docs/process/**`, and `docs/architecture/**`.
+
+### Append-log ledgers
+
+A narrow, named set of agent-local note files may be **added or modified** directly on `main` — standing conventions write to them constantly, so a full issue → PR lane for each one-line update is friction with no safety benefit:
+
+- `.claude/noticed.md` — per-repo observation log (the `Observations` convention)
+- `.claude/napkin.md` — per-repo curated runbook (the napkin skill, curated each session)
+
+These need no `(owner)` scope — any Conventional Commit subject works (e.g. `chore(noticed): flush observations`), and the issue-ref requirement is waived when every staged path is a ledger. Renames, copies, and deletes of a ledger still require the normal branch/PR lane. The allowlist lives in `.githooks/scripts/owner-maintenance.sh` (`owner_maintenance_is_append_log`); extend it only for a file a documented convention mandates frequent low-ceremony writes to.
 
 ## Anomaly triage
 
