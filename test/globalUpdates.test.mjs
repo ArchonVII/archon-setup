@@ -36,6 +36,18 @@ test("global update catalog records the strict PR-ready contract", () => {
   assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-05-31-strict-pr-ready-contract/);
 });
 
+test("global update catalog records owner docs safe paths", () => {
+  const updates = listGlobalUpdates();
+  const record = updates.find((entry) => entry.id === "2026-06-05-owner-docs-safe-paths");
+
+  assert.ok(record);
+  assert.equal(record.status, "ready");
+  assert.equal(record.distribution.kind, "agents-managed-block");
+  assert.match(record.distribution.body, /add-only `docs\/\*\*` files are safe by default/);
+  assert.match(record.distribution.body, /Explicit unsafe paths still win/);
+  assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-06-05-owner-docs-safe-paths/);
+});
+
 test("applyGlobalUpdateToAgents appends and refreshes a managed update block idempotently", () => {
   const record = getGlobalUpdate("2026-05-31-browser-backend-preflight");
   const initial = "# Agent Guide\n\nKeep local instructions.\n";
@@ -146,5 +158,6 @@ test("RPC exposes global update list and treats distribution as state-changing",
 
   assert.ok(listed.updates.some((entry) => entry.id === "2026-05-31-browser-backend-preflight"));
   assert.ok(listed.updates.some((entry) => entry.id === "2026-05-31-strict-pr-ready-contract"));
+  assert.ok(listed.updates.some((entry) => entry.id === "2026-06-05-owner-docs-safe-paths"));
   assert.equal(STATE_CHANGING.has("globalUpdates.distribute"), true);
 });

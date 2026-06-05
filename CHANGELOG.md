@@ -69,6 +69,9 @@
 
 ### Changed
 
+- Refreshed repo-template snapshots after Owner Maintenance Lane docs coverage
+  expanded to add-only `docs/**` by default while preserving explicit unsafe
+  docs paths; added the matching global update record.
 - Fixed staged secret handling before Copilot activation (#96): `gh secret set`
   now reads the value from stdin by omitting `--body`, secret values are stripped
   from serialized plan/execution data and require a runtime-only provider, and
