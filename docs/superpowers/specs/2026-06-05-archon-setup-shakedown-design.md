@@ -139,7 +139,7 @@ summaries:
 | 12 | pr-contract | anomaly-triage (unrelated) | happy | unrelated entry → new issue w/ backlink; no dupes |
 | 13 | pr-contract | doc-sweep recovery | happy | report buckets correct; apply commits only allow-listed safe docs (gitleaks present); unsafe left |
 | 14 | pr-contract | close-preflight wrapper | negative | malformed draft blocked by close-preflight; fixed → pr-ready marks ready; no raw `gh pr ready` |
-| 15 | pr-contract | managed update drift | happy | `update --check` flags drift (exit≠0); `update` preserves custom inputs; `update --upgrade` replaces |
+| 15 | fresh | managed update drift | happy | `update --check` flags drift (exit≠0); `update` preserves custom inputs; `update --upgrade` replaces |
 
 Full issue bodies (with the §3 corrections applied) live in `docs/testing/shakedown/issues/01..15-*.md`.
 
