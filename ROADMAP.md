@@ -119,34 +119,39 @@ tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
 ## Pre-Launch Backlog
 
 Owner-gated work to run through before the first public release; the npm publish
-in **In Progress** is the gate these feed. Decompose into issues when started.
+in **In Progress** is the gate these feed. Tracked as issues #114-#121.
 
-1. **Template cohesion audit** - Review every shipped template (foundation files,
-   provider snapshots, `_partials`, agent docs) end-to-end for cohesion and
-   consistency. Produce a punch list of formatting/content fixes so source
-   templates and generated output agree on both ends.
-2. **Test repos / real-repo onboarding** - Stand up the planned test repositories
-   and run the full fresh-repo and existing-repo onboarding against them. Extends
-   the hermetic smoke (#43) to broader real-repo validation.
-3. **Skill-bundle sessions ("skill profiles")** - Launch a session (local
+1. **Template cohesion audit** (#114) - Review every shipped template (foundation
+   files, provider snapshots, `_partials`, agent docs) end-to-end for cohesion and
+   consistency. Produce a punch list of fixes so source templates and generated
+   output agree on both ends.
+2. **Test repos / real-repo onboarding** (#115) - Stand up the planned test
+   repositories and run full fresh-repo and existing-repo onboarding against them.
+   Builds on the hermetic smoke (#43) and shakedown harness (#109); broaden to
+   real-repo validation.
+3. **Skill-bundle sessions ("skill profiles")** (#116) - Launch a session (local
    terminal, cloud harness, or Codex harness) preloaded with a curated skill set
    (e.g. all wiki skills) without manual install/uninstall each time. Research the
    mechanism: per-session skill manifests, skill/plugin groups, marketplace
    profiles, or harness config. Feasibility TBD - research + prototype.
-4. **Per-component cost/time evaluation** - Measure token cost and added latency
-   for each part (skills, hooks, workflows, templates, generated docs); cut what
-   isn't worth its weight.
-5. **Incorporate the LLM wiki schema** - Fold in the LLM wiki schema recently
-   built in `pigafetta-history` (jma-history). TODO: pin the exact artifact at
-   start.
-6. **Document-architecture research** - Survey current best practice for the MD
-   doc stack - memory, instructions, guidelines, policies, repo
+4. **Per-component cost/time evaluation** (#117) - Measure token cost and added
+   latency per part (skills, hooks, workflows, templates, generated docs); cut
+   what isn't worth its weight.
+5. **Incorporate the LLM wiki schema** (#118) - Fold in the LLM wiki schema built
+   in `pigafetta-history` (jma-history). Open: pin the artifact - the only tracked
+   schema there (`canon/narrative-events.schema.json`) is a vendored narrative
+   canon, not a wiki schema; the "wiki" is the Librarian brief system. Confirm
+   referent before starting.
+6. **Document-architecture research** (#119) - Survey current best practice for
+   the MD doc stack - memory, instructions, guidelines, policies, repo
    function/structure (AGENTS/CLAUDE/GEMINI, memory, policy docs) - and find where
    to improve and innovate.
-7. **Confirm LLM gateway** - Verify the LLM gateway is properly available and
-   working (availability + smoke test).
-8. **Conciseness pass** - Trim character count and unnecessary language across
-   everything (templates, docs, skills, generated files).
+7. **Confirm LLM gateway** (#120) - Verify the LLM gateway is available and working
+   (availability + smoke test). Open: identify the referent - no `llm-gateway`
+   repo exists; candidates are the vision-gateway MCP, the gemini/codex/
+   pigafetta-manager MCP servers, or a local service on ports 7878/8765.
+8. **Conciseness pass** (#121) - Trim character count and unnecessary language
+   across everything (templates, docs, skills, generated files).
 
 ## Operating Rules
 
