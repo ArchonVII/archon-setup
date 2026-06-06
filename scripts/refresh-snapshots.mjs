@@ -34,7 +34,11 @@ const SOURCES = [
       "docs/template-library-inventory.md",
       "docs/agent-process/doc-sweep.md",
       "package.json",
-      "package-lock.json",
+      // repo-template is depless: it has no package-lock.json to copy. It now
+      // ships a `.npmrc` (package-lock=false) instead; that is not mirrored here
+      // because npm never packs `.npmrc`, so it could not ship in the snapshot
+      // and no onboarding task installs it (scaffolded repos get no package.json).
+      // See repo-template#52.
       ".agent/check-map.yml",
       ".agent/coordination/README.md",
       ".agent/coordination/board.md",
