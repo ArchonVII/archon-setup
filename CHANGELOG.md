@@ -4,6 +4,13 @@
 
 ### Changed
 
+- Dropped `package-lock.json` from the `repo-template` snapshot and from
+  `refresh-snapshots.mjs` `copyFiles`. The template is depless (the lock locked zero
+  packages) and removes it in `repo-template#52`; keeping it listed would make the next
+  `refresh-snapshots` run fail by copying a nonexistent file. Added a root `.npmrc`
+  (`package-lock=false`) as a depless-repo guard for archon-setup itself (local-dev only;
+  not shipped). (#124)
+
 - Refreshed the `repo-template` snapshot to `98c871b`, so the managed `.githooks`
   now carry the append-log ledger Owner Maintenance Lane (`repo-template#50`):
   `archon-setup update` propagates the lane (`.claude/noticed.md` and
