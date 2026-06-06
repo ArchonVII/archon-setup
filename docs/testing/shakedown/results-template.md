@@ -22,6 +22,6 @@
 | 12 | anomaly (unrelated) | pr-contract | new issue, no dupes | | | | | |
 | 13 | doc-sweep | pr-contract | safe docs swept, unsafe left | | | | | |
 | 14 | close-preflight | pr-contract | malformed blocked, fixed→ready | | | | | |
-| 15 | update drift | pr-contract | check flags, upgrade repairs | | | | | |
+| 15 | update drift | fresh | check flags, upgrade repairs | | | | | |
 
 **Definition of done:** every row Pass with evidence, and publish still deferred.
