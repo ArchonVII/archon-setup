@@ -58,17 +58,26 @@ export function manifestCatalogEntries(manifest, read) {
   return entries;
 }
 
+// A8: onboarding writes its own MANAGED BLOCK regions into consumer AGENTS.md
+// files (src/server/tasks/writeAgentsMd.mjs — AGENTS_MANAGED_BLOCK_ID and its
+// legacy id). They are owned by onboarding, not the distributor, so they are
+// KNOWN (never an unknown-id conflict) but never actionable catalog entries.
+export const ONBOARDING_MANAGED_IDS = ["agents-start-map", "agents-workflow-contract"];
+
 export function buildCatalog({ manifest, read, globalUpdates = [] }) {
   const entries = [
     ...manifestCatalogEntries(manifest, read),
     ...globalUpdatesCatalogEntries(globalUpdates),
   ];
-  const knownIds = new Set();
+  const seen = new Set();
   for (const entry of entries) {
-    if (knownIds.has(entry.id)) {
+    if (seen.has(entry.id)) {
       throw new Error(`duplicate catalog id across sources: ${entry.id}`);
     }
-    knownIds.add(entry.id);
+    seen.add(entry.id);
   }
+  // knownIds is a superset of entry ids (A8): onboarding-owned regions are
+  // recognized so reconciliation leaves them untouched and unflagged.
+  const knownIds = new Set([...seen, ...ONBOARDING_MANAGED_IDS]);
   return { entries, knownIds };
 }

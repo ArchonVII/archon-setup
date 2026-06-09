@@ -1,6 +1,6 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { globalUpdatesCatalogEntries } from "../distributor/catalogSource.mjs";
+import { globalUpdatesCatalogEntries, ONBOARDING_MANAGED_IDS } from "../distributor/catalogSource.mjs";
 import { distributeRepo } from "../distributor/distribute.mjs";
 import { collectRepos } from "./ecosystem/collectRepos.mjs";
 import { DEFAULT_REPO_REGISTRY_PATH } from "./ecosystem/repoRegistry.mjs";
@@ -292,7 +292,10 @@ export async function distributeGlobalUpdate({
   const catalogEntries = globalUpdatesCatalogEntries(GLOBAL_UPDATES);
   const catalog = {
     entries: catalogEntries.filter((entry) => entry.id === record.id),
-    knownIds: new Set(catalogEntries.map((entry) => entry.id)),
+    // A8: onboarding-owned MANAGED BLOCKs (agents-start-map etc.) live in real
+    // consumer AGENTS.md files; they must be known so delegation never
+    // reclassifies them as unknown -> conflict.
+    knownIds: new Set([...catalogEntries.map((entry) => entry.id), ...ONBOARDING_MANAGED_IDS]),
   };
 
   for (const repo of targetRepos) {

@@ -28,9 +28,10 @@ Usage:
 Options:
   --target <path>    Reconcile one repo (no confirmation needed for --apply)
   --all              Reconcile every active registry repo
-  --group <a,b>      Limit to catalog groups (e.g. agents)
-  --id <x,y>         Limit to specific region ids (validity still checked
-                     against the full catalog)
+  --group <a,b>      Limit to catalog groups (callers|agents|hooks|baseline,
+                     or "all" = no filter); unknown names are rejected
+  --id <x,y>         Limit to specific region ids (must exist in the catalog;
+                     unknown-id detection still runs against the full catalog)
   --apply            Write clean_apply changes (default: dry-run, writes nothing)
   --confirm <phrase> Required for --all --apply; the run prints the exact phrase
   --write-preview    Emit .archon/distribute-preview/ proposals for adoptions
@@ -65,6 +66,29 @@ if (argv[0] === "distribute") {
   const csv = (value) => (value ? value.split(",").map((v) => v.trim()).filter(Boolean) : null);
   let run;
   try {
+    const catalog = await loadDefaultCatalog();
+
+    // §9 grammar: "all" widens to every group (= no filter). Unknown group or
+    // id tokens are rejected loudly — a typo must never read as "nothing to
+    // do" with exit 0.
+    const SPEC_GROUPS = ["callers", "agents", "hooks", "baseline"];
+    let groups = csv(readOption(args, "--group"));
+    if (groups?.includes("all")) groups = null;
+    const knownGroups = new Set([...SPEC_GROUPS, ...catalog.entries.map((e) => e.group)]);
+    for (const group of groups ?? []) {
+      if (!knownGroups.has(group)) {
+        console.error(`distribute: unknown group "${group}" (known: ${[...knownGroups].sort().join(", ")}, all)`);
+        process.exit(1);
+      }
+    }
+    const ids = csv(readOption(args, "--id"));
+    for (const id of ids ?? []) {
+      if (!catalog.knownIds.has(id)) {
+        console.error(`distribute: unknown id "${id}" — not in the managed-regions catalog`);
+        process.exit(1);
+      }
+    }
+
     const repos = targetPath
       ? [await repoContextFor(targetPath)]
       : (await collectRepos({ repoRegistryPath: DEFAULT_REPO_REGISTRY_PATH })).repos;
@@ -73,9 +97,9 @@ if (argv[0] === "distribute") {
       all,
       apply: flags.has("--apply"),
       confirmation: readOption(args, "--confirm", null) || null,
-      catalog: await loadDefaultCatalog(),
-      groups: csv(readOption(args, "--group")),
-      ids: csv(readOption(args, "--id")),
+      catalog,
+      groups,
+      ids,
       writePreview: flags.has("--write-preview"),
       logPath: readOption(args, "--log", DEFAULT_LOG_PATH),
     });
@@ -99,6 +123,13 @@ if (argv[0] === "distribute") {
           .filter(Boolean)
           .join(", ");
         console.log(`${file.status}${flagsText ? ` (${flagsText})` : ""}: ${repo.repo} ${file.relpath}`);
+        // §9: dry-run prints unified diffs; DL5: conflicts come with their
+        // human-readable evidence.
+        for (const region of file.regions ?? []) {
+          if (region.diff) console.log(region.diff.replace(/^/gm, "  "));
+        }
+        if (file.diagnostics?.length) console.log(`  diagnostics: ${JSON.stringify(file.diagnostics)}`);
+        if (file.dangers?.length) console.log(`  dangers: ${JSON.stringify(file.dangers)}`);
       }
     }
     const c = run.counts;

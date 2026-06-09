@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
-import { appendFile, chmod, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { appendFile, chmod, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runCommand } from "../server/lib/commandRunner.mjs";
+import { unifiedDiff } from "../server/lib/unifiedDiff.mjs";
+import { redactDeep } from "../server/ecosystem/redact.mjs";
 import { getAdapter } from "./adapters/index.mjs";
 import { parseRegions, replaceRegionInner } from "./regionEngine.mjs";
 import { appliesTo } from "./appliesTo.mjs";
@@ -75,41 +77,48 @@ async function readTarget(fullPath) {
 
 // tmp-in-same-dir + rename so a crash mid-write never leaves a truncated
 // target (NFR "Atomic writes"). On POSIX the original mode is restored after
-// the rename; on Windows chmod is a no-op.
-async function writeAtomic(fullPath, content, { preserveModeFrom = null } = {}) {
+// the rename; on Windows chmod is a no-op. The tmp file is removed on any
+// failure — a leftover tmp would make the consumer worktree dirty and wedge
+// every later run behind the dirty-worktree gate.
+export async function writeAtomic(fullPath, content, { preserveModeFrom = null } = {}) {
   const tmpPath = `${fullPath}.archon-tmp-${process.pid}-${Math.floor(Math.random() * 1e6)}`;
   await mkdir(dirname(fullPath), { recursive: true });
-  await writeFile(tmpPath, content, "utf8");
-  if (preserveModeFrom !== null && process.platform !== "win32") {
-    await chmod(tmpPath, preserveModeFrom);
+  try {
+    await writeFile(tmpPath, content, "utf8");
+    if (preserveModeFrom !== null && process.platform !== "win32") {
+      await chmod(tmpPath, preserveModeFrom);
+    }
+    await rename(tmpPath, fullPath);
+  } catch (err) {
+    await rm(tmpPath, { force: true }).catch(() => {});
+    throw err;
   }
-  await rename(tmpPath, fullPath);
 }
 
-function ensureTrailingNewline(body) {
-  return body.endsWith("\n") ? body : `${body}\n`;
+function ensureTrailingNewline(body, eol = "\n") {
+  return body.endsWith("\n") ? body : `${body}${eol}`;
+}
+
+// EOL policy (adapters declare eol:"preserve"; the distributor enforces it):
+// desired inners are authored LF; convert to the target file's dominant EOL so
+// an EOL-only difference is not a change and applies never produce mixed-EOL
+// files. Detection mirrors src/server/tasks/managedMarkdownBlock.mjs.
+function detectEol(body) {
+  return body.includes("\r\n") ? "\r\n" : "\n";
+}
+
+function toEol(text, eol) {
+  const normalized = text.replace(/\r\n?/g, "\n");
+  return eol === "\n" ? normalized : normalized.replaceAll("\n", eol);
 }
 
 // Exact legacy append format (globalUpdates.applyGlobalUpdateToAgents):
-// trailing newline ensured, one blank separator line, then the marked block.
-function appendBlock(body, entry, style) {
+// trailing newline ensured, one blank separator line, then the marked block —
+// rendered in the target file's EOL (legacy LF files stay byte-identical).
+function appendBlock(body, entry, style, eol) {
   const { begin, end } = markerLines(entry, style);
-  const block = `${begin}\n${entry.inner}\n${end}\n`;
-  return `${ensureTrailingNewline(body)}\n${block}`;
-}
-
-function previewBody(repo, relpath, proposals) {
-  const lines = [
-    "# archon-setup distribute preview",
-    `# repo: ${repo.name}  file: ${relpath}`,
-    "# Proposed adoption(s) — review, then re-run with the region adopted or",
-    "# resolve via the decision flow. This file is never applied automatically.",
-    "",
-  ];
-  for (const proposal of proposals) {
-    lines.push(`## region: ${proposal.id}  anchor: ${proposal.anchor}`, "", proposal.block, "");
-  }
-  return lines.join("\n");
+  const block = toEol(`${begin}\n${entry.inner}\n${end}\n`, eol);
+  return `${ensureTrailingNewline(body, eol)}${eol}${block}`;
 }
 
 async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePreview, adoptAnchored }) {
@@ -186,16 +195,34 @@ async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePrev
   }
 
   const presentIds = new Set(parsed.regions.map((r) => r.id));
+  const eol = detectEol(body);
   let working = body;
   let changed = false;
   const adoptions = [];
 
   for (const entry of entries) {
     if (presentIds.has(entry.id)) {
-      const replaced = replaceRegionInner(working, entry.id, entry.inner, style);
+      const desiredInner = toEol(entry.inner, eol);
+      let replaced;
+      try {
+        replaced = replaceRegionInner(working, entry.id, desiredInner, style);
+      } catch (err) {
+        // An earlier entry's inner injected marker-like lines into this file —
+        // a human must untangle it; never abort the run (or the fleet loop).
+        return { ...base, status: "conflict", reason: "replace-failed", error: err.message, regions };
+      }
       working = replaced.body;
       changed = changed || replaced.changed;
-      regions.push({ id: entry.id, status: "clean_apply", changed: replaced.changed });
+      const region = { id: entry.id, status: "clean_apply", changed: replaced.changed };
+      if (replaced.changed) {
+        const before = parsed.regions.find((r) => r.id === entry.id).inner;
+        // §5/DL5: a changed region carries its server-computed unified diff.
+        region.diff = unifiedDiff(before, desiredInner, {
+          aLabel: `a/${relpath}#${entry.id}`,
+          bLabel: `b/${relpath}#${entry.id}`,
+        });
+      }
+      regions.push(region);
     } else {
       adoptions.push(entry);
     }
@@ -205,7 +232,7 @@ async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePrev
   let pendingAdoptions = adoptions;
   if (adoptAnchored && adoptions.length > 0 && anchoredAdoptions.length === adoptions.length) {
     for (const entry of anchoredAdoptions) {
-      working = appendBlock(working, entry, style);
+      working = appendBlock(working, entry, style, eol);
       changed = true;
       regions.push({ id: entry.id, status: "clean_apply", changed: true, adopted: true });
     }
@@ -229,16 +256,23 @@ async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePrev
 
   let previewPath;
   if (writePreview && pendingAdoptions.length > 0) {
-    const proposals = pendingAdoptions
-      .filter((e) => e.anchor?.kind === "eof-append")
-      .map((e) => {
-        const { begin, end } = markerLines(e, style);
-        return { id: e.id, anchor: e.anchor.kind, block: `${begin}\n${e.inner}\n${end}` };
-      });
-    if (proposals.length > 0) {
-      previewPath = safeJoin(repo.path, join(".archon", "distribute-preview", `${relpath}.patch`));
-      await mkdir(dirname(previewPath), { recursive: true });
-      await writeAtomic(previewPath, previewBody(repo, relpath, proposals));
+    // A2: only adoptions with a safe unique anchor get a concrete patch — an
+    // applicable unified diff of the proposed insertion(s).
+    const anchored = pendingAdoptions.filter((e) => e.anchor?.kind === "eof-append");
+    if (anchored.length > 0) {
+      let proposed = working;
+      for (const entry of anchored) proposed = appendBlock(proposed, entry, style, eol);
+      try {
+        previewPath = safeJoin(repo.path, join(".archon", "distribute-preview", `${relpath}.patch`));
+        await mkdir(dirname(previewPath), { recursive: true });
+        await writeAtomic(
+          previewPath,
+          unifiedDiff(working, proposed, { aLabel: `a/${relpath}`, bLabel: `b/${relpath}` }),
+        );
+      } catch (err) {
+        // A broken .archon path in one repo must not abort the fleet run.
+        return { ...base, status: "failed", reason: "preview-write-failed", error: err.message, regions };
+      }
     }
   }
 
@@ -282,7 +316,13 @@ export async function distributeRepo({
     counts: emptyCounts(),
   };
 
+  // Fail closed (DL4 "never guess"): a repo whose git state could not be read
+  // is indistinguishable from a protected/dirty one, so it is skipped, never
+  // written. `available` is set by collectRepos/repoContextFor; absent means
+  // the caller asserted the context itself (tests, delegation pre-checks).
   if (!repo.path) return { ...base, status: "skipped", reason: "missing-path" };
+  if (repo.available === false) return { ...base, status: "skipped", reason: "repo-unavailable" };
+  if (!repo.branch) return { ...base, status: "skipped", reason: "unknown-branch" };
   if (repo.dirty) return { ...base, status: "skipped", reason: "dirty-worktree" };
   if (PROTECTED_BRANCHES.has(repo.branch)) return { ...base, status: "skipped", reason: "protected-main" };
 
@@ -300,17 +340,31 @@ export async function distributeRepo({
 
   const files = [];
   for (const [relpath, entries] of byFile) {
-    files.push(
-      await reconcileFile({
-        repo,
+    try {
+      files.push(
+        await reconcileFile({
+          repo,
+          relpath,
+          entries,
+          knownIds: catalog.knownIds,
+          mode,
+          writePreview,
+          adoptAnchored,
+        }),
+      );
+    } catch (err) {
+      // No per-file exception may abort the per-repo (or fleet) loop.
+      files.push({
         relpath,
-        entries,
-        knownIds: catalog.knownIds,
-        mode,
-        writePreview,
-        adoptAnchored,
-      }),
-    );
+        regions: [],
+        diagnostics: [],
+        changed: false,
+        written: false,
+        status: "failed",
+        reason: "internal-error",
+        error: err.message,
+      });
+    }
   }
 
   return { ...base, status: "ok", files, counts: tallyCounts(files) };
@@ -407,11 +461,19 @@ export async function distribute({
 
   if (logPath) {
     await mkdir(dirname(logPath), { recursive: true });
-    await appendFile(
-      logPath,
-      `${JSON.stringify({ schemaVersion: 1, kind: "distribute", generatedAt: now, mode, groups, ids, counts, results: logView(results) })}\n`,
-      "utf8",
-    );
+    // logView keeps bodies/diffs out by construction; redactDeep is the §10
+    // belt-and-braces pass over what remains (e.g. error messages).
+    const logRecord = redactDeep({
+      schemaVersion: 1,
+      kind: "distribute",
+      generatedAt: now,
+      mode,
+      groups,
+      ids,
+      counts,
+      results: logView(results),
+    });
+    await appendFile(logPath, `${JSON.stringify(logRecord)}\n`, "utf8");
   }
 
   return run;
@@ -428,27 +490,37 @@ export function exitCodeFor(run) {
   return 0;
 }
 
-// Repo context for an explicit --target: branch + dirty state straight from
-// git (branch --show-current also works on an unborn branch). Degrades to
-// null/clean when git fails — the protected/dirty gates then decide.
+// Repo context for an explicit --target. Fails CLOSED: when the path is not a
+// git worktree or git itself fails/times out, the repo is marked unavailable
+// (branch null) and distributeRepo's gates skip it — git failure must never
+// look like a clean feature branch. Detached HEAD yields branch null too
+// (branch --show-current prints nothing), which the unknown-branch gate skips.
 export async function repoContextFor(repoPath) {
   const absolute = resolve(repoPath);
+  const unavailable = { name: basename(absolute), path: absolute, available: false, branch: null, dirty: false };
+
+  const inside = await gitStdout(absolute, ["rev-parse", "--is-inside-work-tree"]);
+  if (inside === null || inside.trim() !== "true") return unavailable;
   const branch = await gitStdout(absolute, ["branch", "--show-current"]);
   const status = await gitStdout(absolute, ["status", "--porcelain"]);
+  if (branch === null || status === null) return unavailable;
+
   return {
     name: basename(absolute),
     path: absolute,
+    available: true,
     branch: branch.trim() || null,
     dirty: status.trim().length > 0,
   };
 }
 
+// null = git failed (distinct from legitimately empty output).
 async function gitStdout(repoPath, args) {
   try {
     const { code, stdout } = await runCommand("git", ["-C", repoPath, ...args], { timeoutMs: 15_000 });
-    return code === 0 ? stdout : "";
+    return code === 0 ? stdout : null;
   } catch {
-    return "";
+    return null;
   }
 }
 
