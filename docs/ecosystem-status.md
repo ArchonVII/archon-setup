@@ -52,6 +52,33 @@ Notes:
 - For agent-managed code PRs in providers, do not self-merge (see [Owner Maintenance Lane decision](#decision-log)).
 - The exemplar three-repo rollout is the v0.1.1 anomaly-triage capability (2026-05-13): `github-workflows#2 → 7fc2dea`, `repo-template#2 → bfc226d`, `archon-setup#2 → 29ba240`.
 
+## Ecosystem Fix Queue
+
+Use this queue for small source-of-truth fixes that should be reviewed together
+before the next `archon-setup` snapshot refresh. It is a curated coordinator
+view, not a replacement for GitHub issues or provider PRs.
+
+Statuses:
+
+- `proposed` - fix identified; source-of-truth target and owner decision still
+  need review.
+- `source-pr` - provider or repo-local PR is in progress.
+- `ready-for-batch` - source PR has landed and can be included in the next
+  snapshot refresh or coordinator batch.
+- `batched` - selected for the current batch PR.
+- `shipped` - batch PR landed and follow-up issues/status were cleaned up.
+- `deferred` - intentionally parked; do not include in the next batch.
+
+Queue rows must name the issue or incident, source-of-truth target, intended
+fix, snapshot impact, consumer action, and batch notes. Do not run
+`npm run refresh-snapshots` for every small provider/doc change by default;
+batch low-urgency source updates here unless the owner asks for an immediate
+snapshot refresh or the change unblocks active work.
+
+| ID | Status | Source | Source-of-truth target | Intended fix | Snapshot impact | Consumer action | Batch notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Q-2026-06-09-pr-composition | proposed | Page GM `gm-20260609-133354-d0dec701`; archon-setup #149 | `archon-setup` repo-local policy first; possible later `repo-template` propagation | Clarify that atomic commits are not atomic PRs, and companion docs/changelog/status edits for the same issue phase ride in the same PR. | None unless promoted to `repo-template`. | No global AGENTS distribution in the first slice. | Review after #149; decide whether future generated repos need the same rule. |
+
 ## Active workstreams
 
 | Repo               | Status        | Detail                                                                                                                                         |

@@ -1,6 +1,6 @@
 # Coordinator Handoff
 
-Last updated: 2026-05-31 by Codex.
+Last updated: 2026-06-09 by Codex.
 
 This document is for the next coordinator/review/close agent taking over
 ArchonVII ecosystem work. It is a current handoff, not a substitute for the
@@ -45,6 +45,23 @@ Provider repos must land before `archon-setup` consumes snapshots:
 
 When in doubt, stop at the provider PR and do not refresh snapshots from an
 unmerged branch.
+
+## Ecosystem Fix Queue Workflow
+
+Use `docs/ecosystem-status.md#ecosystem-fix-queue` for low-urgency
+source-of-truth fixes that should be batched instead of snapshotted one at a
+time.
+
+1. Confirm every queue row has an issue or incident, source-of-truth target,
+   intended fix, snapshot impact, consumer action, and batch notes.
+2. Keep source-of-truth PRs separate from snapshot refresh PRs. Do not refresh
+   snapshots from unmerged provider branches.
+3. Before a batch, review all `ready-for-batch` rows together for overlapping
+   files, conflicting policy text, stale provider SHAs, and consumer risk.
+4. Select compatible rows, mark them `batched`, run one `npm run
+   refresh-snapshots` PR from `archon-setup`, and record exact verification.
+5. After merge, mark shipped rows `shipped`, close/dedupe resolved issues, and
+   leave unrelated proposed/deferred rows for a later batch.
 
 ## Current Landed State
 

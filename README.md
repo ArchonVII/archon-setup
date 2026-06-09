@@ -376,6 +376,20 @@ Current recorded global fixes include:
   plans, process files, coordination, PR flow, and the onboard audit repair
   command.
 
+## Ecosystem Fix Queue
+
+Small ecosystem fixes do not need to trigger an immediate snapshot refresh every
+time. `docs/ecosystem-status.md` now carries a coordinator-only Ecosystem Fix
+Queue for low-urgency source-of-truth fixes that should be reviewed together
+before the next `archon-setup` snapshot batch.
+
+Use the queue when the fix belongs in `.github`, `github-workflows`,
+`repo-template`, or repo-local policy first, but the downstream snapshot or
+consumer distribution can wait. Each queued row records the source issue or
+incident, source-of-truth target, intended fix, snapshot impact, consumer action,
+and batch notes. The global update catalog remains reserved for ready
+distributable AGENTS managed blocks.
+
 ## Local Workflow Validation
 
 For PRs that change GitHub Actions workflow files, use scoped local validation:

@@ -89,6 +89,11 @@
   overview is meta-repo only and intentionally not snapshotted into consumer
   repos, preserving per-repo coordination-isolation. (#147)
 
+- Added a coordinator-only Ecosystem Fix Queue in `docs/ecosystem-status.md`
+  so small source-of-truth fixes can be reviewed and batched before a later
+  `archon-setup` snapshot refresh instead of forcing one snapshot PR per small
+  policy or provider-doc change. (#149)
+
 - Added a canonical ecosystem repo registry for the Ecosystem snapshot/health
   surface. `src/server/ecosystem/repoRegistry.json` now defines the active set
   (`archon`, `archon-setup`, `github-workflows`, `repo-template`, `.github`,
