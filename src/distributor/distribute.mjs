@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { appendFile, chmod, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { runCommand } from "../server/lib/commandRunner.mjs";
 import { getAdapter } from "./adapters/index.mjs";
 import { parseRegions, replaceRegionInner } from "./regionEngine.mjs";
 import { appliesTo } from "./appliesTo.mjs";
@@ -425,6 +426,30 @@ export function exitCodeFor(run) {
   if (run.counts.adoptionNeeded > 0 || run.counts.conflicts > 0) return 20;
   if (run.mode === "dry-run" && run.counts.changed > 0) return 10;
   return 0;
+}
+
+// Repo context for an explicit --target: branch + dirty state straight from
+// git (branch --show-current also works on an unborn branch). Degrades to
+// null/clean when git fails — the protected/dirty gates then decide.
+export async function repoContextFor(repoPath) {
+  const absolute = resolve(repoPath);
+  const branch = await gitStdout(absolute, ["branch", "--show-current"]);
+  const status = await gitStdout(absolute, ["status", "--porcelain"]);
+  return {
+    name: basename(absolute),
+    path: absolute,
+    branch: branch.trim() || null,
+    dirty: status.trim().length > 0,
+  };
+}
+
+async function gitStdout(repoPath, args) {
+  try {
+    const { code, stdout } = await runCommand("git", ["-C", repoPath, ...args], { timeoutMs: 15_000 });
+    return code === 0 ? stdout : "";
+  } catch {
+    return "";
+  }
 }
 
 const DISTRIBUTOR_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");

@@ -16,6 +16,100 @@ function readOption(args, name, fallback = "") {
   return args[index + 1] || fallback;
 }
 
+const DISTRIBUTE_HELP = `archon-setup distribute - reconcile ArchonVII-managed regions in consumer repos
+
+Repo-owned by default: only marked managed regions are ever touched, and the
+default run is a read-only dry-run (design: docs/superpowers/specs/
+2026-06-09-granular-distributor-design.md, issue #145).
+
+Usage:
+  node bin/archon-setup.mjs distribute (--target <path> | --all) [options]
+
+Options:
+  --target <path>    Reconcile one repo (no confirmation needed for --apply)
+  --all              Reconcile every active registry repo
+  --group <a,b>      Limit to catalog groups (e.g. agents)
+  --id <x,y>         Limit to specific region ids (validity still checked
+                     against the full catalog)
+  --apply            Write clean_apply changes (default: dry-run, writes nothing)
+  --confirm <phrase> Required for --all --apply; the run prints the exact phrase
+  --write-preview    Emit .archon/distribute-preview/ proposals for adoptions
+  --log <path>       Run-log JSONL path (default: ~/.claude/archon-distribute-log.jsonl)
+  --json             Emit the full run result as JSON
+  --help             Show this help
+
+Exit codes: 0 nothing to do / all applied; 10 dry-run found pending changes;
+20 adoption/conflict needs a human (or confirmation missing); 1 failure.`;
+
+if (argv[0] === "distribute") {
+  const args = argv.slice(1);
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(DISTRIBUTE_HELP);
+    process.exit(0);
+  }
+
+  const { collectRepos } = await import("../src/server/ecosystem/collectRepos.mjs");
+  const { DEFAULT_REPO_REGISTRY_PATH } = await import("../src/server/ecosystem/repoRegistry.mjs");
+  const { distribute, exitCodeFor, loadDefaultCatalog, repoContextFor, DEFAULT_LOG_PATH } = await import(
+    "../src/distributor/distribute.mjs"
+  );
+
+  const flags = new Set(args);
+  const targetPath = readOption(args, "--target");
+  const all = flags.has("--all");
+  if (!targetPath && !all) {
+    console.error("distribute: pass --target <path> or --all (see --help)");
+    process.exit(1);
+  }
+
+  const csv = (value) => (value ? value.split(",").map((v) => v.trim()).filter(Boolean) : null);
+  let run;
+  try {
+    const repos = targetPath
+      ? [await repoContextFor(targetPath)]
+      : (await collectRepos({ repoRegistryPath: DEFAULT_REPO_REGISTRY_PATH })).repos;
+    run = await distribute({
+      repos,
+      all,
+      apply: flags.has("--apply"),
+      confirmation: readOption(args, "--confirm", null) || null,
+      catalog: await loadDefaultCatalog(),
+      groups: csv(readOption(args, "--group")),
+      ids: csv(readOption(args, "--id")),
+      writePreview: flags.has("--write-preview"),
+      logPath: readOption(args, "--log", DEFAULT_LOG_PATH),
+    });
+  } catch (err) {
+    console.error(`distribute: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (flags.has("--json")) {
+    console.log(JSON.stringify(run, null, 2));
+  } else if (run.status === "confirmation-required") {
+    console.error(`Fleet apply needs explicit confirmation. Re-run with:\n  --confirm "${run.confirmationPhrase}"`);
+  } else {
+    for (const repo of run.results) {
+      if (repo.status === "skipped") {
+        console.log(`skipped (${repo.reason}): ${repo.repo}`);
+        continue;
+      }
+      for (const file of repo.files) {
+        const flagsText = [file.changed ? "changed" : null, file.written ? "written" : null, file.reason ?? null]
+          .filter(Boolean)
+          .join(", ");
+        console.log(`${file.status}${flagsText ? ` (${flagsText})` : ""}: ${repo.repo} ${file.relpath}`);
+      }
+    }
+    const c = run.counts;
+    console.log(
+      `${run.mode}: ${c.cleanApply} clean (${c.changed} changed, ${c.written} written), ` +
+        `${c.adoptionNeeded} adoption, ${c.conflicts} conflict, ${c.skips} skipped, ${c.failures} failed.`,
+    );
+  }
+  process.exit(exitCodeFor(run));
+}
+
 const TIGHTEN_HELP = `archon-setup tighten-required-gate - mark the stable repo gate required
 
 Usage:
