@@ -32,7 +32,7 @@ jobs:
   # Pick ONE of the call shapes below for your consumer's CI. Comment the
   # others. The gate auto-routes PRs to the smallest lane that still gives
   # real signal: docs-only / workflow-only / policy-only / snapshot-refresh /
-  # code (node|python|polyglot) / forced-full (via the `ci:full` label).
+  # code (node|python|go|polyglot) / forced-full (via the `ci:full` label).
   # -------------------------------------------------------------------------
   repo-required-gate:
     uses: ArchonVII/github-workflows/.github/workflows/repo-required-gate.yml@v1
@@ -51,11 +51,19 @@ jobs:
       # python-versions: '["3.12"]'
       # python-use-uv: true
 
-      # ------ Polyglot (Node + Python in one repo) ------------------------
-      # When stack=polyglot, you MUST declare at least one of node-paths or
-      # python-paths. Files are matched with `path/**` (prefix), `path/`
-      # (prefix), or exact filename. node-ci runs only when a node-path file
-      # changed; python-ci runs only when a python-path file changed.
+      # ------ Go-only stack -----------------------------------------------
+      # Discovers every tracked go.mod and runs build/vet/test per module.
+      # stack: go
+      # go-versions: '["stable"]'
+      # go-cgo-enabled: "1"              # set if your build needs cgo
+      # go-exclude-modules: |            # skip example/demo modules
+      #   examples/
+
+      # ------ Polyglot (Node + Python + Go in one repo) -------------------
+      # When stack=polyglot, you MUST declare at least one of node-paths,
+      # python-paths, or go-paths. Files match `path/**` (prefix), `path/`
+      # (prefix), or exact filename. Each language CI runs only when one of
+      # its own paths changed.
       #
       # stack: polyglot
       # node-versions: '["22"]'
@@ -68,6 +76,31 @@ jobs:
       #   package-lock.json
       # python-paths: |
       #   analysis-service/**
+      # go-paths: |
+      #   cmd/**
+      #   pkg/**
+      #   go.mod
+      #   go.sum
+
+      # ------ Node + Go polyglot (e.g. an Electron + Go-backend app) ------
+      # stack: polyglot
+      # node-versions: '["22"]'
+      # npm-typecheck-script: typecheck
+      # node-paths: |
+      #   frontend/**
+      #   emain/**
+      #   package.json
+      #   package-lock.json
+      # go-paths: |
+      #   cmd/**
+      #   pkg/**
+      #   go.mod
+      #   go.sum
+      #   tsunami/**
+      # go-exclude-modules: |
+      #   tsunami/demo/
+      # go-generate-command: task generate   # optional: regen Go→TS bindings
+      # go-verify-generated: true            # fail if generated output drifts
 
       # ------ Snapshot-refresh lane (any stack) ---------------------------
       # PRs that touch ONLY paths matching snapshot-paths skip language CI

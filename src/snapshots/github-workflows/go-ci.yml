@@ -1,0 +1,39 @@
+# Standalone caller for the reusable Go CI in ArchonVII/github-workflows.
+# Most repos consume Go CI through repo-required-gate.yml (stack: go, or
+# go-paths under stack: polyglot) instead — use this only when you want a
+# separate, non-gated Go check.
+#
+# Discovers every tracked go.mod (via `git ls-files`, skipping gitignored
+# build artifacts) and runs build/vet/test per module.
+
+name: Go CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    uses: ArchonVII/github-workflows/.github/workflows/go-ci.yml@v1
+    with:
+      go-versions: '["stable"]'
+      # os-matrix: '["ubuntu-latest","windows-latest"]'
+      # exclude-modules: |
+      #   examples/
+      #   internal/demo/
+      # cgo-enabled: "1"
+      # run-tests: true
+      # build-args: '-tags osusergo ./...'
+      # generate-command: task generate
+      # verify-generated: true

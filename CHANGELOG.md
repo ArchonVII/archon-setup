@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Advanced the `github-workflows` snapshot to `v1` commit `c1ad03e`,
+  adding the Go CI caller snapshot and refreshing the required-gate caller
+  example with Go/polyglot options after the moving major tag was intentionally
+  released. (#139)
+
 - Corrected the snapshot manifest after a clean provider refresh so
   `githubWorkflows` records current `v1` (`b27979b`) and `orgDefaults` records
   `.github` `origin/main` (`1962f27`). Snapshot file bodies were unchanged.
