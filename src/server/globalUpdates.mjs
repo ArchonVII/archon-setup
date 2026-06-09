@@ -1,5 +1,7 @@
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { appendFile, mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
+import { globalUpdatesCatalogEntries, ONBOARDING_MANAGED_IDS } from "../distributor/catalogSource.mjs";
+import { distributeRepo } from "../distributor/distribute.mjs";
 import { collectRepos } from "./ecosystem/collectRepos.mjs";
 import { DEFAULT_REPO_REGISTRY_PATH } from "./ecosystem/repoRegistry.mjs";
 
@@ -211,13 +213,28 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function readAgents(path) {
-  try {
-    return { ok: true, body: await readFile(path, "utf8") };
-  } catch (err) {
-    if (err.code === "ENOENT") return { ok: false, missing: true };
-    return { ok: false, error: err.message };
+// Maps a delegated distributor file result onto the legacy per-repo result
+// vocabulary (applied/skipped/failed/unchanged/would-apply) so existing
+// consumers and golden tests see the same shapes. The one new outcome is
+// "failed"/"managed-region-conflict": a malformed or catalog-orphaned block
+// now surfaces instead of being silently bypassed (DL5).
+function mapDelegatedFile(file, record, dryRun) {
+  const path = record.distribution.targetPath;
+  if (!file || (file.status === "skip" && file.reason === "not-applicable")) {
+    return { status: "skipped", reason: "missing-agents" };
   }
+  if (file.status === "failed") {
+    const mapped = { status: "failed", reason: file.reason, path };
+    if (file.error) mapped.error = file.error;
+    return mapped;
+  }
+  if (file.status === "conflict" || file.status === "adoption_needed") {
+    return { status: "failed", reason: "managed-region-conflict", path };
+  }
+  if (!file.changed) return { status: "unchanged", reason: "already-present", path };
+  if (dryRun) return { status: "would-apply", reason: "updated", path };
+  if (file.written) return { status: "applied", reason: "updated", path };
+  return { status: "failed", reason: "write-failed", path };
 }
 
 function summarize(results) {
@@ -267,6 +284,20 @@ export async function distributeGlobalUpdate({
   const protectedBranches = new Set(record.distribution.protectedBranches || ["main", "master"]);
   const results = [];
 
+  // Delegation (#145 PR2): the shared distributor reconciles the managed
+  // region. The full globalUpdates catalog feeds knownIds so blocks from OTHER
+  // updates stay untouched and unflagged (A1/A8); only this record's entry is
+  // selected for action. adoptAnchored preserves the legacy append-on-missing
+  // behavior byte for byte.
+  const catalogEntries = globalUpdatesCatalogEntries(GLOBAL_UPDATES);
+  const catalog = {
+    entries: catalogEntries.filter((entry) => entry.id === record.id),
+    // A8: onboarding-owned MANAGED BLOCKs (agents-start-map etc.) live in real
+    // consumer AGENTS.md files; they must be known so delegation never
+    // reclassifies them as unknown -> conflict.
+    knownIds: new Set([...catalogEntries.map((entry) => entry.id), ...ONBOARDING_MANAGED_IDS]),
+  };
+
   for (const repo of targetRepos) {
     const base = {
       repo: repo.name,
@@ -288,35 +319,17 @@ export async function distributeGlobalUpdate({
       continue;
     }
 
-    const agentsPath = join(repo.path, record.distribution.targetPath);
-    const current = await readAgents(agentsPath);
-    if (!current.ok) {
-      results.push({
-        ...base,
-        status: current.missing ? "skipped" : "failed",
-        reason: current.missing ? "missing-agents" : "read-failed",
-        error: current.error,
-      });
+    const delegated = await distributeRepo({
+      repo,
+      catalog,
+      mode: dryRun ? "dry-run" : "apply",
+      adoptAnchored: true,
+    });
+    if (delegated.status === "skipped") {
+      results.push({ ...base, status: "skipped", reason: delegated.reason });
       continue;
     }
-
-    const next = applyGlobalUpdateToAgents(current.body, record);
-    if (next === current.body) {
-      results.push({ ...base, status: "unchanged", reason: "already-present", path: record.distribution.targetPath });
-      continue;
-    }
-
-    if (dryRun) {
-      results.push({ ...base, status: "would-apply", reason: "updated", path: record.distribution.targetPath });
-      continue;
-    }
-
-    try {
-      await writeFile(agentsPath, next, "utf8");
-      results.push({ ...base, status: "applied", reason: "updated", path: record.distribution.targetPath });
-    } catch (err) {
-      results.push({ ...base, status: "failed", reason: "write-failed", path: record.distribution.targetPath, error: err.message });
-    }
+    results.push({ ...base, ...mapDelegatedFile(delegated.files[0], record, dryRun) });
   }
 
   const counts = summarize(results);

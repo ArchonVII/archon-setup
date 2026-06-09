@@ -50,11 +50,13 @@ export function parseRegions(body, style) {
           endLine: line.number,
         });
         open = null;
+      } else if (!open) {
+        diagnostics.push({ kind: "orphan-end", id: end[1], line: line.number });
       }
       continue;
     }
 
-    if (line.text.includes("ARCHONVII MANAGED")) {
+    if (/ARCHONVII\s+(?:MANAGED(?:\s+BLOCK)?|GLOBAL UPDATE)/.test(line.text)) {
       diagnostics.push({ kind: "malformed-marker", line: line.number });
     }
   }

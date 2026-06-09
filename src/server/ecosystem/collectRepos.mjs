@@ -32,9 +32,9 @@ export function isDirty(porcelain) {
 async function git(repoPath, args, runCommand = defaultRunCommand) {
   try {
     const { code, stdout } = await runCommand("git", ["-C", repoPath, ...args], { timeoutMs: 15_000 });
-    return code === 0 ? stdout : "";
+    return code === 0 ? stdout : null;
   } catch {
-    return ""; // git missing / timed out / locked index — degrade gracefully
+    return null; // git missing / timed out / locked index — degrade gracefully
   }
 }
 
@@ -42,7 +42,7 @@ async function collectOneRepo(entry, runCommand = defaultRunCommand) {
   const name = entry.name;
   const repoPath = entry.path;
   const inside = await git(repoPath, ["rev-parse", "--is-inside-work-tree"], runCommand);
-  if (inside.trim() !== "true") {
+  if (inside?.trim() !== "true") {
     return {
       id: entry.id ?? name,
       name,
@@ -63,9 +63,27 @@ async function collectOneRepo(entry, runCommand = defaultRunCommand) {
   const [logOut, statusOut, branchOut, wtOut] = await Promise.all([
     git(repoPath, ["log", "-1", "--format=%h|%cI|%s"], runCommand),
     git(repoPath, ["status", "--porcelain"], runCommand),
-    git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"], runCommand),
+    git(repoPath, ["branch", "--show-current"], runCommand),
     git(repoPath, ["worktree", "list", "--porcelain"], runCommand),
   ]);
+  if (statusOut === null || branchOut === null) {
+    return {
+      id: entry.id ?? name,
+      name,
+      owner: entry.owner ?? null,
+      repo: entry.repo ?? null,
+      role: entry.role ?? null,
+      lifecycle: entry.lifecycle ?? "active",
+      healthTarget: entry.healthTarget ?? true,
+      path: repoPath,
+      available: false,
+      branch: null,
+      dirty: false,
+      lastCommit: null,
+      worktrees: [],
+      reason: "git state unavailable",
+    };
+  }
   return {
     id: entry.id ?? name,
     name,
@@ -78,8 +96,8 @@ async function collectOneRepo(entry, runCommand = defaultRunCommand) {
     available: true,
     branch: branchOut.trim() || null,
     dirty: isDirty(statusOut),
-    lastCommit: parseLastCommit(logOut),
-    worktrees: parseWorktrees(wtOut),
+    lastCommit: parseLastCommit(logOut ?? ""),
+    worktrees: parseWorktrees(wtOut ?? ""),
   };
 }
 
@@ -126,7 +144,7 @@ export async function collectRepos(githubRoot, options = {}) {
   for (const e of candidates) {
     const repoPath = join(githubRoot, e.name);
     const head = await git(repoPath, ["rev-parse", "--is-inside-work-tree"], runCommand);
-    if (head.trim() === "true") {
+    if (head?.trim() === "true") {
       repos.push(await collectOneRepo({
         id: e.name,
         name: e.name,

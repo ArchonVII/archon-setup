@@ -16,6 +16,147 @@ function readOption(args, name, fallback = "") {
   return args[index + 1] || fallback;
 }
 
+const DISTRIBUTE_HELP = `archon-setup distribute - reconcile ArchonVII-managed regions in consumer repos
+
+Repo-owned by default: only marked managed regions are ever touched, and the
+default run is a read-only dry-run (design: docs/superpowers/specs/
+2026-06-09-granular-distributor-design.md, issue #145).
+
+Usage:
+  node bin/archon-setup.mjs distribute (--target <path> | --all) [options]
+
+Options:
+  --target <path>    Reconcile one repo (no confirmation needed for --apply)
+  --all              Reconcile every active registry repo
+  --group <a,b>      Limit to catalog groups (callers|agents|hooks|baseline,
+                     or "all" = no filter); unknown names are rejected
+  --id <x,y>         Limit to specific region ids (must exist in the catalog;
+                     unknown-id detection still runs against the full catalog)
+  --apply            Write clean_apply changes (default: dry-run, writes nothing)
+  --confirm <phrase> Required for --all --apply; the run prints the exact phrase
+  --write-preview    Emit .archon/distribute-preview/ proposals for adoptions
+  --log <path>       Run-log JSONL path (default: ~/.claude/archon-distribute-log.jsonl)
+  --json             Emit the full run result as JSON
+  --help             Show this help
+
+Exit codes: 0 nothing to do / all applied; 10 dry-run found pending changes;
+20 adoption/conflict needs a human (or confirmation missing); 1 failure.`;
+
+if (argv[0] === "distribute") {
+  const args = argv.slice(1);
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(DISTRIBUTE_HELP);
+    process.exit(0);
+  }
+
+  const { collectRepos } = await import("../src/server/ecosystem/collectRepos.mjs");
+  const { DEFAULT_REPO_REGISTRY_PATH } = await import("../src/server/ecosystem/repoRegistry.mjs");
+  const { distribute, exitCodeFor, loadDefaultCatalog, repoContextFor, DEFAULT_LOG_PATH } = await import(
+    "../src/distributor/distribute.mjs"
+  );
+
+  const flags = new Set(args);
+  function readDistributeOption(name, fallback = "") {
+    const index = args.indexOf(name);
+    if (index < 0) return fallback;
+    const value = args[index + 1];
+    if (!value || value.startsWith("--")) {
+      throw new Error(`missing value for ${name}`);
+    }
+    return value;
+  }
+
+  let targetPath;
+  let all;
+  try {
+    targetPath = readDistributeOption("--target");
+    all = flags.has("--all");
+    if ((targetPath ? 1 : 0) + (all ? 1 : 0) !== 1) {
+      throw new Error("choose exactly one of --target <path> or --all");
+    }
+  } catch (err) {
+    console.error(`distribute: ${err.message}`);
+    process.exit(1);
+  }
+
+  const csv = (value) => (value ? value.split(",").map((v) => v.trim()).filter(Boolean) : null);
+  let run;
+  try {
+    const catalog = await loadDefaultCatalog();
+
+    // §9 grammar: "all" widens to every group (= no filter). Unknown group or
+    // id tokens are rejected loudly — a typo must never read as "nothing to
+    // do" with exit 0.
+    const SPEC_GROUPS = ["callers", "agents", "hooks", "baseline"];
+    let groups = csv(readDistributeOption("--group"));
+    if (groups?.includes("all")) groups = null;
+    const knownGroups = new Set([...SPEC_GROUPS, ...catalog.entries.map((e) => e.group)]);
+    for (const group of groups ?? []) {
+      if (!knownGroups.has(group)) {
+        console.error(`distribute: unknown group "${group}" (known: ${[...knownGroups].sort().join(", ")}, all)`);
+        process.exit(1);
+      }
+    }
+    const ids = csv(readDistributeOption("--id"));
+    for (const id of ids ?? []) {
+      if (!catalog.knownIds.has(id)) {
+        console.error(`distribute: unknown id "${id}" — not in the managed-regions catalog`);
+        process.exit(1);
+      }
+    }
+
+    const repos = targetPath
+      ? [await repoContextFor(targetPath)]
+      : (await collectRepos({ repoRegistryPath: DEFAULT_REPO_REGISTRY_PATH })).repos;
+    run = await distribute({
+      repos,
+      all,
+      apply: flags.has("--apply"),
+      confirmation: readDistributeOption("--confirm", null) || null,
+      catalog,
+      groups,
+      ids,
+      writePreview: flags.has("--write-preview"),
+      logPath: readDistributeOption("--log", DEFAULT_LOG_PATH),
+    });
+  } catch (err) {
+    console.error(`distribute: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (flags.has("--json")) {
+    console.log(JSON.stringify(run, null, 2));
+  } else if (run.status === "confirmation-required") {
+    console.error(`Fleet apply needs explicit confirmation. Re-run with:\n  --confirm "${run.confirmationPhrase}"`);
+  } else {
+    for (const repo of run.results) {
+      if (repo.status === "skipped") {
+        console.log(`skipped (${repo.reason}): ${repo.repo}`);
+        continue;
+      }
+      for (const file of repo.files) {
+        const flagsText = [file.changed ? "changed" : null, file.written ? "written" : null, file.reason ?? null]
+          .filter(Boolean)
+          .join(", ");
+        console.log(`${file.status}${flagsText ? ` (${flagsText})` : ""}: ${repo.repo} ${file.relpath}`);
+        // §9: dry-run prints unified diffs; DL5: conflicts come with their
+        // human-readable evidence.
+        for (const region of file.regions ?? []) {
+          if (region.diff) console.log(region.diff.replace(/^/gm, "  "));
+        }
+        if (file.diagnostics?.length) console.log(`  diagnostics: ${JSON.stringify(file.diagnostics)}`);
+        if (file.dangers?.length) console.log(`  dangers: ${JSON.stringify(file.dangers)}`);
+      }
+    }
+    const c = run.counts;
+    console.log(
+      `${run.mode}: ${c.cleanApply} clean (${c.changed} changed, ${c.written} written), ` +
+        `${c.adoptionNeeded} adoption, ${c.conflicts} conflict, ${c.skips} skipped, ${c.failures} failed.`,
+    );
+  }
+  process.exit(exitCodeFor(run));
+}
+
 const TIGHTEN_HELP = `archon-setup tighten-required-gate - mark the stable repo gate required
 
 Usage:
