@@ -14,6 +14,7 @@
     "agent:pr-ready": "node scripts/agent-pr-ready.mjs",
     "refresh-snapshots": "node scripts/refresh-snapshots.mjs",
     "snapshot": "node bin/ecosystem-snapshot.mjs",
+    "lint:markers": "node scripts/lint-managed-regions.mjs",
     "test": "node --test \"test/*.test.mjs\"",
     "prepublishOnly": "node scripts/prepublish-check.mjs"
   },
