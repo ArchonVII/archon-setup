@@ -59,6 +59,13 @@
   trigger pattern while preserving repo-specific `with:` inputs. (#170, pairs
   with github-workflows#59/#60)
 
+- Advanced the `github-workflows` snapshot again to `v1` commit `af0ac6e`,
+  moving skipped non-`ci:full` label-only workflow runs into a separate
+  `label-skip-*` concurrency group so they cannot replace pending real
+  required-gate runs. `archon-setup update` repairs customized required-gate
+  callers to the isolated concurrency pattern while preserving repo-specific
+  `with:` inputs. (#172, pairs with github-workflows#61/#62)
+
 - Refreshed the `repo-template` snapshot to `main` commit `de95850`: agents no
   longer get an untracked `.pr-body.md` scratch file from `agent:start-task`
   (it dirtied worktrees and tripped close/preflight clean-tree gates). The

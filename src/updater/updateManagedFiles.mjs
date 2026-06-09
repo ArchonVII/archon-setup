@@ -90,7 +90,14 @@ function ensureDependencyReviewBudgetDefaults(body) {
 const REQUIRED_GATE_PR_TYPES = "    types: [opened, edited, synchronize, reopened, ready_for_review, labeled, unlabeled]";
 const REQUIRED_GATE_CONCURRENCY = [
   "concurrency:",
-  "  group: repo-required-gate-${{ github.event.pull_request.number || github.ref }}",
+  "  group: >-",
+  "    repo-required-gate-${{ github.event.pull_request.number || github.ref }}-${{",
+  "      github.event_name == 'pull_request' &&",
+  "      (github.event.action == 'labeled' || github.event.action == 'unlabeled') &&",
+  "      github.event.label.name != 'ci:full' &&",
+  "      format('label-skip-{0}', github.event.label.name) ||",
+  "      'gate'",
+  "    }}",
   "  cancel-in-progress: >-",
   "    ${{",
   "      github.event_name == 'pull_request' &&",
@@ -126,7 +133,7 @@ function ensureRequiredGateTriggerDefaults(body) {
   }
 
   const concurrencyGroupRe =
-    /(concurrency:\r?\n  group: repo-required-gate-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\r?\n)(?:  cancel-in-progress:[^\r\n]*(?:\r?\n    [^\r\n]*)*\r?\n)?/;
+    /(concurrency:\r?\n  group:(?:[^\r\n]*)(?:\r?\n    [^\r\n]*)*\r?\n)(?:  cancel-in-progress:[^\r\n]*(?:\r?\n    [^\r\n]*)*\r?\n)?/;
   if (concurrencyGroupRe.test(next)) {
     next = next.replace(concurrencyGroupRe, `${REQUIRED_GATE_CONCURRENCY}\n`);
   } else {

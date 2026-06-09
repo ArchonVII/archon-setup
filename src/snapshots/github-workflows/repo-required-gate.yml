@@ -15,7 +15,14 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: repo-required-gate-${{ github.event.pull_request.number || github.ref }}
+  group: >-
+    repo-required-gate-${{ github.event.pull_request.number || github.ref }}-${{
+      github.event_name == 'pull_request' &&
+      (github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
+      github.event.label.name != 'ci:full' &&
+      format('label-skip-{0}', github.event.label.name) ||
+      'gate'
+    }}
   cancel-in-progress: >-
     ${{
       github.event_name == 'pull_request' &&
@@ -120,7 +127,8 @@ jobs:
       # routing and run the full language CI surface — e.g. a workflow-only
       # change that semantically affects CI. The caller guard above allows
       # only this label to run/cancel the gate on label changes; other labels
-      # such as `no-changelog` skip without replacing the required decision.
+      # such as `no-changelog` skip in a separate concurrency group without
+      # replacing or canceling the required decision.
       # If you override the label input, update the guard/concurrency label
       # name above to match.
       #
