@@ -7,7 +7,7 @@ name: Repo Required Gate
 on:
   pull_request:
     branches: [main]
-    types: [opened, edited, synchronize, reopened, ready_for_review]
+    types: [opened, edited, synchronize, reopened, ready_for_review, labeled, unlabeled]
   merge_group:
 
 permissions:
@@ -16,7 +16,14 @@ permissions:
 
 concurrency:
   group: repo-required-gate-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: >-
+    ${{
+      github.event_name == 'pull_request' &&
+      (
+        (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
+        github.event.label.name == 'ci:full'
+      )
+    }}
 
 jobs:
   # -------------------------------------------------------------------------
@@ -26,6 +33,12 @@ jobs:
   # code (node|python|go|polyglot) / forced-full (via the `ci:full` label).
   # -------------------------------------------------------------------------
   repo-required-gate:
+    if: >-
+      ${{
+        github.event_name != 'pull_request' ||
+        (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
+        github.event.label.name == 'ci:full'
+      }}
     uses: ArchonVII/github-workflows/.github/workflows/repo-required-gate.yml@v1
     with:
       # ------ Minimal (docs / config repos with no language CI) -----------
@@ -105,8 +118,10 @@ jobs:
       # ------ Force-full escape hatch (any stack) -------------------------
       # Default label is `ci:full`. Apply it to a PR to bypass path-based
       # routing and run the full language CI surface — e.g. a workflow-only
-      # change that semantically affects CI.
-      # If you add the label after the latest gate run, rerun the workflow,
-      # push a new commit, or use another normal PR event to refresh the gate.
+      # change that semantically affects CI. The caller guard above allows
+      # only this label to run/cancel the gate on label changes; other labels
+      # such as `no-changelog` skip without replacing the required decision.
+      # If you override the label input, update the guard/concurrency label
+      # name above to match.
       #
       # force-full-ci-label: ci:full

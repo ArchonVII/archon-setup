@@ -88,7 +88,7 @@ test("preserves node-ci custom inputs while adding budget defaults", async () =>
   );
 });
 
-test("removes required-gate label triggers while preserving custom inputs", async () => {
+test("guards required-gate label triggers while preserving custom inputs", async () => {
   const root = await mkdtemp(join(tmpdir(), "archon-update-"));
   const workflowDir = join(root, ".github", "workflows");
   await mkdir(workflowDir, { recursive: true });
@@ -112,6 +112,10 @@ test("removes required-gate label triggers while preserving custom inputs", asyn
       "      ]",
       "  merge_group:",
       "",
+      "concurrency:",
+      "  group: repo-required-gate-${{ github.event.pull_request.number || github.ref }}",
+      "  cancel-in-progress: ${{ github.event_name == 'pull_request' }}",
+      "",
       "jobs:",
       "  repo-required-gate:",
       "    uses: ArchonVII/github-workflows/.github/workflows/repo-required-gate.yml@v1",
@@ -127,9 +131,13 @@ test("removes required-gate label triggers while preserving custom inputs", asyn
   const updated = await readFile(join(workflowDir, "repo-required-gate.yml"), "utf8");
 
   assert.equal(result.updated, 1);
-  assert.match(updated, /types: \[opened, edited, synchronize, reopened, ready_for_review\]/);
-  assert.doesNotMatch(updated, /^\s*labeled,?\s*$/m);
-  assert.doesNotMatch(updated, /^\s*unlabeled,?\s*$/m);
+  assert.match(updated, /types: \[opened, edited, synchronize, reopened, ready_for_review, labeled, unlabeled\]/);
+  assert.match(updated, /cancel-in-progress: >-/);
+  assert.match(updated, /github\.event\.action != 'labeled'/);
+  assert.match(updated, /github\.event\.action != 'unlabeled'/);
+  assert.match(updated, /github\.event\.label\.name == 'ci:full'/);
+  assert.match(updated, /\n  repo-required-gate:\n    if: >-/);
+  assert.doesNotMatch(updated, /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/);
   assert.match(updated, /npm-typecheck-script: typecheck/);
   assert.match(updated, /run-dependency-review: false/);
 });
