@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -98,4 +98,27 @@ old managed body
   assert.ok(reconciled.indexOf("Intro stays first.") < reconciled.indexOf("BEGIN ARCHONVII MANAGED BLOCK: agents-start-map"));
   assert.ok(reconciled.indexOf("BEGIN ARCHONVII MANAGED BLOCK: agents-start-map") < reconciled.indexOf("## Local workflow"));
   assert.match(reconciled, /Keep this repo-specific setup note\./);
+});
+
+test("writeAgentsMd preserves plans README YAML frontmatter while repairing baseline content", async () => {
+  const targetPath = await mkdtemp(join(tmpdir(), "archon-agents-plans-frontmatter-"));
+  const ctx = {
+    targetPath,
+    taskOptions: {},
+    manifest: { createdFiles: [] },
+  };
+  await mkdir(join(targetPath, "docs", "plans"), { recursive: true });
+  await writeFile(
+    join(targetPath, "docs", "plans", "README.md"),
+    "---\nsummary: Local plans guide\nstatus: active\n---\n\n# Old Plans\n\nRepo-local wiki metadata must survive repair.\n",
+    "utf8"
+  );
+
+  await writeAgentsMd.apply(ctx);
+
+  const plansReadme = await readFile(join(targetPath, "docs", "plans", "README.md"), "utf8");
+  assert.match(plansReadme, /^---\nsummary: Local plans guide\nstatus: active\n---\n\n# Plans/m);
+  assert.match(plansReadme, /docs\/plans\/YYYY-MM-DD-<slug>\.md/);
+  assert.doesNotMatch(plansReadme, /# Old Plans/);
+  assert.equal(await writeAgentsMd.check(ctx), "already-done");
 });

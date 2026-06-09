@@ -16,6 +16,15 @@ test('startup baseline contract names canonical startup files and legacy plan pa
     '.agent/coordination/README.md',
     '.github/PULL_REQUEST_TEMPLATE.md',
     'docs/repo-update-log.md',
+    'package.json',
+    'scripts/agent/lib.mjs',
+    'scripts/agent/start-task.mjs',
+    'scripts/agent/status.mjs',
+    'scripts/agent/prune.mjs',
+    'scripts/doc-sweep/lib.mjs',
+    'scripts/doc-sweep/git.mjs',
+    'scripts/doc-sweep/sweep.mjs',
+    'docs/agent-process/doc-sweep.md',
   ]) {
     assert.ok(baseline.required.includes(path), `baseline required should include ${path}`);
   }

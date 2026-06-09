@@ -11,6 +11,7 @@ import { TEMPLATE as GEMINI_TEMPLATE } from "../tasks/writeGeminiMd.mjs";
 import { scrubHookBody } from "../tasks/writeGithooks.mjs";
 import { AGENT_SCRIPTS } from "../tasks/writeAgentLifecycle.mjs";
 import { hasCurrentManagedBlock } from "../tasks/managedMarkdownBlock.mjs";
+import { markdownMatchesSnapshotAllowingFrontmatter } from "../tasks/markdownFrontmatter.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GITHUB_WORKFLOWS_SNAPSHOT = join(__dirname, "..", "..", "snapshots", "github-workflows");
@@ -49,7 +50,10 @@ async function expectedBodyFor({ path, unit, context }) {
         return repoTemplateBody(join(".agent", "startup-baseline.json"));
       }
       if (path === "docs/plans/README.md") {
-        return repoTemplateBody(join("docs", "plans", "README.md"));
+        return {
+          comparison: "markdown-frontmatter",
+          body: await repoTemplateBody(join("docs", "plans", "README.md")),
+        };
       }
       return null;
     case "writeClaudeMd":
@@ -81,7 +85,14 @@ async function expectedBodyFor({ path, unit, context }) {
       if (path === "package.json") return { comparison: "entries", entries: AGENT_SCRIPTS };
       return repoTemplateBody(path);
     case "writeDocSweep":
-      // Runner + spec are exact snapshot copies — exact content comparison.
+      // Runner scripts are exact snapshot copies; the markdown spec may carry
+      // repo-local frontmatter in wiki-managed repos.
+      if (path === "docs/agent-process/doc-sweep.md") {
+        return {
+          comparison: "markdown-frontmatter",
+          body: await repoTemplateBody(path),
+        };
+      }
       return repoTemplateBody(path);
     default:
       return null;
@@ -137,6 +148,33 @@ export async function auditPlan(plan) {
         status: allPresent ? "present" : anyDrifted ? "drifted" : "missing",
         comparison: "entries",
         detail: entries,
+      });
+      continue;
+    }
+
+    if (expected && typeof expected === "object" && expected.comparison === "markdown-frontmatter") {
+      if (!exists) {
+        items.push({
+          path: file.path,
+          feature: file.feature,
+          taskId: unit?.taskId || null,
+          status: "missing",
+          comparison: "markdown-frontmatter",
+          detail: "file is absent",
+        });
+        continue;
+      }
+      const actual = await readFile(fullPath, "utf8");
+      const matches = markdownMatchesSnapshotAllowingFrontmatter(actual, expected.body);
+      items.push({
+        path: file.path,
+        feature: file.feature,
+        taskId: unit?.taskId || null,
+        status: matches ? "present" : "drifted",
+        comparison: "markdown-frontmatter",
+        detail: matches
+          ? "matches the ArchonVII baseline, allowing repo-local YAML frontmatter"
+          : "content differs from the ArchonVII baseline",
       });
       continue;
     }
@@ -250,10 +288,17 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
     case ".agent/startup-baseline.json":
       return (await startupBaselineCurrent(root, baseline)) ? "present" : "stale";
     case "docs/plans/README.md":
-      return (await fileMatches(root, relativePath, /docs\/plans\/YYYY-MM-DD-<slug>\.md/)) ? "present" : "stale";
+      return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     case "docs/repo-update-log.md":
       return (await fileMatches(root, relativePath, /^# Repository Update Log/m)) ? "present" : "stale";
+    case "package.json":
+      return (await packageHasAgentScripts(root)) ? "present" : "stale";
+    case "docs/agent-process/doc-sweep.md":
+      return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     default:
+      if (relativePath.startsWith("scripts/agent/") || relativePath.startsWith("scripts/doc-sweep/")) {
+        return (await fileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
+      }
       return "present";
   }
 }
@@ -282,6 +327,28 @@ async function startupBaselineCurrent(root, expectedBaseline) {
 async function fileMatches(root, relativePath, pattern) {
   const body = await readFile(safeJoin(root, relativePath), "utf8");
   return pattern.test(body);
+}
+
+async function fileMatchesSnapshot(root, relativePath) {
+  const actual = await readFile(safeJoin(root, relativePath), "utf8");
+  const expected = await repoTemplateBody(relativePath);
+  return actual === expected;
+}
+
+async function markdownFileMatchesSnapshot(root, relativePath) {
+  const actual = await readFile(safeJoin(root, relativePath), "utf8");
+  const expected = await repoTemplateBody(relativePath);
+  return markdownMatchesSnapshotAllowingFrontmatter(actual, expected);
+}
+
+async function packageHasAgentScripts(root) {
+  try {
+    const pkg = JSON.parse(await readFile(safeJoin(root, "package.json"), "utf8"));
+    const scripts = pkg.scripts || {};
+    return Object.entries(AGENT_SCRIPTS).every(([key, value]) => scripts[key] === value);
+  } catch {
+    return false;
+  }
 }
 
 async function pathExists(root, relativePath) {

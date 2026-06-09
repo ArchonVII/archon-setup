@@ -6,6 +6,10 @@ import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { recordCreatedFile } from "../lib/manifest.mjs";
 import { hasCurrentManagedBlock, reconcileManagedBlockNearTop } from "./managedMarkdownBlock.mjs";
+import {
+  applySnapshotPreservingFrontmatter,
+  markdownMatchesSnapshotAllowingFrontmatter,
+} from "./markdownFrontmatter.mjs";
 
 const AGENTS_SNAPSHOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -75,6 +79,24 @@ async function fileExists(root, relativePath) {
   }
 }
 
+async function fileMatchesMarkdownSnapshot(root, relativePath, snapshotBody) {
+  try {
+    const current = await readFile(safeJoin(root, relativePath), "utf8");
+    return markdownMatchesSnapshotAllowingFrontmatter(current, snapshotBody);
+  } catch {
+    return false;
+  }
+}
+
+async function snapshotBodyPreservingFrontmatter(root, relativePath, snapshotBody) {
+  try {
+    const current = await readFile(safeJoin(root, relativePath), "utf8");
+    return applySnapshotPreservingFrontmatter(current, snapshotBody);
+  } catch {
+    return snapshotBody;
+  }
+}
+
 function agentsContractCurrent(current, snapshotBody) {
   return current === snapshotBody
     || hasCurrentManagedBlock(current, AGENTS_MANAGED_BLOCK_ID, managedAgentsBody(snapshotBody));
@@ -86,7 +108,8 @@ export async function check(ctx) {
     const snapshotBody = await readAgentsSnapshot(ctx);
     const updateLogDone = await fileExists(ctx.targetPath, "docs/repo-update-log.md");
     const startupDone = await fileExists(ctx.targetPath, ".agent/startup-baseline.json");
-    const plansReadmeDone = await fileExists(ctx.targetPath, "docs/plans/README.md");
+    const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
+    const plansReadmeDone = await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/plans/README.md", plansReadme);
     return agentsContractCurrent(current, snapshotBody) && updateLogDone && startupDone && plansReadmeDone
       ? "already-done"
       : "needs-apply";
@@ -99,7 +122,11 @@ export async function apply(ctx) {
   const body = await readAgentsSnapshot(ctx);
   const updateLog = await readFile(UPDATE_LOG_SNAPSHOT, "utf8");
   const startupBaseline = await readFile(STARTUP_BASELINE_SNAPSHOT, "utf8");
-  const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
+  const plansReadme = await snapshotBodyPreservingFrontmatter(
+    ctx.targetPath,
+    "docs/plans/README.md",
+    await readFile(PLANS_README_SNAPSHOT, "utf8")
+  );
 
   let agentsResult;
   const agentsPath = safeJoin(ctx.targetPath, "AGENTS.md");
@@ -169,7 +196,10 @@ export async function verify(ctx) {
     }
     await access(safeJoin(ctx.targetPath, "docs/repo-update-log.md"), constants.F_OK);
     await access(safeJoin(ctx.targetPath, ".agent/startup-baseline.json"), constants.F_OK);
-    await access(safeJoin(ctx.targetPath, "docs/plans/README.md"), constants.F_OK);
+    const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
+    if (!(await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/plans/README.md", plansReadme))) {
+      return { ok: false, error: "docs/plans/README.md is missing or stale" };
+    }
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err.message };

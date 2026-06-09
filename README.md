@@ -102,7 +102,11 @@ it matches, `missing` when absent, and `drifted` when the existing content
 differs from the managed baseline. The JSON result also includes
 `audit.startupReadiness`, a warning-level startup/process baseline summary with
 the baseline version, missing files, stale content, misplaced managed blocks,
-legacy plan paths, and a repair command.
+legacy plan paths, and a repair command. Startup readiness checks the concrete
+agent lifecycle and doc-sweep files named by `.agent/startup-baseline.json`,
+plus the `package.json` `agent:*` entries. Managed wiki markdown files may carry
+repo-local YAML frontmatter; audit and repair preserve that metadata when the
+baseline body is current.
 
 **Existing repos.** In the browser wizard, choose **Existing repo** on Location.
 The wizard accepts a populated git repo, detects its GitHub `origin`, runs a

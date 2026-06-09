@@ -4,9 +4,10 @@
 
 ### Changed
 
-- Refreshed the `repo-template` snapshot to `433ac8b`, adding the versioned
-  startup baseline, plan README, startup-aware `agent:status`, and managed
-  AGENTS start map from the staged repo-template rollout. (#130)
+- Refreshed the `repo-template` snapshot to `6a8fda9`, adding the versioned
+  startup baseline, plan README, startup-aware `agent:status`, managed AGENTS
+  start map, and concrete agent lifecycle/doc-sweep startup file contract from
+  the staged repo-template rollout. (#130)
 
 - Dropped `package-lock.json` from the `repo-template` snapshot and from
   `refresh-snapshots.mjs` `copyFiles`. The template is depless (the lock locked zero
@@ -27,7 +28,10 @@
   includes `audit.startupReadiness` with a baseline version, missing, stale,
   misplaced, and legacy-path findings plus a warning-level repair command.
   The human audit output now explicitly distinguishes the full startup/process
-  audit from the workflow-only `archon-setup update` path. (#130)
+  audit from the workflow-only `archon-setup update` path. The audit now checks
+  concrete agent lifecycle/doc-sweep files and `package.json` `agent:*` entries,
+  and treats repo-local YAML frontmatter on managed wiki docs as current when
+  the baseline body matches. (#130)
 - Added a global update record for the agent startup baseline so the managed
   AGENTS distribution path can tell agents to use `AGENTS.md`, `agent:status`,
   `.agent/startup-baseline.json`, and `docs/plans/README.md` before searching
@@ -35,7 +39,8 @@
 - Added the `agent-workflow.doc-sweep` feature (#103, locked default): every
   onboarded repo gets the doc-sweep runner (`scripts/doc-sweep/{lib,git,sweep}.mjs`)
   and full spec (`docs/agent-process/doc-sweep.md`) via the new `writeDocSweep` task,
-  with self-contained content-aware drift repair. The `## Doc Sweep-Up` AGENTS.md
+  with self-contained content-aware drift repair. Repairs preserve repo-local
+  YAML frontmatter on the markdown spec. The `## Doc Sweep-Up` AGENTS.md
   contract ships with the agent foundations.
 - Added the `agent-workflow.doc-orphan-detector` opt-in (#103): a weekly cron caller
   to `github-workflows/doc-orphan-detector.yml@v1` (doc-sweep §4.7) that opens a
