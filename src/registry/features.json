@@ -52,7 +52,7 @@
     "group": "foundations",
     "default": true,
     "locked": true,
-    "creates": ["AGENTS.md", "docs/repo-update-log.md"],
+    "creates": ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md"],
     "tasks": ["writeAgentsMd"],
     "beginnerDescription": "The cross-tool contract for AI agents (Claude, Codex, Gemini) working in this repo.",
     "advancedDescription": "Copied from snapshots of ArchonVII/repo-template/AGENTS.md and docs/repo-update-log.md with CHANGELOG-mode placeholder resolved."

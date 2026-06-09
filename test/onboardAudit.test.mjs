@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 
 import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
 import { checkTargetPath } from "../src/server/preflight/checkTargetPath.mjs";
+import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
 
 const execFileP = promisify(execFile);
 const REPO_ROOT = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
@@ -34,6 +35,12 @@ function byPath(audit, path) {
   const item = audit.items.find((entry) => entry.path === path);
   assert.ok(item, `expected audit item for ${path}`);
   return item;
+}
+
+async function copySnapshot(root, relativePath) {
+  const body = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", relativePath), "utf8");
+  await mkdir(dirname(join(root, relativePath)), { recursive: true });
+  await writeFile(join(root, relativePath), body, "utf8");
 }
 
 test("audit mode reports present, missing, and drifted baseline files without writing", async () => {
@@ -90,6 +97,153 @@ test("onboard --audit is exposed by the CLI JSON contract", async () => {
   assert.equal(parsed.ok, true);
   assert.equal(parsed.mode, "audit");
   assert.equal(byPath(parsed.audit, ".github/workflows/actionlint.yml").status, "present");
+});
+
+test("onboard --audit reports warning-level startup readiness in JSON", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  await mkdir(join(root, "docs", "superpowers", "plans"), { recursive: true });
+  await writeFile(join(root, "AGENTS.md"), "# Local agent guide\n\n## Workflow\n\nOld process.\n", "utf8");
+
+  const { stdout } = await execFileP(
+    process.execPath,
+    [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit", "--json"],
+    { cwd: REPO_ROOT }
+  );
+  const parsed = JSON.parse(stdout);
+
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.mode, "audit");
+  assert.equal(parsed.audit.startupReadiness.status, "incomplete");
+  assert.equal(parsed.audit.startupReadiness.baselineVersion, "2026-06-08-agent-start-map");
+  assert.ok(parsed.audit.startupReadiness.missing.includes("docs/plans/README.md"));
+  assert.ok(parsed.audit.startupReadiness.stale.includes("AGENTS.md"));
+  assert.ok(parsed.audit.startupReadiness.legacyDetected.includes("docs/superpowers/plans/"));
+  assert.match(parsed.audit.startupReadiness.repairCommand, /onboard\.mjs .* --dry-run/);
+});
+
+test("startup readiness accepts repo-specific AGENTS when the managed start map is current", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
+  const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
+  const startupBaseline = await readFile(
+    join(REPO_ROOT, "src", "snapshots", "repo-template", ".agent", "startup-baseline.json"),
+    "utf8"
+  );
+  const plansReadme = await readFile(
+    join(REPO_ROOT, "src", "snapshots", "repo-template", "docs", "plans", "README.md"),
+    "utf8"
+  );
+
+  await mkdir(join(root, ".agent", "coordination"), { recursive: true });
+  await mkdir(join(root, ".github"), { recursive: true });
+  await mkdir(join(root, "docs"), { recursive: true });
+  await mkdir(join(root, "docs", "plans"), { recursive: true });
+  await mkdir(join(root, "docs", "agent-process"), { recursive: true });
+  await mkdir(join(root, "scripts", "agent"), { recursive: true });
+  await mkdir(join(root, "scripts", "doc-sweep"), { recursive: true });
+  await writeFile(
+    join(root, "AGENTS.md"),
+    `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n\n## Local workflow\n\nKeep repo-specific rules.\n`,
+    "utf8"
+  );
+  await writeFile(join(root, ".agent", "startup-baseline.json"), startupBaseline, "utf8");
+  await writeFile(join(root, "docs", "plans", "README.md"), plansReadme, "utf8");
+  await writeFile(join(root, "docs", "repo-update-log.md"), "# Repository Update Log\n\nLocal entries.\n", "utf8");
+  await writeFile(join(root, ".agent", "check-map.yml"), "version: 1\n", "utf8");
+  await writeFile(join(root, ".agent", "coordination", "README.md"), "# Coordination\n", "utf8");
+  await writeFile(join(root, ".github", "PULL_REQUEST_TEMPLATE.md"), "## Summary\n", "utf8");
+  await writeFile(join(root, "package.json"), JSON.stringify({ name: "demo", scripts: { ...AGENT_SCRIPTS } }, null, 2) + "\n");
+
+  for (const relativePath of [
+    "scripts/agent/lib.mjs",
+    "scripts/agent/start-task.mjs",
+    "scripts/agent/status.mjs",
+    "scripts/agent/prune.mjs",
+    "scripts/doc-sweep/lib.mjs",
+    "scripts/doc-sweep/git.mjs",
+    "scripts/doc-sweep/sweep.mjs",
+    "docs/agent-process/doc-sweep.md",
+  ]) {
+    await copySnapshot(root, relativePath);
+  }
+
+  const { stdout } = await execFileP(
+    process.execPath,
+    [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit", "--json"],
+    { cwd: REPO_ROOT }
+  );
+  const parsed = JSON.parse(stdout);
+
+  assert.equal(parsed.audit.startupReadiness.status, "complete");
+  assert.deepEqual(parsed.audit.startupReadiness.missing, []);
+  assert.deepEqual(parsed.audit.startupReadiness.stale, []);
+  assert.ok(parsed.audit.startupReadiness.present.includes("AGENTS.md"));
+  assert.ok(parsed.audit.startupReadiness.present.includes("docs/repo-update-log.md"));
+});
+
+test("startup readiness reports stale concrete startup tooling", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
+  const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
+
+  await mkdir(join(root, ".agent", "coordination"), { recursive: true });
+  await mkdir(join(root, ".github"), { recursive: true });
+  await mkdir(join(root, "docs"), { recursive: true });
+  await writeFile(
+    join(root, "AGENTS.md"),
+    `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n`,
+    "utf8"
+  );
+  await writeFile(join(root, "package.json"), JSON.stringify({ name: "demo", scripts: { ...AGENT_SCRIPTS } }, null, 2) + "\n");
+  await writeFile(join(root, "docs", "repo-update-log.md"), "# Repository Update Log\n\nLocal entries.\n", "utf8");
+  await writeFile(join(root, ".agent", "check-map.yml"), "version: 1\n", "utf8");
+  await writeFile(join(root, ".agent", "coordination", "README.md"), "# Coordination\n", "utf8");
+  await writeFile(join(root, ".github", "PULL_REQUEST_TEMPLATE.md"), "## Summary\n", "utf8");
+
+  for (const relativePath of [
+    ".agent/startup-baseline.json",
+    "docs/plans/README.md",
+    "scripts/agent/lib.mjs",
+    "scripts/agent/start-task.mjs",
+    "scripts/agent/prune.mjs",
+    "scripts/doc-sweep/lib.mjs",
+    "scripts/doc-sweep/git.mjs",
+    "scripts/doc-sweep/sweep.mjs",
+    "docs/agent-process/doc-sweep.md",
+  ]) {
+    await copySnapshot(root, relativePath);
+  }
+  await mkdir(join(root, "scripts", "agent"), { recursive: true });
+  await writeFile(join(root, "scripts", "agent", "status.mjs"), "console.log('old status without startup map');\n", "utf8");
+
+  const { stdout } = await execFileP(
+    process.execPath,
+    [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit", "--json"],
+    { cwd: REPO_ROOT }
+  );
+  const parsed = JSON.parse(stdout);
+
+  assert.equal(parsed.audit.startupReadiness.status, "incomplete");
+  assert.deepEqual(parsed.audit.startupReadiness.missing, []);
+  assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/agent/status.mjs"));
+});
+
+test("human audit output distinguishes startup audit from workflow-only update", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+
+  const { stdout } = await execFileP(
+    process.execPath,
+    [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit"],
+    { cwd: REPO_ROOT }
+  );
+
+  assert.match(stdout, /Startup readiness:/);
+  assert.match(stdout, /This is the full startup\/process baseline audit/i);
+  assert.match(stdout, /workflow-only update/i);
 });
 
 test("target preflight can explicitly accept a populated existing repo", async () => {

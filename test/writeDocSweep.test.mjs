@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -70,4 +70,22 @@ test("apply records every installed file in the manifest", async () => {
   await writeDocSweep.apply(ctx);
   const paths = ctx.manifest.createdFiles.map((f) => f.path);
   for (const file of DOC_SWEEP_FILES) assert.ok(paths.includes(file), `${file} recorded`);
+});
+
+test("apply preserves doc-sweep spec YAML frontmatter while repairing baseline content", async () => {
+  const target = await makeTarget();
+  await mkdir(join(target, "docs", "agent-process"), { recursive: true });
+  await writeFile(
+    join(target, "docs", "agent-process", "doc-sweep.md"),
+    "---\nsummary: Local doc sweep process\nstatus: active\n---\n\n# Old Doc Sweep\n\nRepo-local wiki metadata must survive repair.\n",
+    "utf8"
+  );
+
+  await writeDocSweep.apply(makeCtx(target));
+
+  const body = await readFile(join(target, "docs", "agent-process", "doc-sweep.md"), "utf8");
+  assert.match(body, /^---\nsummary: Local doc sweep process\nstatus: active\n---\n\n# Doc Sweep-Up/m);
+  assert.doesNotMatch(body, /# Old Doc Sweep/);
+  assert.equal(await writeDocSweep.check(makeCtx(target)), "already-done");
+  assert.deepEqual(await writeDocSweep.verify(makeCtx(target)), { ok: true });
 });

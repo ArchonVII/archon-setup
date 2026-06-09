@@ -26,6 +26,43 @@ export function parseIssueFromBranch(branch) {
   return match ? match[1] : null;
 }
 
+const ISSUE_LINK_RE = /\b(?:Closes|Fixes|Refs)\s+#\d+\b/i;
+const ISSUE_PLACEHOLDER_RES = [
+  /^TODO:\s*(?:Closes|Fixes|Refs)\s+#(?:___|<[^>\r\n]+>)\s*$/im,
+  /^(?:Closes|Fixes|Refs)\s+#(?:___|<[^>\r\n]+>)?\s*$/im,
+];
+
+export function populatePrBodyTemplate(template, { issue }) {
+  const body = String(template ?? '');
+  if (!issue || ISSUE_LINK_RE.test(body)) return ensureFinalNewline(body);
+
+  const link = `Closes #${issue}`;
+  for (const placeholderRe of ISSUE_PLACEHOLDER_RES) {
+    if (placeholderRe.test(body)) {
+      return ensureFinalNewline(body.replace(placeholderRe, link));
+    }
+  }
+
+  const lines = body.split(/\r?\n/);
+  const headingIndex = lines.findIndex((line) => /^##\s+Linked Issue\s*$/i.test(line.trim()));
+  if (headingIndex !== -1) {
+    let insertIndex = headingIndex + 1;
+    while (insertIndex < lines.length && lines[insertIndex].trim() === '') insertIndex += 1;
+
+    if (insertIndex >= lines.length || /^##\s+/.test(lines[insertIndex])) {
+      lines.splice(headingIndex + 1, 0, '', link);
+    } else if (/^(?:TODO\b|#(?:___)?$|<[^>]+>$)/i.test(lines[insertIndex].trim())) {
+      lines[insertIndex] = link;
+    } else {
+      lines.splice(insertIndex, 0, link);
+    }
+
+    return ensureFinalNewline(lines.join('\n'));
+  }
+
+  return ensureFinalNewline(`${body.trimEnd()}\n\n## Linked Issue\n\n${link}`);
+}
+
 export function parseGitStatusPorcelain(raw) {
   if (!raw) return [];
   return raw
@@ -84,6 +121,36 @@ export function inferNextAction({ onDefaultBranch, dirty, hasPr, ahead = 0 }) {
 export function detectClaimsInstalled({ claimsFileExists }) {
   return Boolean(claimsFileExists);
 }
+export function checkStartupReadiness(baseline, { exists }) {
+  const required = Array.isArray(baseline?.required) ? baseline.required : [];
+  const expectedDirectories = Array.isArray(baseline?.expectedDirectories) ? baseline.expectedDirectories : [];
+  const all = [...required, ...expectedDirectories];
+  const present = [];
+  const missing = [];
+  for (const relPath of all) {
+    if (exists(relPath)) present.push(relPath);
+    else missing.push(relPath);
+  }
+  return { status: missing.length ? 'incomplete' : 'complete', present, missing };
+}
+export function formatStartupMap(baseline, { repoPath = '<repo>', archonSetupCommand = 'node <path-to-archon-setup>/bin/onboard.mjs', readiness = null } = {}) {
+  const legacy = Array.isArray(baseline?.legacy) ? baseline.legacy : [];
+  const lines = [
+    'Agent startup map:',
+    '- Plans:          docs/plans/',
+    '- Agent process:  docs/agent-process/',
+    '- Repo update log: docs/repo-update-log.md',
+    '- Check map:      .agent/check-map.yml',
+    '- Coordination:   .agent/coordination/README.md',
+    '- PR process:     .github/PULL_REQUEST_TEMPLATE.md',
+    '- Agent scripts:  scripts/agent/',
+    '- Doc sweep:      scripts/doc-sweep/',
+  ];
+  if (legacy.length) lines.push(`- Legacy plans:   ${legacy.join(', ')} (history only)`);
+  if (readiness?.missing?.length) lines.push('', `Missing startup baseline paths: ${readiness.missing.join(', ')}`);
+  lines.push('', 'If these files are missing or unclear, stop searching and run:', `${archonSetupCommand} ${repoPath} --audit`);
+  return lines.join('\n');
+}
 export function formatStatusReport(s) {
   const prText = s.pr ? `#${s.pr.number} ${s.pr.state} ${s.pr.url}` : 'none';
   return [
@@ -97,4 +164,8 @@ export function formatStatusReport(s) {
     `Claims:         ${s.claimsInstalled ? 'installed' : 'not installed'}`,
     `Next:           ${s.nextAction}`,
   ].join('\n');
+}
+
+function ensureFinalNewline(value) {
+  return value.endsWith('\n') ? value : `${value}\n`;
 }

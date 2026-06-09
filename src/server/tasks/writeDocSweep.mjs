@@ -4,6 +4,10 @@ import { REPO_TEMPLATE_SNAPSHOT } from "./repoTemplateSnapshot.mjs";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { recordCreatedFile } from "../lib/manifest.mjs";
+import {
+  applySnapshotPreservingFrontmatter,
+  markdownMatchesSnapshotAllowingFrontmatter,
+} from "./markdownFrontmatter.mjs";
 
 // The doc-sweep runner + full spec, snapshotted from repo-template (the
 // capability's canonical home — see docs/agent-process/doc-sweep.md §5). The
@@ -17,6 +21,7 @@ const FILES = [
   "scripts/doc-sweep/sweep.mjs",
   "docs/agent-process/doc-sweep.md",
 ];
+const FRONTMATTER_AWARE_FILES = new Set(["docs/agent-process/doc-sweep.md"]);
 
 export const DOC_SWEEP_FILES = FILES;
 
@@ -34,6 +39,9 @@ async function matchesSnapshot(ctx, file) {
     return false; // missing counts as a mismatch
   }
   const expected = await readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8");
+  if (FRONTMATTER_AWARE_FILES.has(file)) {
+    return markdownMatchesSnapshotAllowingFrontmatter(actual, expected);
+  }
   return actual === expected;
 }
 
@@ -47,7 +55,16 @@ export async function check(ctx) {
 export async function apply(ctx) {
   const results = [];
   for (const file of FILES) {
-    const body = await readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8");
+    const snapshotBody = await readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8");
+    let body = snapshotBody;
+    if (FRONTMATTER_AWARE_FILES.has(file)) {
+      try {
+        const current = await readFile(safeJoin(ctx.targetPath, file), "utf8");
+        body = applySnapshotPreservingFrontmatter(current, snapshotBody);
+      } catch {
+        body = snapshotBody;
+      }
+    }
     // overwrite:true so a drifted managed file is REPAIRED, not skipped.
     const result = await safeWriteFile(ctx.targetPath, file, body, { overwrite: true });
     recordCreatedFile(ctx, result, { path: file, source: `snapshot:repo-template/${file}` });

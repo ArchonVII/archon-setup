@@ -57,6 +57,8 @@ test("foundation.agents plans the repo update log with AGENTS.md", async () => {
   assert.ok(agents, "foundation.agents feature missing");
   assert.ok(agents.creates.includes("AGENTS.md"));
   assert.ok(agents.creates.includes("docs/repo-update-log.md"));
+  assert.ok(agents.creates.includes(".agent/startup-baseline.json"));
+  assert.ok(agents.creates.includes("docs/plans/README.md"));
 });
 
 test("planning anomaly-triage plans the workflow without repo-create", async () => {

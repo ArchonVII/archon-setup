@@ -107,6 +107,16 @@ function printAudit(audit) {
   console.log(
     `Summary: ${summary.present} present, ${summary.missing} missing, ${summary.drifted} drifted (${summary.total} total)`
   );
+  if (audit.startupReadiness) {
+    const s = audit.startupReadiness;
+    console.log(`\nStartup readiness: ${s.status} (${s.baselineVersion})`);
+    console.log("This is the full startup/process baseline audit; `archon-setup update` is workflow-only update.");
+    if (s.missing.length) console.log(`  missing: ${s.missing.join(", ")}`);
+    if (s.stale.length) console.log(`  stale: ${s.stale.join(", ")}`);
+    if (s.misplaced.length) console.log(`  misplaced: ${s.misplaced.join(", ")}`);
+    if (s.legacyDetected.length) console.log(`  legacy detected: ${s.legacyDetected.join(", ")}`);
+    console.log(`  repair: ${s.repairCommand}`);
+  }
   console.log("\nBaseline items:");
   for (const item of audit.items) {
     const label = item.status.padEnd(7, " ");
