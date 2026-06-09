@@ -57,6 +57,20 @@ test("yaml detectDanger distinguishes sibling jobs (A9)", () => {
   assert.deepEqual(getAdapter("yaml").detectDanger(body), []);
 });
 
+test("yaml detectDanger does not flag repeated keys in separate sequence items", () => {
+  const body = [
+    "jobs:",
+    "  build:",
+    "    steps:",
+    "      - name: Checkout",
+    "        uses: actions/checkout@v4",
+    "      - name: Test",
+    "        run: npm test",
+    "",
+  ].join("\n");
+  assert.deepEqual(getAdapter("yaml").detectDanger(body), []);
+});
+
 test("yaml detectDanger returns empty for a clean caller", () => {
   const body = [
     "name: CI",

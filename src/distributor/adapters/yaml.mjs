@@ -9,6 +9,7 @@ export const metadataPolicy = { eol: "preserve", preserveExecBit: false, shebang
 // A bare `key:value` (no space after the colon) is a YAML scalar, not a
 // mapping, so it is intentionally not matched.
 const KEY_LINE = /^(\s*)([^\s#][^:]*?):(?:\s.*|)$/;
+const SEQUENCE_KEY_LINE = /^(\s*)-\s+([^\s#][^:]*?):(\s.*|)$/;
 
 // Flag keys that repeat under the same parent mapping. Path awareness keeps a
 // top-level `permissions:` distinct from `jobs.<job>.permissions:` and keeps
@@ -16,11 +17,39 @@ const KEY_LINE = /^(\s*)([^\s#][^:]*?):(?:\s.*|)$/;
 export function detectDanger(body) {
   const lines = body.split(/\r\n|\r|\n/);
   const stack = [];
+  const sequenceIndexes = new Map();
   const seen = new Map();
   const dangers = [];
 
   lines.forEach((raw, index) => {
     if (/^\s*$/.test(raw) || /^\s*#/.test(raw)) return; // blank or comment
+    const sequenceMatch = raw.match(SEQUENCE_KEY_LINE);
+    if (sequenceMatch) {
+      const indent = sequenceMatch[1].length;
+      const key = sequenceMatch[2].trim();
+      const value = sequenceMatch[3].trim();
+      while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+
+      const parent = stack.map((entry) => entry.key).join(".");
+      const sequenceKey = `${parent}\0${indent}`;
+      const sequenceIndex = sequenceIndexes.get(sequenceKey) ?? 0;
+      sequenceIndexes.set(sequenceKey, sequenceIndex + 1);
+      stack.push({ indent, key: `[${sequenceIndex}]` });
+
+      const path = parent ? `${parent}.[${sequenceIndex}].${key}` : `[${sequenceIndex}].${key}`;
+      if (seen.has(path)) {
+        dangers.push({ kind: "duplicate-key", key, path, lines: [seen.get(path), index + 1] });
+      } else {
+        seen.set(path, index + 1);
+      }
+
+      if (!value) {
+        const keyIndent = indent + raw.slice(indent).indexOf(key);
+        stack.push({ indent: keyIndent, key });
+      }
+      return;
+    }
+
     const match = raw.match(KEY_LINE);
     if (!match) return; // scalar, list item, flow content — not a mapping key
 
