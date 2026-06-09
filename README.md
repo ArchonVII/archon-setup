@@ -221,6 +221,15 @@ Existing agent-facing capabilities:
 - **Global update records** - archon-setup records shared agent/workflow fixes
   that may need ecosystem-wide dissemination, exposes them in the Ecosystem UI,
   and logs per-repo distribution results.
+- **Ecosystem overview** - `docs/ecosystem-overview.md` is the canonical
+  high-level "what exists and how it connects" map of the meta layer (the three
+  providers, this integrator, and the `jma-skill-review` skill source). It
+  carries the change-routing and managed-content rules an agent needs before
+  touching anything another repo depends on. The repo-inventory block is
+  generated from `config/ecosystem-map.json` + live snapshot refs via
+  `node bin/update-ecosystem-overview.mjs` (`--check` is enforced by `npm test`).
+  It is meta-repo only and is intentionally not linked from `repo-template`, so
+  consumer repos stay coordination-isolated.
 - **Headless existing-repo audit** - `npm run onboard -- <repo> --audit`
   reports planned baseline files as `present`, `missing`, or `drifted` without
   writing.
