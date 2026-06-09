@@ -122,3 +122,29 @@ test("writeAgentsMd preserves plans README YAML frontmatter while repairing base
   assert.doesNotMatch(plansReadme, /# Old Plans/);
   assert.equal(await writeAgentsMd.check(ctx), "already-done");
 });
+
+test("writeAgentsMd repairs a stale same-version startup baseline contract", async () => {
+  const targetPath = await mkdtemp(join(tmpdir(), "archon-agents-baseline-contract-"));
+  const ctx = {
+    targetPath,
+    taskOptions: {},
+    manifest: { createdFiles: [] },
+  };
+
+  await writeAgentsMd.apply(ctx);
+  const baselinePath = join(targetPath, ".agent", "startup-baseline.json");
+  const current = JSON.parse(await readFile(baselinePath, "utf8"));
+  const stale = {
+    ...current,
+    required: current.required.filter((path) => !path.startsWith("scripts/") && path !== "package.json"),
+  };
+  await writeFile(baselinePath, JSON.stringify(stale, null, 2) + "\n", "utf8");
+
+  assert.equal(await writeAgentsMd.check(ctx), "needs-apply");
+  assert.equal((await writeAgentsMd.verify(ctx)).ok, false);
+
+  await writeAgentsMd.apply(ctx);
+
+  assert.deepEqual(JSON.parse(await readFile(baselinePath, "utf8")), current);
+  assert.equal(await writeAgentsMd.check(ctx), "already-done");
+});

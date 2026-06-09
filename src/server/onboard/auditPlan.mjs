@@ -12,6 +12,7 @@ import { scrubHookBody } from "../tasks/writeGithooks.mjs";
 import { AGENT_SCRIPTS } from "../tasks/writeAgentLifecycle.mjs";
 import { hasCurrentManagedBlock } from "../tasks/managedMarkdownBlock.mjs";
 import { markdownMatchesSnapshotAllowingFrontmatter } from "../tasks/markdownFrontmatter.mjs";
+import { startupBaselineMatchesExpected } from "../tasks/startupBaselineContract.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GITHUB_WORKFLOWS_SNAPSHOT = join(__dirname, "..", "..", "snapshots", "github-workflows");
@@ -224,7 +225,7 @@ export async function auditPlan(plan) {
 
 async function startupReadiness(plan, items) {
   const baseline = await readStartupBaseline();
-  const required = Array.isArray(baseline.required) ? baseline.required : [];
+  const required = unique([".agent/startup-baseline.json", ...(Array.isArray(baseline.required) ? baseline.required : [])]);
   const expectedDirectories = Array.isArray(baseline.expectedDirectories) ? baseline.expectedDirectories : [];
   const legacy = Array.isArray(baseline.legacy) ? baseline.legacy : [];
   const byPath = new Map(items.map((item) => [item.path, item]));
@@ -318,7 +319,7 @@ function extractManagedAgentStartMap(body) {
 async function startupBaselineCurrent(root, expectedBaseline) {
   try {
     const actual = JSON.parse(await readFile(safeJoin(root, ".agent/startup-baseline.json"), "utf8"));
-    return actual.version === expectedBaseline.version;
+    return startupBaselineMatchesExpected(actual, expectedBaseline);
   } catch {
     return false;
   }
