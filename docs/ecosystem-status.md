@@ -1,6 +1,6 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-06-09 by Codex (required-gate ci:full guard #170 lane)_
+_Last updated: 2026-06-09 by Codex (required-gate label-skip concurrency #172 lane)_
 
 The canonical "what is the ecosystem doing right now?" document for the core ArchonVII source-of-truth repos and the active local health set. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
 
@@ -83,8 +83,8 @@ snapshot refresh or the change unblocks active work.
 
 | Repo               | Status        | Detail                                                                                                                                         |
 | ------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `github-workflows` | Clean on main | `v1` moved to `62d3f86` on 2026-06-09 (#60), preserving `ci:full` label reruns while preventing arbitrary label-triggered gate churn. No open PRs. |
-| `archon-setup`     | In progress   | #170 refreshes the required-gate snapshot to `62d3f86`; #145 PR1/PR2 merged (#146/#167). E2E roadmap filed: umbrella #154, milestones #155–#165. |
+| `github-workflows` | Clean on main | `v1` moved to `af0ac6e` on 2026-06-09 (#62), isolating skipped non-`ci:full` label runs from the real required-gate concurrency group. No open PRs. |
+| `archon-setup`     | In progress   | #172 refreshes the required-gate snapshot to `af0ac6e`; #145 PR1/PR2 merged (#146/#167). E2E roadmap filed: umbrella #154, milestones #155–#165. |
 | `repo-template`    | Clean on main | `origin/main` at `de95850`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 | `.github`          | Clean on main | `origin/main` at `1962f27`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 
@@ -132,6 +132,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 - **2026-06-09** — Released the `github-workflows` Go lane: moved `v1` to `c1ad03e` (#140), refreshed `archon-setup` snapshots across #139/#141/#142 (`githubWorkflows@c1ad03e`, `repoTemplate@de95850`, `orgDefaults@1962f27`), and added the active repo health registry (#144). Began the granular marker-based distributor (#145).
 - **2026-06-09** — Moved `github-workflows` `v1` to `dc64da5` (#58) and refreshed `archon-setup` snapshots (#168) so generated required-gate callers no longer rerun on arbitrary PR label changes.
 - **2026-06-09** — Moved `github-workflows` `v1` to `62d3f86` (#60) and refreshed `archon-setup` snapshots (#170) so generated required-gate callers preserve the `ci:full` label escape hatch without letting other label changes invoke or cancel the gate.
+- **2026-06-09** — Moved `github-workflows` `v1` to `af0ac6e` (#62) and refreshed `archon-setup` snapshots (#172) so skipped non-`ci:full` label-only workflow runs use a separate `label-skip-*` concurrency group and cannot replace pending real gate runs.
 - **2026-06-05** — `repo-template` PR #47 expanded the Owner Maintenance Lane safe docs set to add-only `docs/**` by default while preserving explicit unsafe docs paths.
 - **2026-06-02** — Distribution/lifecycle rollout landed in `archon-setup`: no-remote smoke-test policy + leaked-repo cleanup (#81), npm publication prep (#83), workflow drift detection + upgrade (#87), `.archon/events.jsonl` stream + ecosystem "Recent events" view (#89), thin Windows `npx` bootstrap `install.ps1` (#91), staged-disabled Copilot/secrets (#93), and the agent-lifecycle baseline (#64). Owner-gated remainder: delete the five leaked smoke-test repos, `npm publish`, and real secret values.
 - **2026-05-31** — `archon-setup` issue #59 completed through merged PR #60; snapshot manifest now records `github-workflows@v1` `00fbaab`, `repo-template` `7aa1e91`, and `.github` `0717902`.
