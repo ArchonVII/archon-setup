@@ -87,10 +87,32 @@ function ensureDependencyReviewBudgetDefaults(body) {
   return next;
 }
 
+const REQUIRED_GATE_PR_TYPES = "    types: [opened, edited, synchronize, reopened, ready_for_review]";
+
+function ensureRequiredGateTriggerDefaults(body) {
+  let next = body;
+
+  if (next.includes(REQUIRED_GATE_PR_TYPES)) {
+    return next;
+  }
+
+  const typedPullRequestRe =
+    /(  pull_request:\r?\n    branches: \[main\]\r?\n)(    types:\s*\r?\n      \[\s*\r?\n(?:        [A-Za-z_]+,\s*\r?\n)+      \]\s*\r?\n|    types: \[[^\]\r\n]*\]\s*\r?\n)/;
+  if (typedPullRequestRe.test(next)) {
+    return next.replace(typedPullRequestRe, `$1${REQUIRED_GATE_PR_TYPES}\n`);
+  }
+
+  return next.replace(
+    /(  pull_request:\r?\n    branches: \[main\]\r?\n)(?!    types:)/,
+    `$1${REQUIRED_GATE_PR_TYPES}\n`
+  );
+}
+
 export function applyBudgetDefaults(body) {
   const managedName = managedWorkflowName(body);
   if (managedName === "node-ci.yml") return ensureNodeCiBudgetDefaults(body);
   if (managedName === "dependency-review.yml") return ensureDependencyReviewBudgetDefaults(body);
+  if (managedName === "repo-required-gate.yml") return ensureRequiredGateTriggerDefaults(body);
   return body;
 }
 
