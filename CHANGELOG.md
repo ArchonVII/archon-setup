@@ -4,6 +4,13 @@
 
 ### Changed
 
+- Refreshed the `repo-template` snapshot to `main` commit `de95850`: agents no
+  longer get an untracked `.pr-body.md` scratch file from `agent:start-task`
+  (it dirtied worktrees and tripped close/preflight clean-tree gates). The
+  snapshot now ships `scripts/agent/pr-body.mjs` and the `agent:pr-body` script,
+  which print the issue-filled committed PR template to stdout for
+  `gh pr create/edit --body-file -`. (#141, pairs with repo-template#59)
+
 - Advanced the `github-workflows` snapshot to `v1` commit `c1ad03e`,
   adding the Go CI caller snapshot and refreshing the required-gate caller
   example with Go/polyglot options after the moving major tag was intentionally
