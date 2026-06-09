@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { REPO_TEMPLATE_SNAPSHOT } from "./repoTemplateSnapshot.mjs";
+import { normalizeSnapshotText, REPO_TEMPLATE_SNAPSHOT } from "./repoTemplateSnapshot.mjs";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { recordCreatedFile } from "../lib/manifest.mjs";
@@ -40,9 +40,9 @@ async function matchesSnapshot(ctx, file) {
   }
   const expected = await readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8");
   if (FRONTMATTER_AWARE_FILES.has(file)) {
-    return markdownMatchesSnapshotAllowingFrontmatter(actual, expected);
+    return markdownMatchesSnapshotAllowingFrontmatter(normalizeSnapshotText(actual), normalizeSnapshotText(expected));
   }
-  return actual === expected;
+  return normalizeSnapshotText(actual) === normalizeSnapshotText(expected);
 }
 
 export async function check(ctx) {
@@ -55,7 +55,7 @@ export async function check(ctx) {
 export async function apply(ctx) {
   const results = [];
   for (const file of FILES) {
-    const snapshotBody = await readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8");
+    const snapshotBody = normalizeSnapshotText(await readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8"));
     let body = snapshotBody;
     if (FRONTMATTER_AWARE_FILES.has(file)) {
       try {
