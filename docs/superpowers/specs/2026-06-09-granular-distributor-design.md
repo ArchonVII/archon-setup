@@ -49,6 +49,61 @@ A blind `--upgrade` sweep would revert `archon`/`hudson-bend` to `stack: minimal
 | DL13 | Commentless JSON stays out of the engine; existing whole-file handling persists only for already-classified centrally-owned + safety-gated files, else `skip`/`adoption_needed` | "keep whole-file managed handling" unqualified | Avoids smuggling managed-by-default back via JSON |
 | DL14 | NFRs (see §10) | — | Owner-added guardrails |
 
+## 3A. PR1 amendments (2026-06-09)
+
+Owner clarifications applied before implementation. Where these refine §§4–12, **the amendment governs.**
+
+**A1 — `--id` scopes action, not validity.** `--id` filters which *known* regions a run acts on. Known-but-unselected region ids are left **untouched and unflagged**. The unknown/deprecated check runs against the **full catalog** (`managed-regions.json`) independent of `--id`: a consumer region whose id is absent from the catalog is still a `conflict`. *(Refines §5, §9.)*
+
+**A2 — Adoption-anchor contract.** Every adoptable region declares an **anchor strategy** (where its block would be inserted). At reconcile:
+- safe **unique** anchor found → `adoption_needed`; `--write-preview` may emit a patch.
+- anchor **missing or ambiguous** (0 or >1 matches) → `adoption_needed` reporting the desired block **with no patch**.
+
+Never guess an insertion location. Anchors are explicit per region (e.g. `permissions.base` anchors to the unique `permissions:` mapping line under its job; a whole-file region anchors to "file-create" only). *(Refines §5, §9.)*
+
+**A3 — Lint has two modes.** `lint-managed-regions.mjs --write-manifest` regenerates `managed-regions.json`; `--check` verifies and **exits non-zero on any difference**. CI runs `--check` only and never rewrites. *(Refines §8.)*
+
+**A4 — `managed-regions.json` entry shape:**
+```json
+{ "id": "workflow.required-gate.permissions.base",
+  "provider": "github-workflows",
+  "snapshotFile": "src/snapshots/github-workflows/repo-required-gate.yml",
+  "targetRelpath": ".github/workflows/repo-required-gate.yml",
+  "adapter": "yaml",
+  "group": "callers",
+  "wholeFile": false,
+  "appliesToDefault": "existing-file-only" }
+```
+*(Refines §8.)*
+
+**A5 — Absent file vs absent region (authoritative):**
+
+| Target state | Result |
+| --- | --- |
+| file exists, region present, differs | `clean_apply` `changed:true` (replace inner) |
+| file exists, region present, equal | `clean_apply` `changed:false` |
+| file exists, region **absent** | `adoption_needed` (A2 decides patch/no-patch) |
+| file **absent**, `appliesTo(repo)` true | `clean_apply` `changed:true` — **create** from the marked snapshot |
+| file **absent**, `appliesTo(repo)` false | `skip` (not-applicable) |
+
+The **engine never creates files** — it reconciles regions in a provided body. The **distributor** owns the absent-file decision via `appliesTo` (seeded by `appliesToDefault`) and creates from the snapshot body only after the engine confirms that body is fully, validly marked. *(Refines §5, §10.)*
+
+**A6 — Exit-code precedence: `20 > 10 > 0`.** Dry-run: `20` if any adoption/conflict; else `10` if any pending `clean_apply` change; else `0`. `--apply`: perform clean writes, then exit `0` **only if no user action remains**; exit `20` if any adoption/conflict remains after the clean writes; `1` on operational failure. *(Refines §9.)*
+
+**A7 — Adapters are filesystem-free.** An adapter exports only pure data/functions: `commentStyle`, `detectDanger(body, plannedChange)`, and a **metadata-policy** descriptor (e.g. `{ preserveExecBit:true, shebangFirstLine:true }`). The **distributor** performs all `stat`/`chmod`/`read`/`write`/path-safety. *(Refines §4, §6.)*
+
+**A8 — Legacy AGENTS marker compatibility.** The engine recognizes the existing AGENTS marker shapes as **known** regions so globalUpdates delegation never reclassifies them as unknown→`conflict`:
+- `<!-- BEGIN ARCHONVII MANAGED BLOCK: <id> -->` / END (from `managedMarkdownBlock.mjs`)
+- `<!-- BEGIN ARCHONVII GLOBAL UPDATE: <id> -->` / END (from `globalUpdates.mjs`)
+
+The catalog adapter maps each existing global-update id to a region using its legacy marker shape. Any migration to the canonical `ARCHONVII MANAGED: <id>` shape is a later explicit step, never an implicit conflict. *(Refines §8, §9; regression-tested per §11.)*
+
+**A9 — Path-aware YAML danger detection.** The duplicate/conflict-key scanner is indentation/path-aware: it distinguishes top-level `permissions:` from `jobs.<job>.permissions:` and distinguishes sibling jobs, so a managed `permissions.base` key never false-conflicts against a same-named key at a different path. Still scan-only — never a full parse-rewrite. *(Refines §6.)*
+
+**A10 — PR1 uses fixtures, not provider markup.** PR1 (engine + adapters + lint + tests) is pure and self-contained: lint and reconcile tests run against **in-repo fixtures** under `test/fixtures/managed-regions/`. No provider-template markup and no snapshot changes land in PR1 — those are PR3–PR5. *(Refines §11, §12.)*
+
+---
+
 ## 4. Architecture
 
 Three layers, bottom-up. New code under `src/distributor/`.
