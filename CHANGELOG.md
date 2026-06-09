@@ -31,7 +31,9 @@
   audit from the workflow-only `archon-setup update` path. The audit now checks
   concrete agent lifecycle/doc-sweep files and `package.json` `agent:*` entries,
   and treats repo-local YAML frontmatter on managed wiki docs as current when
-  the baseline body matches. (#130)
+  the baseline body matches. It also treats `.agent/startup-baseline.json` as an
+  implicit required path and compares the contract body, so same-version contract
+  drift reopens repair. (#130)
 - Added a global update record for the agent startup baseline so the managed
   AGENTS distribution path can tell agents to use `AGENTS.md`, `agent:status`,
   `.agent/startup-baseline.json`, and `docs/plans/README.md` before searching

@@ -231,6 +231,60 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/agent/status.mjs"));
 });
 
+test("startup readiness reports stale same-version startup baseline contract", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
+  const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
+  const currentBaseline = JSON.parse(
+    await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", ".agent", "startup-baseline.json"), "utf8")
+  );
+  const staleBaseline = {
+    ...currentBaseline,
+    required: currentBaseline.required.filter((path) => !path.startsWith("scripts/") && path !== "package.json"),
+  };
+
+  await mkdir(join(root, ".agent", "coordination"), { recursive: true });
+  await mkdir(join(root, ".github"), { recursive: true });
+  await mkdir(join(root, "docs"), { recursive: true });
+  await writeFile(
+    join(root, "AGENTS.md"),
+    `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n`,
+    "utf8"
+  );
+  await writeFile(join(root, ".agent", "startup-baseline.json"), JSON.stringify(staleBaseline, null, 2) + "\n", "utf8");
+  await writeFile(join(root, "package.json"), JSON.stringify({ name: "demo", scripts: { ...AGENT_SCRIPTS } }, null, 2) + "\n");
+  await writeFile(join(root, "docs", "repo-update-log.md"), "# Repository Update Log\n\nLocal entries.\n", "utf8");
+  await writeFile(join(root, ".agent", "check-map.yml"), "version: 1\n", "utf8");
+  await writeFile(join(root, ".agent", "coordination", "README.md"), "# Coordination\n", "utf8");
+  await writeFile(join(root, ".github", "PULL_REQUEST_TEMPLATE.md"), "## Summary\n", "utf8");
+
+  for (const relativePath of [
+    "docs/plans/README.md",
+    "scripts/agent/lib.mjs",
+    "scripts/agent/start-task.mjs",
+    "scripts/agent/status.mjs",
+    "scripts/agent/prune.mjs",
+    "scripts/doc-sweep/lib.mjs",
+    "scripts/doc-sweep/git.mjs",
+    "scripts/doc-sweep/sweep.mjs",
+    "docs/agent-process/doc-sweep.md",
+  ]) {
+    await copySnapshot(root, relativePath);
+  }
+
+  const { stdout } = await execFileP(
+    process.execPath,
+    [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit", "--json"],
+    { cwd: REPO_ROOT }
+  );
+  const parsed = JSON.parse(stdout);
+
+  assert.equal(parsed.audit.startupReadiness.status, "incomplete");
+  assert.deepEqual(parsed.audit.startupReadiness.missing, []);
+  assert.ok(parsed.audit.startupReadiness.stale.includes(".agent/startup-baseline.json"));
+});
+
 test("human audit output distinguishes startup audit from workflow-only update", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);

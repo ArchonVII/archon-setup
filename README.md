@@ -106,7 +106,8 @@ legacy plan paths, and a repair command. Startup readiness checks the concrete
 agent lifecycle and doc-sweep files named by `.agent/startup-baseline.json`,
 plus the `package.json` `agent:*` entries. Managed wiki markdown files may carry
 repo-local YAML frontmatter; audit and repair preserve that metadata when the
-baseline body is current.
+baseline body is current. The startup baseline file itself is always checked as
+part of readiness, and same-version contract drift is treated as stale.
 
 **Existing repos.** In the browser wizard, choose **Existing repo** on Location.
 The wizard accepts a populated git repo, detects its GitHub `origin`, runs a

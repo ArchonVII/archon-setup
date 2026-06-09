@@ -10,6 +10,7 @@ import {
   applySnapshotPreservingFrontmatter,
   markdownMatchesSnapshotAllowingFrontmatter,
 } from "./markdownFrontmatter.mjs";
+import { startupBaselineMatchesExpected } from "./startupBaselineContract.mjs";
 
 const AGENTS_SNAPSHOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -88,6 +89,16 @@ async function fileMatchesMarkdownSnapshot(root, relativePath, snapshotBody) {
   }
 }
 
+async function startupBaselineCurrent(root) {
+  try {
+    const current = JSON.parse(await readFile(safeJoin(root, ".agent/startup-baseline.json"), "utf8"));
+    const expected = JSON.parse(await readFile(STARTUP_BASELINE_SNAPSHOT, "utf8"));
+    return startupBaselineMatchesExpected(current, expected);
+  } catch {
+    return false;
+  }
+}
+
 async function snapshotBodyPreservingFrontmatter(root, relativePath, snapshotBody) {
   try {
     const current = await readFile(safeJoin(root, relativePath), "utf8");
@@ -107,7 +118,7 @@ export async function check(ctx) {
     const current = await readFile(safeJoin(ctx.targetPath, "AGENTS.md"), "utf8");
     const snapshotBody = await readAgentsSnapshot(ctx);
     const updateLogDone = await fileExists(ctx.targetPath, "docs/repo-update-log.md");
-    const startupDone = await fileExists(ctx.targetPath, ".agent/startup-baseline.json");
+    const startupDone = await startupBaselineCurrent(ctx.targetPath);
     const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
     const plansReadmeDone = await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/plans/README.md", plansReadme);
     return agentsContractCurrent(current, snapshotBody) && updateLogDone && startupDone && plansReadmeDone
@@ -195,7 +206,9 @@ export async function verify(ctx) {
       return { ok: false, error: "AGENTS.md is missing the ArchonVII startup map" };
     }
     await access(safeJoin(ctx.targetPath, "docs/repo-update-log.md"), constants.F_OK);
-    await access(safeJoin(ctx.targetPath, ".agent/startup-baseline.json"), constants.F_OK);
+    if (!(await startupBaselineCurrent(ctx.targetPath))) {
+      return { ok: false, error: ".agent/startup-baseline.json is missing or stale" };
+    }
     const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
     if (!(await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/plans/README.md", plansReadme))) {
       return { ok: false, error: "docs/plans/README.md is missing or stale" };
