@@ -363,6 +363,14 @@ not silently mutate repositories:
 Agents must ask before distributing any global fix across the full ecosystem.
 If the answer is no, record the local fix and leave distribution unrun.
 
+Mechanical distribution PRs may use the reviewed auto-merge distribution lane
+only after the machine-enforced eligibility gate passes: explicit
+scope-confirmation, resolved decision items, clean post-apply audit, the
+`automated-distribution` label, PR body links to the decision doc and issue, and
+category/path allowlists that start narrowly with AGENTS-managed regions. Agent
+code PRs still use the normal reviewed close path and are not part of this
+auto-merge lane.
+
 Current recorded global fixes include:
 
 - `2026-05-31-browser-backend-preflight` - separates Browser plugin availability

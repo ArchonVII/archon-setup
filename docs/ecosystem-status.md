@@ -1,6 +1,6 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-06-09 by Claude (granular-distributor #145 lane)_
+_Last updated: 2026-06-09 by Claude (e2e roadmap #154 lane)_
 
 The canonical "what is the ecosystem doing right now?" document for the core ArchonVII source-of-truth repos and the active local health set. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
 
@@ -84,7 +84,7 @@ snapshot refresh or the change unblocks active work.
 | Repo               | Status        | Detail                                                                                                                                         |
 | ------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `github-workflows` | Clean on main | `v1` moved to `c1ad03e` on 2026-06-09 (#140), shipping the first-class Go lane; opt-in for consumers. No open PRs.                              |
-| `archon-setup`     | In progress   | #145 granular marker-based distributor — PR1 (pure engine/adapters/lint) landing; `distribute` subcommand + provider markup follow.           |
+| `archon-setup`     | In progress   | #145 PR1 merged (#146). E2E ecosystem-management roadmap filed: umbrella #154, milestones #155–#165. Next: `distribute` subcommand (#155 = #145 PR2). |
 | `repo-template`    | Clean on main | `origin/main` at `de95850`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 | `.github`          | Clean on main | `origin/main` at `1962f27`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 
@@ -92,7 +92,7 @@ snapshot refresh or the change unblocks active work.
 
 | Repo | PR | Purpose |
 | --- | --- | --- |
-| `archon-setup` | #145 | Granular marker-based distributor (repo-owned-by-default); PR1 = region engine + adapters + marker lint/manifest. |
+| — | — | None open as of 2026-06-09. Next planned: `archon-setup` #155 (`distribute` subcommand, #145 PR2). |
 
 ## F-roadmap
 
@@ -128,6 +128,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Recently completed
 
+- **2026-06-09** — Granular distributor PR1 merged (#146: region engine, adapters, marker lint/manifest); canonical ecosystem overview (#148), fix queue process (#150), CRLF-robust sync gate (#152). Filed the e2e ecosystem-management roadmap (umbrella #154, milestones #155–#165) and recorded the auto-merge distribution-lane decision (below).
 - **2026-06-09** — Released the `github-workflows` Go lane: moved `v1` to `c1ad03e` (#140), refreshed `archon-setup` snapshots across #139/#141/#142 (`githubWorkflows@c1ad03e`, `repoTemplate@de95850`, `orgDefaults@1962f27`), and added the active repo health registry (#144). Began the granular marker-based distributor (#145).
 - **2026-06-05** — `repo-template` PR #47 expanded the Owner Maintenance Lane safe docs set to add-only `docs/**` by default while preserving explicit unsafe docs paths.
 - **2026-06-02** — Distribution/lifecycle rollout landed in `archon-setup`: no-remote smoke-test policy + leaked-repo cleanup (#81), npm publication prep (#83), workflow drift detection + upgrade (#87), `.archon/events.jsonl` stream + ecosystem "Recent events" view (#89), thin Windows `npx` bootstrap `install.ps1` (#91), staged-disabled Copilot/secrets (#93), and the agent-lifecycle baseline (#64). Owner-gated remainder: delete the five leaked smoke-test repos, `npm publish`, and real secret values.
@@ -149,6 +150,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 | Date       | Decision                                                                                                                                                                                                                                                                                                                                                                                           | Why                                                                                                                                                                                                                 |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-09 | **Auto-merge distribution lane (#154/#159).** Owner-initiated mechanical distribution PRs — decision-doc-backed refresh runs executed by `archon-setup` — may enable auto-merge once required checks pass, behind a machine-enforced eligibility gate: explicit confirmation phrase, all decision items resolved (no conflict auto-resolved), category + changed-path allowlists (initially `agents` / `AGENTS.md` + `.archon/region-ownership.json`), `automated-distribution` label, PR body links the decision doc + issue, post-apply audit clean. Each new category expands the allowlist in its own reviewed PR. Agent code PRs keep the F7 no-self-merge rule. No pre-change safety commit: writes happen only in a disposable worktree on a branch cut from `origin/main`, so the recorded base SHA is the fallback and rollback is a revert PR through the same gate. | "Update Repo" must land end-to-end without a human merge step; a narrow, auditable, machine-enforced gate is safer than widening the F7 owner lane or trusting agent memory. |
 | 2026-06-02 | **No-remote smoke-test policy (#43).** Smoke tests must not create persistent GitHub repos. The fresh-repo remote path is exercised hermetically against a local bare repo via a `gh` mock; any live-GitHub smoke test is opt-in, uses exactly one repo, and must stop if it cannot delete. The five repos leaked by PR #41 are one-time manual cleanup via `scripts/cleanup-smoketest-repos.mjs`. | Removes the leaked-repo failure mode at the root instead of adding cleanup machinery, avoids granting broad `delete_repo` authority to agent sessions, and keeps CI reproducible without GitHub API/auth flakiness. |
 | 2026-06-05 | **Owner Maintenance Lane docs safe paths.** Add-only `docs/**` files are owner-maintenance safe by default, while explicit unsafe docs paths such as `docs/process/**` and `docs/architecture/**` still require normal PR lanes. | Lets low-risk docs that agents strand or prepare locally land quickly without weakening policy docs, architecture docs, code, config, or non-additive changes. |
 | 2026-05-31 | Strict PR readiness is enforced as executable policy, not agent memory: one shared validator, blessed ready wrapper, and expensive CI behind the cheap contract.                                                                                                                                                                                                                                   | Malformed ready-for-review transitions cost paid CI and have recurred; invalid PR metadata must be unrepresentable through the blessed path.                                                                        |
