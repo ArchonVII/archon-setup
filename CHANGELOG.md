@@ -4,6 +4,12 @@
 
 ### Changed
 
+- `refresh-snapshots` now preflights every existing provider checkout before
+  deleting or copying snapshot directories. The script refuses dirty providers
+  and refuses to label copied files as `v1`/`main` unless local `HEAD` matches
+  the declared tag or fetched `origin/main`, preventing manifest SHAs from
+  drifting away from the source ref they claim to describe. (#127)
+
 - `onboard --audit` now uses the same CRLF/LF-normalized managed-file
   comparison as the apply/check path, so `audit.startupReadiness` does not mark
   LF-enforced consumer script files stale when the setup snapshot checkout is

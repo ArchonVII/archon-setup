@@ -6,15 +6,16 @@
 
 import { writeFile, cp, rm, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(__dirname, "..");
-const SNAP = join(ROOT, "src", "snapshots");
+const MODULE_PATH = fileURLToPath(import.meta.url);
+const __dirname = dirname(MODULE_PATH);
+export const ROOT = join(__dirname, "..");
+export const SNAP = join(ROOT, "src", "snapshots");
 
-const SOURCES = [
+export const SOURCES = [
   {
     key: "githubWorkflows",
     source: "ArchonVII/github-workflows",
@@ -81,18 +82,85 @@ const SOURCES = [
   },
 ];
 
-function sha(path) {
-  return execSync("git rev-parse HEAD", { cwd: path }).toString().trim();
+export function gitOutput(path, args) {
+  try {
+    return execFileSync("git", ["-C", path, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+  } catch (err) {
+    const stderr = err.stderr?.toString().trim();
+    throw new Error(`git -C ${path} ${args.join(" ")} failed${stderr ? `: ${stderr}` : ""}`);
+  }
 }
 
-async function run() {
-  const manifest = { snapshots: {} };
-  for (const s of SOURCES) {
-    if (!existsSync(s.localPath)) {
-      console.warn(`skip ${s.key}: ${s.localPath} not found`);
+export function sha(path) {
+  return gitOutput(path, ["rev-parse", "HEAD"]);
+}
+
+export function expectedRef(source) {
+  if (source.ref === "main") return "refs/remotes/origin/main";
+  if (/^v\d+(?:[.-].*)?$/.test(source.ref)) return `refs/tags/${source.ref}`;
+  return source.ref;
+}
+
+export function validateSourceCheckout(source) {
+  gitOutput(source.localPath, ["rev-parse", "--is-inside-work-tree"]);
+
+  const dirty = gitOutput(source.localPath, ["status", "--porcelain", "--untracked-files=all"]);
+  if (dirty) {
+    const sample = dirty.split(/\r?\n/).slice(0, 5).join("; ");
+    throw new Error(
+      `Cannot refresh ${source.key}: source checkout ${source.localPath} is dirty (${sample}). ` +
+        "Commit, stash, or use a clean provider worktree before refreshing snapshots."
+    );
+  }
+
+  const head = sha(source.localPath);
+  const ref = expectedRef(source);
+  let refSha;
+  try {
+    refSha = gitOutput(source.localPath, ["rev-parse", "--verify", `${ref}^{commit}`]);
+  } catch (err) {
+    throw new Error(
+      `Cannot refresh ${source.key}: declared ref ${source.ref} (${ref}) is not available in ` +
+        `${source.localPath}. Fetch the provider refs/tags or update refresh-snapshots.mjs. ${err.message}`
+    );
+  }
+
+  if (head !== refSha) {
+    throw new Error(
+      `Cannot refresh ${source.key}: source checkout ${source.localPath} is at HEAD ${head}, ` +
+        `but declared ref ${source.ref} (${ref}) resolves to ${refSha}. ` +
+        "Check out the declared ref or intentionally update the snapshot source ref before refreshing."
+    );
+  }
+
+  return { head, ref, refSha };
+}
+
+export function validateSourceCheckouts(sources = SOURCES) {
+  const planned = [];
+  for (const source of sources) {
+    if (!existsSync(source.localPath)) {
+      console.warn(`skip ${source.key}: ${source.localPath} not found`);
       continue;
     }
-    const dest = join(SNAP, s.snapshotDir);
+    planned.push({ source, checkout: validateSourceCheckout(source) });
+  }
+  return planned;
+}
+
+export async function refreshSnapshots({
+  sources = SOURCES,
+  snapshotRoot = SNAP,
+  now = () => new Date(),
+} = {}) {
+  const planned = validateSourceCheckouts(sources);
+  const manifest = { snapshots: {} };
+
+  for (const { source: s, checkout } of planned) {
+    const dest = join(snapshotRoot, s.snapshotDir);
     await rm(dest, { recursive: true, force: true });
     if (s.copyFrom) {
       await cp(join(s.localPath, s.copyFrom), dest, { recursive: true });
@@ -110,17 +178,20 @@ async function run() {
     manifest.snapshots[s.key] = {
       source: s.source,
       ref: s.ref,
-      sha: sha(s.localPath),
-      capturedAt: new Date().toISOString(),
+      sha: checkout.head,
+      capturedAt: now().toISOString(),
       path: `src/snapshots/${s.snapshotDir}/`,
     };
     console.log(`refreshed ${s.key} @ ${manifest.snapshots[s.key].sha.slice(0, 7)}`);
   }
-  await writeFile(join(SNAP, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
+  await mkdir(snapshotRoot, { recursive: true });
+  await writeFile(join(snapshotRoot, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
   console.log("manifest written.");
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (resolve(process.argv[1] || "") === MODULE_PATH) {
+  refreshSnapshots().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
