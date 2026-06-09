@@ -11,7 +11,7 @@
 **Why this shape (decided by two independent councils + cross-review):**
 
 - Host inside `archon-setup` — its `ROADMAP.md` already plans "Events stream support … and a status-board view" and "Audit existing repo mode," and its "secrets must never touch disk or logs" doctrine matches our redaction requirement.
-- Read-only first — `.claude\skills`, `.codex\skills`, `.gemini\skills`, and `.claude\hooks` are all **junctions into `C:\Users\josep\skills\shared`**, so any write hits three live CLIs with no lock. Editing is deferred behind diff-preview + atomic write.
+- Read-only first — some CLI skill folders may be **junction aliases** to shared source checkouts in a given local install, so writes can affect multiple live CLIs with no lock. Do not assume all CLI skill roots resolve to `C:\Users\josep\skills\shared`; verify each root with `Get-Item` before writing, and use the active session skill registry for runtime loading. Editing is deferred behind diff-preview + atomic write.
 - Port ownership is **timestamped, never asserted** — the live registry proves staleness in both directions (ghost `7881`; live `5300/5912/5913` absent) and every `launcher*` field is `null`.
 - Emit JSON in Phase 1 (not deferred to an MCP) — it's the _source_ the HTML renders from, and it's what turns "is 5174 mine?" into a file read today.
 
