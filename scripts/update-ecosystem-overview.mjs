@@ -3,9 +3,11 @@
 // docs/ecosystem-overview.md from config/ecosystem-map.json + the live snapshot
 // refs in src/snapshots/manifest.json. Human prose around the block is never touched.
 //
-//   node bin/update-ecosystem-overview.mjs           # rewrite the block in place
-//   node bin/update-ecosystem-overview.mjs --check    # exit 1 if the block is stale
+//   npm run update-ecosystem-overview            # rewrite the block in place
+//   node scripts/update-ecosystem-overview.mjs --check   # exit 1 if the block is stale
 //
+// Source-only maintenance tool — it reads config/ and docs/, which are not in the
+// published package, so it lives under scripts/ (not the shipped bin/).
 // The --check mode is what the test/ecosystemOverview.test.mjs sync gate and CI use.
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -41,7 +43,7 @@ if (check) {
   }
   console.error(
     "ecosystem-overview.md generated block is STALE.\n" +
-      "Run: node bin/update-ecosystem-overview.mjs",
+      "Run: npm run update-ecosystem-overview",
   );
   process.exit(1);
 }

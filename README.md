@@ -227,7 +227,7 @@ Existing agent-facing capabilities:
   carries the change-routing and managed-content rules an agent needs before
   touching anything another repo depends on. The repo-inventory block is
   generated from `config/ecosystem-map.json` + live snapshot refs via
-  `node bin/update-ecosystem-overview.mjs` (`--check` is enforced by `npm test`).
+  `npm run update-ecosystem-overview` (`--check` is enforced by `npm test`).
   It is meta-repo only and is intentionally not linked from `repo-template`, so
   consumer repos stay coordination-isolated.
 - **Headless existing-repo audit** - `npm run onboard -- <repo> --audit`

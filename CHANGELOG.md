@@ -2,17 +2,6 @@
 
 ## Unreleased
 
-### Added
-
-- `docs/ecosystem-overview.md` — canonical high-level map of the ArchonVII meta
-  layer (org-default/workflow/template providers, the archon-setup integrator,
-  and the `jma-skill-review` skill source), with change-routing and
-  managed-content rules. The repo-inventory block is generated from
-  `config/ecosystem-map.json` + live `src/snapshots/manifest.json` refs via
-  `bin/update-ecosystem-overview.mjs`; `npm test` enforces it is in sync. The
-  overview is meta-repo only and intentionally not snapshotted into consumer
-  repos, preserving per-repo coordination-isolation. (#147)
-
 ### Changed
 
 - Refreshed the `repo-template` snapshot to `main` commit `de95850`: agents no
@@ -70,6 +59,15 @@
   hook and regressing it. (#110)
 
 ### Added
+
+- `docs/ecosystem-overview.md` — canonical high-level map of the ArchonVII meta
+  layer (org-default/workflow/template providers, the archon-setup integrator,
+  and the `jma-skill-review` skill source), with change-routing and
+  managed-content rules. The repo-inventory block is generated from
+  `config/ecosystem-map.json` + live `src/snapshots/manifest.json` refs via
+  `npm run update-ecosystem-overview`; `npm test` enforces it is in sync. The
+  overview is meta-repo only and intentionally not snapshotted into consumer
+  repos, preserving per-repo coordination-isolation. (#147)
 
 - Added a canonical ecosystem repo registry for the Ecosystem snapshot/health
   surface. `src/server/ecosystem/repoRegistry.json` now defines the active set

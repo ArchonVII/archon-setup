@@ -9,7 +9,7 @@ make a change so it propagates correctly and **does not** clobber something mana
 > The repo-map table below is generated from
 > [`config/ecosystem-map.json`](../config/ecosystem-map.json) + the live snapshot
 > refs in [`src/snapshots/manifest.json`](../src/snapshots/manifest.json). Do not
-> hand-edit it — run `node bin/update-ecosystem-overview.mjs`.
+> hand-edit it — run `npm run update-ecosystem-overview`.
 
 ## When to read this
 
@@ -76,7 +76,7 @@ _Provider snapshots captured 2026-06-09T12:40:14.137Z … 2026-06-09T12:40:14.22
 | Snapshot/onboarding behavior | `C:\GitHub\archon-setup` | — |
 
 For repair-target routing during an incident, page-gm uses
-[`skills-policy.md`](https://github.com/ArchonVII/jma-skill-review) and its own
+[`skills-policy.md`](https://github.com/ArchonVII/jma-skill-review/blob/main/docs/skills-policy.md) and its own
 `references/routing.md`; this table is the constructive counterpart.
 
 ## Managed-content rules (don't clobber, don't lose)
@@ -107,7 +107,7 @@ For repair-target routing during an incident, page-gm uses
 To add or change a global skill, read, in order:
 
 1. this overview (where the skill source sits in the ecosystem),
-2. [`skills-policy.md`](https://github.com/ArchonVII/jma-skill-review) — loading,
+2. [`skills-policy.md`](https://github.com/ArchonVII/jma-skill-review/blob/main/docs/skills-policy.md) — loading,
    junctions, repair routing, duplicates, promotion/retirement,
 3. `docs/skill-catalog.md` — the existing index (avoid duplicating a skill),
 4. the `writing-skills` skill — authoring conventions,
@@ -115,8 +115,9 @@ To add or change a global skill, read, in order:
 
 Author in `C:\Users\josep\skills\shared\<name>\SKILL.md`, update the catalog, PR
 through `ArchonVII/jma-skill-review`. **Do not** put a global skill in
-`repo-template` (that would snapshot a personal capability into every repo) — see
-[`pattern-tool-agnostic-capability`].
+`repo-template` — that would snapshot a personal capability into every repo.
+Ecosystem-wide *agent behaviors* ship as a reusable workflow plus an `AGENTS.md`
+contract, never as a per-repo skill copy.
 
 ## Why consumer repos don't link here
 
@@ -132,8 +133,8 @@ pointed here; agents inside ordinary repos start from that repo's local `AGENTS.
 ## Freshness
 
 - The repo-map block is generated. After editing `config/ecosystem-map.json` or
-  refreshing snapshots, run `node bin/update-ecosystem-overview.mjs`.
-- `node bin/update-ecosystem-overview.mjs --check` fails if the committed block is
+  refreshing snapshots, run `npm run update-ecosystem-overview`.
+- `node scripts/update-ecosystem-overview.mjs --check` fails if the committed block is
   stale; `test/ecosystemOverview.test.mjs` enforces this on every `npm test`.
 - Prose sections are human-maintained and explain concepts; the generated block holds
   volatile inventory (paths, roles, snapshot refs).

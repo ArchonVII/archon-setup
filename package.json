@@ -13,6 +13,7 @@
     "agent:close-preflight": "node scripts/agent-close-preflight.mjs",
     "agent:pr-ready": "node scripts/agent-pr-ready.mjs",
     "refresh-snapshots": "node scripts/refresh-snapshots.mjs",
+    "update-ecosystem-overview": "node scripts/update-ecosystem-overview.mjs",
     "snapshot": "node bin/ecosystem-snapshot.mjs",
     "test": "node --test \"test/*.test.mjs\"",
     "prepublishOnly": "node scripts/prepublish-check.mjs"
