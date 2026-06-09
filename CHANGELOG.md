@@ -4,6 +4,11 @@
 
 ### Changed
 
+- Corrected the snapshot manifest after a clean provider refresh so
+  `githubWorkflows` records current `v1` (`b27979b`) and `orgDefaults` records
+  `.github` `origin/main` (`1962f27`). Snapshot file bodies were unchanged.
+  (#127)
+
 - `refresh-snapshots` now preflights every existing provider checkout before
   deleting or copying snapshot directories. The script refuses dirty providers
   and refuses to label copied files as `v1`/`main` unless local `HEAD` matches
