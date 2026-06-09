@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "kind": "run-state-machine",
+  "title": "PR-lane run state machine (M3 seam): runRecord.mjs appends one transition per JSONL line and must enforce these invariants",
+  "terminalRule": "terminal means the run is settled; a terminal state may transition only to rollback_requested (F8 post-merge-verify failure and F9 later regression reopen a settled run through the rollback chain, never through retry)",
+  "initial": "planned",
+  "states": [
+    { "id": "planned", "terminal": false, "requires": ["runId", "baseSha"] },
+    { "id": "preflight_started", "terminal": false, "requires": ["runId", "baseSha"] },
+    { "id": "preflight_passed", "terminal": false, "requires": ["runId", "baseSha"] },
+    { "id": "issue_created", "terminal": false, "requires": ["runId", "baseSha", "issueNumber"] },
+    {
+      "id": "worktree_created",
+      "terminal": false,
+      "requires": ["runId", "baseSha", "branch", "worktreePath"],
+      "notes": "cleanup removes worktree+branch if no PR exists yet"
+    },
+    { "id": "applied", "terminal": false, "requires": ["runId", "baseSha", "branch", "worktreePath"] },
+    { "id": "verified_local", "terminal": false, "requires": ["runId", "baseSha", "branch", "worktreePath"] },
+    { "id": "committed", "terminal": false, "requires": ["runId", "baseSha", "branch", "headSha"] },
+    { "id": "pushed", "terminal": false, "requires": ["runId", "baseSha", "branch", "headSha"] },
+    {
+      "id": "pr_created",
+      "terminal": false,
+      "requires": ["runId", "baseSha", "branch", "headSha", "prNumber"],
+      "notes": "the branch is never deleted while the PR is open"
+    },
+    { "id": "checks_pending", "terminal": false, "requires": ["runId", "baseSha", "branch", "headSha", "prNumber"] },
+    { "id": "merge_queued", "terminal": false, "requires": ["runId", "baseSha", "branch", "headSha", "prNumber"] },
+    {
+      "id": "merged",
+      "terminal": false,
+      "requires": ["runId", "baseSha", "prNumber", "mergeSha"],
+      "notes": "no direct retry past this point - only verify or rollback"
+    },
+    { "id": "verified_merged", "terminal": false, "requires": ["runId", "baseSha", "prNumber", "mergeSha"] },
+    { "id": "cleaned_up", "terminal": true, "requires": ["runId", "baseSha", "prNumber", "mergeSha"] },
+    { "id": "rollback_requested", "terminal": false, "requires": ["runId", "mergeSha"] },
+    { "id": "rollback_pr_created", "terminal": false, "requires": ["runId", "mergeSha", "rollbackPrNumber"] },
+    { "id": "rollback_merged", "terminal": false, "requires": ["runId", "mergeSha", "rollbackPrNumber", "rollbackMergeSha"] },
+    { "id": "rollback_verified", "terminal": true, "requires": ["runId", "mergeSha", "rollbackPrNumber", "rollbackMergeSha"] },
+    {
+      "id": "failed",
+      "terminal": true,
+      "requires": ["runId", "failedStage", "errorClass", "safeNextAction"]
+    },
+    { "id": "aborted", "terminal": true, "requires": ["runId"] }
+  ],
+  "transitions": [
+    { "from": "planned", "to": "preflight_started" },
+    { "from": "preflight_started", "to": "preflight_passed" },
+    { "from": "preflight_passed", "to": "issue_created" },
+    { "from": "issue_created", "to": "worktree_created" },
+    { "from": "worktree_created", "to": "applied" },
+    { "from": "applied", "to": "verified_local" },
+    { "from": "verified_local", "to": "committed" },
+    { "from": "committed", "to": "pushed" },
+    { "from": "pushed", "to": "pr_created" },
+    { "from": "pr_created", "to": "checks_pending" },
+    { "from": "checks_pending", "to": "merge_queued" },
+    { "from": "merge_queued", "to": "merged" },
+    { "from": "merged", "to": "verified_merged" },
+    { "from": "verified_merged", "to": "cleaned_up" },
+    { "from": "merged", "to": "rollback_requested" },
+    { "from": "verified_merged", "to": "rollback_requested" },
+    { "from": "cleaned_up", "to": "rollback_requested" },
+    { "from": "failed", "to": "rollback_requested" },
+    { "from": "rollback_requested", "to": "rollback_pr_created" },
+    { "from": "rollback_pr_created", "to": "rollback_merged" },
+    { "from": "rollback_merged", "to": "rollback_verified" }
+  ],
+  "wildcardTransitions": [
+    {
+      "to": "failed",
+      "fromAnyNonTerminal": true,
+      "notes": "any non-terminal state may fail; the record keeps failedStage/errorClass/safeNextAction"
+    },
+    {
+      "to": "aborted",
+      "fromAnyNonTerminal": true,
+      "excludeFrom": ["merged", "verified_merged", "rollback_requested", "rollback_pr_created", "rollback_merged"],
+      "notes": "abort is only meaningful pre-merge; after merge the safe path is rollback, not abort"
+    }
+  ]
+}
