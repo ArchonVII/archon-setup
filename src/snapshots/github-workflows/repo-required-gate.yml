@@ -7,16 +7,7 @@ name: Repo Required Gate
 on:
   pull_request:
     branches: [main]
-    types:
-      [
-        opened,
-        edited,
-        synchronize,
-        reopened,
-        ready_for_review,
-        labeled,
-        unlabeled,
-      ]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
   merge_group:
 
 permissions:
@@ -115,5 +106,7 @@ jobs:
       # Default label is `ci:full`. Apply it to a PR to bypass path-based
       # routing and run the full language CI surface — e.g. a workflow-only
       # change that semantically affects CI.
+      # If you add the label after the latest gate run, rerun the workflow,
+      # push a new commit, or use another normal PR event to refresh the gate.
       #
       # force-full-ci-label: ci:full

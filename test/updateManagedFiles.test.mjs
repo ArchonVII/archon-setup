@@ -88,6 +88,52 @@ test("preserves node-ci custom inputs while adding budget defaults", async () =>
   );
 });
 
+test("removes required-gate label triggers while preserving custom inputs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "archon-update-"));
+  const workflowDir = join(root, ".github", "workflows");
+  await mkdir(workflowDir, { recursive: true });
+  await writeFile(
+    join(workflowDir, "repo-required-gate.yml"),
+    [
+      "name: Repo Required Gate",
+      "",
+      "on:",
+      "  pull_request:",
+      "    branches: [main]",
+      "    types:",
+      "      [",
+      "        opened,",
+      "        edited,",
+      "        synchronize,",
+      "        reopened,",
+      "        ready_for_review,",
+      "        labeled,",
+      "        unlabeled,",
+      "      ]",
+      "  merge_group:",
+      "",
+      "jobs:",
+      "  repo-required-gate:",
+      "    uses: ArchonVII/github-workflows/.github/workflows/repo-required-gate.yml@v1",
+      "    with:",
+      "      stack: node",
+      "      npm-typecheck-script: typecheck",
+      "      run-dependency-review: false",
+      "",
+    ].join("\n")
+  );
+
+  const result = await updateManagedFiles({ targetPath: root });
+  const updated = await readFile(join(workflowDir, "repo-required-gate.yml"), "utf8");
+
+  assert.equal(result.updated, 1);
+  assert.match(updated, /types: \[opened, edited, synchronize, reopened, ready_for_review\]/);
+  assert.doesNotMatch(updated, /^\s*labeled,?\s*$/m);
+  assert.doesNotMatch(updated, /^\s*unlabeled,?\s*$/m);
+  assert.match(updated, /npm-typecheck-script: typecheck/);
+  assert.match(updated, /run-dependency-review: false/);
+});
+
 test("skips local or unmanaged workflow files", async () => {
   const root = await mkdtemp(join(tmpdir(), "archon-update-"));
   const workflowDir = join(root, ".github", "workflows");

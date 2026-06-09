@@ -31,6 +31,13 @@
   decision-doc/issue links, and a clean post-apply audit. Agent code PRs remain
   on the normal reviewed close path. (#154)
 
+- Advanced the `github-workflows` snapshot to `v1` commit `dc64da5`, carrying the
+  required-gate caller fix that stops arbitrary PR label changes such as
+  `no-changelog` from rerunning and canceling the stable branch-protection gate.
+  `archon-setup update` now also applies that trigger-only repair to customized
+  managed callers without replacing their repo-specific `with:` inputs. (#168,
+  pairs with github-workflows#57/#58)
+
 - Refreshed the `repo-template` snapshot to `main` commit `de95850`: agents no
   longer get an untracked `.pr-body.md` scratch file from `agent:start-task`
   (it dirtied worktrees and tripped close/preflight clean-tree gates). The
