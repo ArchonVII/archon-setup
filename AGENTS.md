@@ -74,8 +74,21 @@ Mode 1 (direct edit) until concurrent PRs cause merge conflicts on `CHANGELOG.md
 ## Global Workflow Updates
 
 - When changing global/shared agent, workflow, onboarding, skill, or ecosystem
-  policy, record the update in this repo's global update catalog, README, and
-  CHANGELOG in the same PR.
+  policy that should be distributed into consumer `AGENTS.md` files, record the
+  update in this repo's global update catalog, README, and CHANGELOG in the same
+  PR. Coordinator-only process changes update README, CHANGELOG, and
+  `docs/ecosystem-status.md` instead.
+- Use the Ecosystem Fix Queue in `docs/ecosystem-status.md` for low-urgency
+  source-of-truth fixes that should be reviewed together before the next
+  `archon-setup` snapshot refresh. Do not run `npm run refresh-snapshots` for
+  every small provider/doc change by default; fix the provider first, queue the
+  snapshot impact, and batch the refresh unless the owner asks for an immediate
+  one or the change unblocks active work.
+- Atomic commits are not atomic PRs. Companion docs, changelog, roadmap, status,
+  and update-log edits that describe the same issue phase or slice belong in
+  that same PR, usually as final commits after verification. Open a separate PR
+  only for a separate issue/phase, unrelated housekeeping, or material review
+  risk expansion.
 - Ask the user explicitly before disseminating a global fix across the full
   ecosystem. Do not assume a local/global config fix should be pushed into every
   repo without confirmation.
