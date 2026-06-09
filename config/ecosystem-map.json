@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-06-09",
+  "description": "Canonical map of the ArchonVII meta/ecosystem layer (providers, integrator, skill source). Roles mirror src/server/ecosystem/repoRegistry.json. Snapshot facts for provider repos are joined live from src/snapshots/manifest.json at render time, not stored here. This map intentionally excludes application/consumer repos so the per-repo coordination-isolation contract is preserved.",
+  "snapshotManifestPath": "src/snapshots/manifest.json",
+  "repos": [
+    {
+      "id": "org-defaults",
+      "name": ".github",
+      "owner": "ArchonVII",
+      "repo": ".github",
+      "remote": "https://github.com/ArchonVII/.github",
+      "localPath": "C:/GitHub/.github",
+      "role": "org-defaults-provider",
+      "summary": "Org-level community-health defaults that auto-apply to any ArchonVII repo lacking its own copy.",
+      "owns": [
+        "issue templates",
+        "pull request templates",
+        "SECURITY.md",
+        "release.yml",
+        "STARTER.md doc-policy guide"
+      ],
+      "consumers": ["every ArchonVII repo without a repo-local override"],
+      "snapshotKey": "orgDefaults"
+    },
+    {
+      "id": "github-workflows",
+      "name": "github-workflows",
+      "owner": "ArchonVII",
+      "repo": "github-workflows",
+      "remote": "https://github.com/ArchonVII/github-workflows",
+      "localPath": "C:/GitHub/github-workflows",
+      "role": "workflow-provider",
+      "summary": "Reusable GitHub Actions workflows, consumed by callers at the moving @v1 major tag, plus scripts/setup-repo.mjs.",
+      "owns": [
+        "reusable workflow bodies (examples/*.yml)",
+        "scripts/setup-repo.mjs (labels + branch protection)"
+      ],
+      "consumers": ["caller workflows in every onboarded repo (pinned at @v1)"],
+      "versioning": {
+        "publicRef": "v1",
+        "retagPolicy": "v1 is a deliberately-moved major tag; retag only via the leased v1-retag pattern after the owner go"
+      },
+      "snapshotKey": "githubWorkflows"
+    },
+    {
+      "id": "repo-template",
+      "name": "repo-template",
+      "owner": "ArchonVII",
+      "repo": "repo-template",
+      "remote": "https://github.com/ArchonVII/repo-template",
+      "localPath": "C:/GitHub/repo-template",
+      "role": "baseline-provider",
+      "summary": "Passive clone-target template. Its AGENTS.md is the canonical per-repo cross-tool agent contract; archon-setup snapshots from here.",
+      "owns": [
+        "AGENTS.md (canonical per-repo contract)",
+        ".agent/ startup + check-map baseline",
+        "scripts/agent/ lifecycle helpers",
+        "scripts/doc-sweep/"
+      ],
+      "consumers": ["every onboarded repo (via archon-setup snapshot)"],
+      "snapshotKey": "repoTemplate"
+    },
+    {
+      "id": "archon-setup",
+      "name": "archon-setup",
+      "owner": "ArchonVII",
+      "repo": "archon-setup",
+      "remote": "https://github.com/ArchonVII/archon-setup",
+      "localPath": "C:/GitHub/archon-setup",
+      "role": "ecosystem-health-hub",
+      "summary": "The integrator. Bootstraps and audits repos, holds SHA-pinned snapshots of the three providers under src/snapshots/, owns the feature registry, the global update catalog, and the ecosystem-state health surface. The only repo that legitimately references all siblings.",
+      "owns": [
+        "src/snapshots/ (SHA-pinned provider snapshots)",
+        "src/registry/features.json (feature registry)",
+        "src/server/globalUpdates.mjs (distributable AGENTS.md fixes)",
+        "ecosystem-state.json health surface",
+        "config/ecosystem-map.json + docs/ecosystem-overview.md (this map)"
+      ],
+      "consumers": ["agents onboarding or auditing repos; users running npx @archonvii/archon-setup"],
+      "snapshotKey": null
+    },
+    {
+      "id": "skills-review",
+      "name": "jma-skill-review",
+      "owner": "ArchonVII",
+      "repo": "jma-skill-review",
+      "remote": "https://github.com/ArchonVII/jma-skill-review",
+      "localPath": "C:/Users/josep/skills",
+      "role": "skill-source",
+      "summary": "Source-of-truth checkout for shared agent skills and personas. shared/ is exposed to Claude/Codex/Gemini via per-CLI junction aliases; loading still comes from the active session registry, not a path assumption.",
+      "owns": [
+        "shared/ (active shared skills)",
+        "shared/agents/ (cross-tool personas, e.g. gamemaster)",
+        "docs/skills-policy.md (canonical skills policy)",
+        "docs/skill-catalog.md (skills index)"
+      ],
+      "consumers": [
+        "Claude/Codex/Gemini skill roots (junction aliases to shared/)",
+        "page-gm repair routing"
+      ],
+      "aliases": {
+        "note": "Verify each with Get-Item before treating as a junction; do not infer from path text.",
+        "roots": [
+          "C:/Users/josep/.claude/skills",
+          "C:/Users/josep/.codex/skills",
+          "C:/Users/josep/.gemini/skills"
+        ]
+      },
+      "snapshotKey": null
+    }
+  ]
+}
