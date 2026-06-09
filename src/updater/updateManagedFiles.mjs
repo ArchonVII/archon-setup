@@ -87,25 +87,65 @@ function ensureDependencyReviewBudgetDefaults(body) {
   return next;
 }
 
-const REQUIRED_GATE_PR_TYPES = "    types: [opened, edited, synchronize, reopened, ready_for_review]";
+const REQUIRED_GATE_PR_TYPES = "    types: [opened, edited, synchronize, reopened, ready_for_review, labeled, unlabeled]";
+const REQUIRED_GATE_CONCURRENCY = [
+  "concurrency:",
+  "  group: repo-required-gate-${{ github.event.pull_request.number || github.ref }}",
+  "  cancel-in-progress: >-",
+  "    ${{",
+  "      github.event_name == 'pull_request' &&",
+  "      (",
+  "        (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||",
+  "        github.event.label.name == 'ci:full'",
+  "      )",
+  "    }}",
+].join("\n");
+const REQUIRED_GATE_JOB_IF = [
+  "    if: >-",
+  "      ${{",
+  "        github.event_name != 'pull_request' ||",
+  "        (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||",
+  "        github.event.label.name == 'ci:full'",
+  "      }}",
+].join("\n");
 
 function ensureRequiredGateTriggerDefaults(body) {
   let next = body;
 
-  if (next.includes(REQUIRED_GATE_PR_TYPES)) {
-    return next;
-  }
-
   const typedPullRequestRe =
     /(  pull_request:\r?\n    branches: \[main\]\r?\n)(    types:\s*\r?\n      \[\s*\r?\n(?:        [A-Za-z_]+,\s*\r?\n)+      \]\s*\r?\n|    types: \[[^\]\r\n]*\]\s*\r?\n)/;
-  if (typedPullRequestRe.test(next)) {
-    return next.replace(typedPullRequestRe, `$1${REQUIRED_GATE_PR_TYPES}\n`);
+  if (!next.includes(REQUIRED_GATE_PR_TYPES)) {
+    if (typedPullRequestRe.test(next)) {
+      next = next.replace(typedPullRequestRe, `$1${REQUIRED_GATE_PR_TYPES}\n`);
+    } else {
+      next = next.replace(
+        /(  pull_request:\r?\n    branches: \[main\]\r?\n)(?!    types:)/,
+        `$1${REQUIRED_GATE_PR_TYPES}\n`
+      );
+    }
   }
 
-  return next.replace(
-    /(  pull_request:\r?\n    branches: \[main\]\r?\n)(?!    types:)/,
-    `$1${REQUIRED_GATE_PR_TYPES}\n`
-  );
+  const concurrencyGroupRe =
+    /(concurrency:\r?\n  group: repo-required-gate-\$\{\{ github\.event\.pull_request\.number \|\| github\.ref \}\}\r?\n)(?:  cancel-in-progress:[^\r\n]*(?:\r?\n    [^\r\n]*)*\r?\n)?/;
+  if (concurrencyGroupRe.test(next)) {
+    next = next.replace(concurrencyGroupRe, `${REQUIRED_GATE_CONCURRENCY}\n`);
+  } else {
+    next = next.replace(/\r?\njobs:\r?\n/, `\n${REQUIRED_GATE_CONCURRENCY}\n\njobs:\n`);
+  }
+
+  if (!next.includes("github.event.label.name == 'ci:full'")) {
+    next = next.replace(
+      /(\n  repo-required-gate:\r?\n)(?!    if:)/,
+      `$1${REQUIRED_GATE_JOB_IF}\n`
+    );
+  } else if (!next.includes("    if: >-")) {
+    next = next.replace(
+      /(\n  repo-required-gate:\r?\n)(?!    if:)/,
+      `$1${REQUIRED_GATE_JOB_IF}\n`
+    );
+  }
+
+  return next;
 }
 
 export function applyBudgetDefaults(body) {

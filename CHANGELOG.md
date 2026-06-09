@@ -51,6 +51,14 @@
   managed callers without replacing their repo-specific `with:` inputs. (#168,
   pairs with github-workflows#57/#58)
 
+- Advanced the `github-workflows` snapshot again to `v1` commit `62d3f86`,
+  preserving the `ci:full` force-full label as the only label change that can
+  run or cancel the required gate. Other label changes skip the guarded caller
+  path instead of replacing the stable `repo-required-gate / decision` result.
+  `archon-setup update` repairs customized required-gate callers to this guarded
+  trigger pattern while preserving repo-specific `with:` inputs. (#170, pairs
+  with github-workflows#59/#60)
+
 - Refreshed the `repo-template` snapshot to `main` commit `de95850`: agents no
   longer get an untracked `.pr-body.md` scratch file from `agent:start-task`
   (it dirtied worktrees and tripped close/preflight clean-tree gates). The
