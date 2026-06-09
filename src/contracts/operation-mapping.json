@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "kind": "operation-mapping",
+  "title": "Golden decision table: every raw AGENTS-group distributor file state maps to exactly one Operation action (plan 'Operation mapping'; DL4 deterministic + explainable)",
+  "notes": [
+    "Match key: (raw.status, raw.changed, raw.created). A null in 'when' means the dimension does not discriminate for that row.",
+    "raw.created means the target file did not exist when the audit ran. distributeRepo results do not carry existence, so M1's refresh engine computes it from its own pre-reconcile existence probe and stamps it into RepoRefreshReport raw blocks.",
+    "operation.currentState null means scenario-dependent: M1 computes it from the concrete finding (e.g. a skipped item may be a missing or a present file); the action mapping stays exactly-one regardless.",
+    "options lists the closed resolution vocabulary a DecisionDoc item with this state offers; an empty list means there is no decision to make (the item is informational)."
+  ],
+  "rows": [
+    {
+      "rowId": "already-current",
+      "when": { "status": "clean_apply", "changed": false, "created": null },
+      "operation": { "action": "skip", "currentState": "present" },
+      "recommended": null,
+      "recommendationReason": "already-current",
+      "requiresConfirmation": false,
+      "options": []
+    },
+    {
+      "rowId": "managed-drift",
+      "when": { "status": "clean_apply", "changed": true, "created": false },
+      "operation": { "action": "merge", "currentState": "drifted" },
+      "recommended": "apply-central",
+      "recommendationReason": "managed-region-clean-update",
+      "requiresConfirmation": false,
+      "options": ["apply-central", "keep-local", "defer"]
+    },
+    {
+      "rowId": "managed-create",
+      "when": { "status": "clean_apply", "changed": true, "created": true },
+      "operation": { "action": "create", "currentState": "missing" },
+      "recommended": "apply-central",
+      "recommendationReason": "managed-region-create",
+      "requiresConfirmation": false,
+      "options": ["apply-central", "defer"]
+    },
+    {
+      "rowId": "adoption",
+      "when": { "status": "adoption_needed", "changed": null, "created": null },
+      "operation": { "action": "needs_review", "currentState": "missing" },
+      "recommended": "apply-central",
+      "recommendationReason": "adoption-needs-confirmation",
+      "requiresConfirmation": true,
+      "options": ["apply-central", "keep-local", "defer"]
+    },
+    {
+      "rowId": "conflict",
+      "when": { "status": "conflict", "changed": null, "created": null },
+      "operation": { "action": "blocked", "currentState": null },
+      "recommended": null,
+      "recommendationReason": "blocked-conflict-requires-human-resolution",
+      "requiresConfirmation": false,
+      "options": ["apply-central", "keep-local", "merge-manual", "defer"]
+    },
+    {
+      "rowId": "not-applicable",
+      "when": { "status": "skip", "changed": null, "created": null },
+      "operation": { "action": "skip", "currentState": null },
+      "recommended": null,
+      "recommendationReason": "not-applicable",
+      "requiresConfirmation": false,
+      "options": []
+    },
+    {
+      "rowId": "operational-failure",
+      "when": { "status": "failed", "changed": null, "created": null },
+      "operation": { "action": "blocked", "currentState": null },
+      "recommended": null,
+      "recommendationReason": "blocked-operational-failure",
+      "requiresConfirmation": false,
+      "options": ["defer"]
+    }
+  ]
+}
