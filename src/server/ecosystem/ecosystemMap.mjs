@@ -91,5 +91,8 @@ export function extractEcosystemMapBlock(docText) {
   if (start === -1 || end === -1 || end < start) {
     throw new Error(`ecosystem-map markers not found or malformed in document`);
   }
-  return docText.slice(start + BLOCK_START.length, end).replace(/^\n/, "").replace(/\n$/, "");
+  // CRLF-aware: on a Windows checkout the doc has \r\n, so strip an optional \r
+  // around the boundary newlines instead of leaving an orphaned \r that the
+  // comparison gate would choke on.
+  return docText.slice(start + BLOCK_START.length, end).replace(/^\r?\n/, "").replace(/\r?\n$/, "");
 }
