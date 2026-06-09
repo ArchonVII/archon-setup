@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "kind": "run-report",
+  "runId": "run-2026-06-09-0003",
+  "ts": "2026-06-09T15:00:00.000Z",
+  "repo": { "owner": "ArchonVII", "name": "consumer-repo", "defaultBranch": "main" },
+  "baseSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+  "branch": "agent/refresh/run-2026-06-09-0003",
+  "state": "merging",
+  "results": { "applied": [], "skipped": [], "blocked": [], "failed": [] },
+  "verification": {
+    "local": { "status": "passed" },
+    "postMerge": { "status": "pending" }
+  },
+  "rollbackCommand": "node bin/archon-setup.mjs rollback --run run-2026-06-09-0003"
+}

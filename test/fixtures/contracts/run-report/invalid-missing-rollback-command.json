@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "run-report",
+  "runId": "run-2026-06-09-0004",
+  "ts": "2026-06-09T15:00:00.000Z",
+  "repo": { "owner": "ArchonVII", "name": "consumer-repo", "defaultBranch": "main" },
+  "baseSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+  "branch": "agent/refresh/run-2026-06-09-0004",
+  "state": "merged",
+  "results": { "applied": [], "skipped": [], "blocked": [], "failed": [] },
+  "verification": {
+    "local": { "status": "passed" },
+    "postMerge": { "status": "pending" }
+  }
+}
