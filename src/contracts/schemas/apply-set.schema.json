@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archon-setup/contracts/apply-set",
+  "title": "ApplySet (intake -> PR-lane seam): resolved items plus machine-enforced guards; M3 builds against synthetic instances of this shape",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "runId", "repo", "sourceDecisionDoc", "items", "guards"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "apply-set" },
+    "runId": { "type": "string", "minLength": 1 },
+    "repo": {
+      "type": "object",
+      "required": ["owner", "name", "defaultBranch", "baseSha"],
+      "additionalProperties": false,
+      "properties": {
+        "owner": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "defaultBranch": { "type": "string", "minLength": 1 },
+        "baseSha": { "$ref": "#/$defs/gitSha" }
+      }
+    },
+    "sourceDecisionDoc": {
+      "type": "object",
+      "required": ["fingerprint"],
+      "additionalProperties": false,
+      "properties": {
+        "fingerprint": { "$ref": "#/$defs/sha256" },
+        "issueNumber": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "items": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/applyItem" } },
+    "guards": {
+      "type": "object",
+      "required": ["allowAutoMerge", "allowedPathPatterns", "requiredConfirmationPhraseHash"],
+      "additionalProperties": false,
+      "properties": {
+        "allowAutoMerge": { "type": "boolean" },
+        "allowedPathPatterns": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "requiredConfirmationPhraseHash": { "$ref": "#/$defs/sha256" }
+      }
+    }
+  },
+  "$defs": {
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "applyItem": {
+      "type": "object",
+      "required": [
+        "itemId",
+        "category",
+        "regionId",
+        "file",
+        "resolution",
+        "expectedFileSha256",
+        "expectedRegionInnerSha256",
+        "writePlan"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "itemId": { "type": "string", "minLength": 1 },
+        "category": { "enum": ["agents", "hooks", "callers", "baseline", "skills"] },
+        "regionId": { "type": ["string", "null"] },
+        "file": { "type": "string", "minLength": 1 },
+        "resolution": { "enum": ["apply-central", "keep-local", "merge-manual", "defer"] },
+        "expectedFileSha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "expectedRegionInnerSha256": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "writePlan": {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["replace-region", "create-file", "append-region", "record-ownership"] },
+            "sourceCatalogId": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

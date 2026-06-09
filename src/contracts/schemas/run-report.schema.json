@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archon-setup/contracts/run-report",
+  "title": "RunReport (M3/M4 seam): frontend-spec RunReport extended with PR-lane fields (runId, baseSha, branch, issue, pr, mergeSha, verification, rollbackCommand) - extended, not reinvented",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kind",
+    "runId",
+    "ts",
+    "repo",
+    "baseSha",
+    "branch",
+    "state",
+    "results",
+    "verification",
+    "rollbackCommand"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "run-report" },
+    "runId": { "type": "string", "minLength": 1 },
+    "ts": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T" },
+    "repo": {
+      "type": "object",
+      "required": ["owner", "name", "defaultBranch"],
+      "additionalProperties": false,
+      "properties": {
+        "owner": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "path": { "type": ["string", "null"] },
+        "defaultBranch": { "type": "string", "minLength": 1 }
+      }
+    },
+    "baseSha": { "$ref": "#/$defs/gitSha" },
+    "branch": { "type": "string", "minLength": 1 },
+    "issue": { "type": ["integer", "null"], "minimum": 1 },
+    "pr": {
+      "type": ["object", "null"],
+      "required": ["number"],
+      "additionalProperties": false,
+      "properties": {
+        "number": { "type": "integer", "minimum": 1 },
+        "url": { "type": "string", "minLength": 1 }
+      }
+    },
+    "mergeSha": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "state": {
+      "enum": [
+        "planned",
+        "preflight_started",
+        "preflight_passed",
+        "issue_created",
+        "worktree_created",
+        "applied",
+        "verified_local",
+        "committed",
+        "pushed",
+        "pr_created",
+        "checks_pending",
+        "merge_queued",
+        "merged",
+        "verified_merged",
+        "cleaned_up",
+        "rollback_requested",
+        "rollback_pr_created",
+        "rollback_merged",
+        "rollback_verified",
+        "failed",
+        "aborted"
+      ]
+    },
+    "results": {
+      "type": "object",
+      "required": ["applied", "skipped", "blocked", "failed"],
+      "additionalProperties": false,
+      "properties": {
+        "applied": { "type": "array", "items": { "$ref": "#/$defs/resultItem" } },
+        "skipped": { "type": "array", "items": { "$ref": "#/$defs/resultItem" } },
+        "blocked": { "type": "array", "items": { "$ref": "#/$defs/resultItem" } },
+        "failed": { "type": "array", "items": { "$ref": "#/$defs/resultItem" } }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": ["local", "postMerge"],
+      "additionalProperties": false,
+      "properties": {
+        "local": { "$ref": "#/$defs/verificationGate" },
+        "postMerge": { "$ref": "#/$defs/verificationGate" }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "required": ["failedStage", "errorClass", "safeNextAction"],
+      "additionalProperties": false,
+      "properties": {
+        "failedStage": { "type": "string", "minLength": 1 },
+        "errorClass": { "type": "string", "minLength": 1 },
+        "safeNextAction": { "type": "string", "minLength": 1 }
+      }
+    },
+    "rollbackCommand": { "type": "string", "minLength": 1 },
+    "repoState": {
+      "type": "object",
+      "required": ["branch", "dirty"],
+      "additionalProperties": false,
+      "properties": {
+        "branch": { "type": "string", "minLength": 1 },
+        "dirty": { "type": "boolean" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "copyable": { "type": "string" }
+  },
+  "$defs": {
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "resultItem": {
+      "type": "object",
+      "required": ["itemId", "file"],
+      "additionalProperties": false,
+      "properties": {
+        "itemId": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "minLength": 1 },
+        "regionId": { "type": ["string", "null"] },
+        "action": { "enum": ["create", "overwrite", "merge", "skip", "blocked", "needs_review"] },
+        "detail": { "type": "string" }
+      }
+    },
+    "verificationGate": {
+      "type": "object",
+      "required": ["status"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "enum": ["passed", "failed", "pending", "skipped"] },
+        "detail": { "type": "string" }
+      }
+    }
+  }
+}

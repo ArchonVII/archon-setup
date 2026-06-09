@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archon-setup/contracts/decision-doc",
+  "title": "DecisionDoc (M2 seam, canonical JSON): items with fingerprints, closed options vocabulary, resolution block, review-bundle instructions",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kind",
+    "runId",
+    "createdAt",
+    "repo",
+    "repoFingerprint",
+    "provenance",
+    "reviewBundle",
+    "items"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "decision-doc" },
+    "runId": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T" },
+    "repo": {
+      "type": "object",
+      "required": ["name", "defaultBranch", "baseSha"],
+      "additionalProperties": false,
+      "properties": {
+        "owner": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "path": { "type": ["string", "null"] },
+        "defaultBranch": { "type": "string", "minLength": 1 },
+        "baseSha": { "$ref": "#/$defs/gitSha" }
+      }
+    },
+    "repoFingerprint": {
+      "type": "object",
+      "required": ["headSha", "files"],
+      "additionalProperties": false,
+      "properties": {
+        "headSha": { "$ref": "#/$defs/gitSha" },
+        "files": { "type": "object", "additionalProperties": { "$ref": "#/$defs/sha256" } }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["managedRegionsSha256"],
+      "additionalProperties": false,
+      "properties": {
+        "managedRegionsSha256": { "$ref": "#/$defs/sha256" },
+        "snapshotShas": { "type": "object", "additionalProperties": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "reviewBundle": {
+      "type": "object",
+      "required": ["instructions"],
+      "additionalProperties": false,
+      "properties": {
+        "instructions": { "type": "string", "minLength": 1 }
+      }
+    },
+    "items": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/decisionItem" } }
+  },
+  "$defs": {
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "category": { "enum": ["agents", "hooks", "callers", "baseline", "skills"] },
+    "resolutionChoice": { "enum": ["apply-central", "keep-local", "merge-manual", "defer"] },
+    "decisionItem": {
+      "type": "object",
+      "required": [
+        "itemId",
+        "category",
+        "regionId",
+        "file",
+        "raw",
+        "operation",
+        "evidence",
+        "fingerprints",
+        "options",
+        "recommended",
+        "recommendationReason",
+        "resolution"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "itemId": { "type": "string", "minLength": 1 },
+        "category": { "$ref": "#/$defs/category" },
+        "regionId": { "type": ["string", "null"] },
+        "file": { "type": "string", "minLength": 1 },
+        "raw": {
+          "type": "object",
+          "required": ["status", "changed"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "enum": ["clean_apply", "adoption_needed", "conflict", "skip", "failed"] },
+            "reason": { "type": "string" },
+            "changed": { "type": "boolean" },
+            "created": { "type": "boolean" }
+          }
+        },
+        "operation": {
+          "type": "object",
+          "required": ["action", "currentState"],
+          "additionalProperties": false,
+          "properties": {
+            "action": { "enum": ["create", "overwrite", "merge", "skip", "blocked", "needs_review"] },
+            "currentState": { "enum": ["missing", "present", "drifted", "unknown"] },
+            "requiresConfirmation": { "type": "boolean" },
+            "blockerReason": { "type": "string" }
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "required": ["diff", "diagnostics", "truncated", "redacted"],
+          "additionalProperties": false,
+          "properties": {
+            "diff": { "type": ["string", "null"] },
+            "diagnostics": { "type": "array", "items": { "type": "string" } },
+            "truncated": { "type": "boolean" },
+            "redacted": { "type": "boolean" }
+          }
+        },
+        "fingerprints": {
+          "type": "object",
+          "required": ["fileSha256", "regionInnerSha256"],
+          "additionalProperties": false,
+          "properties": {
+            "fileSha256": {
+              "type": ["string", "null"],
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "regionInnerSha256": {
+              "type": ["string", "null"],
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/resolutionChoice" }
+        },
+        "recommended": { "enum": ["apply-central", "keep-local", "merge-manual", "defer", null] },
+        "recommendationReason": {
+          "enum": [
+            "managed-region-clean-update",
+            "managed-region-create",
+            "already-current",
+            "adoption-needs-confirmation",
+            "not-applicable",
+            "blocked-conflict-requires-human-resolution",
+            "blocked-operational-failure"
+          ]
+        },
+        "resolution": {
+          "type": "object",
+          "required": ["choice", "rationale", "freeText", "decidedBy", "decidedAt"],
+          "additionalProperties": false,
+          "properties": {
+            "choice": { "enum": ["apply-central", "keep-local", "merge-manual", "defer", null] },
+            "rationale": { "type": ["string", "null"] },
+            "freeText": { "type": ["string", "null"] },
+            "decidedBy": { "type": ["string", "null"] },
+            "decidedAt": { "type": ["string", "null"] }
+          }
+        }
+      }
+    }
+  }
+}

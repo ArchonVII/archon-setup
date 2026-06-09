@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archon-setup/contracts/repo-refresh-report",
+  "title": "RepoRefreshReport (M1 seam): one repo's per-category audit expressed as Operation projections",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "generatedAt", "repo", "status", "categories"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "repo-refresh-report" },
+    "generatedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T" },
+    "repo": {
+      "type": "object",
+      "required": ["name", "branch"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "path": { "type": ["string", "null"] },
+        "branch": { "type": ["string", "null"] },
+        "defaultBranch": { "type": "string", "minLength": 1 },
+        "baseSha": { "$ref": "#/$defs/gitSha" }
+      }
+    },
+    "status": { "enum": ["ok", "skipped"] },
+    "reason": {
+      "enum": ["missing-path", "repo-unavailable", "unknown-branch", "dirty-worktree", "protected-main"]
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "items"],
+        "additionalProperties": false,
+        "properties": {
+          "category": { "$ref": "#/$defs/category" },
+          "items": { "type": "array", "items": { "$ref": "#/$defs/refreshItem" } }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "category": { "enum": ["agents", "hooks", "callers", "baseline", "skills"] },
+    "refreshItem": {
+      "type": "object",
+      "required": ["itemId", "category", "regionId", "file", "raw", "operation", "recommended", "recommendationReason"],
+      "additionalProperties": false,
+      "properties": {
+        "itemId": { "type": "string", "minLength": 1 },
+        "category": { "$ref": "#/$defs/category" },
+        "regionId": { "type": ["string", "null"] },
+        "file": { "type": "string", "minLength": 1 },
+        "raw": {
+          "type": "object",
+          "required": ["status", "changed"],
+          "additionalProperties": false,
+          "properties": {
+            "status": { "enum": ["clean_apply", "adoption_needed", "conflict", "skip", "failed"] },
+            "reason": { "type": "string" },
+            "changed": { "type": "boolean" },
+            "created": { "type": "boolean" }
+          }
+        },
+        "operation": { "$ref": "#/$defs/operationProjection" },
+        "recommended": { "enum": ["apply-central", "keep-local", "merge-manual", "defer", null] },
+        "recommendationReason": {
+          "enum": [
+            "managed-region-clean-update",
+            "managed-region-create",
+            "already-current",
+            "adoption-needs-confirmation",
+            "not-applicable",
+            "blocked-conflict-requires-human-resolution",
+            "blocked-operational-failure"
+          ]
+        }
+      }
+    },
+    "operationProjection": {
+      "type": "object",
+      "required": ["action", "currentState"],
+      "additionalProperties": false,
+      "properties": {
+        "action": { "enum": ["create", "overwrite", "merge", "skip", "blocked", "needs_review"] },
+        "currentState": { "enum": ["missing", "present", "drifted", "unknown"] },
+        "requiresConfirmation": { "type": "boolean" },
+        "diff": { "type": ["string", "null"] },
+        "blockerReason": { "type": "string" }
+      }
+    }
+  }
+}
