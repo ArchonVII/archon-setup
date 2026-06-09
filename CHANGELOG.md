@@ -24,6 +24,13 @@
 
 ### Changed
 
+- Recorded the e2e ecosystem-management roadmap and the auto-merge
+  distribution-lane decision for owner-initiated mechanical distribution PRs:
+  eligibility is machine-gated by explicit scope confirmation, resolved
+  decision items, category/path allowlists, `automated-distribution` labeling,
+  decision-doc/issue links, and a clean post-apply audit. Agent code PRs remain
+  on the normal reviewed close path. (#154)
+
 - Refreshed the `repo-template` snapshot to `main` commit `de95850`: agents no
   longer get an untracked `.pr-body.md` scratch file from `agent:start-task`
   (it dirtied worktrees and tripped close/preflight clean-tree gates). The
