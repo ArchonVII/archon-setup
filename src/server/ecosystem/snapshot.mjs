@@ -5,6 +5,7 @@ import { collectGovernance } from "./collectGovernance.mjs";
 import { collectAmber } from "./collectAmber.mjs";
 import { collectSignals } from "./collectSignals.mjs";
 import { collectEvents } from "./collectEvents.mjs";
+import { activeRepoEntries, loadRepoRegistry } from "./repoRegistry.mjs";
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
 
@@ -26,6 +27,7 @@ export function assembleSnapshot({ ports, repos, governance, amber, signals, eve
     summary,
     ports: ports.ports ?? [],
     repos: repos.repos ?? [],
+    repoRegistry: repos.registry ?? null,
     governance: governance ?? { id: "governance", status: "yellow", detail: "not collected", repos: [] },
     amber,
     signals,
@@ -33,21 +35,28 @@ export function assembleSnapshot({ ports, repos, governance, amber, signals, eve
   };
 }
 
-// Thin I/O wrapper: runs all collectors in parallel and assembles.
-export async function buildSnapshot({ portRegistryPath, githubRoot, amberNode, anomaliesPath }) {
-  // Per-repo signal files live under githubRoot: noticed.md at
-  // <repo>/.claude/noticed.md and the event stream at <repo>/.archon/events.jsonl.
-  let noticedPaths = [];
-  let eventsJsonlPaths = [];
+async function repoSignalPaths(githubRoot, registry) {
+  if (registry) return activeRepoEntries(registry).map((entry) => entry.path).filter(Boolean);
   try {
     const dirs = (await readdir(githubRoot, { withFileTypes: true })).filter((e) => e.isDirectory());
-    noticedPaths = dirs.map((e) => join(githubRoot, e.name, ".claude", "noticed.md"));
-    eventsJsonlPaths = dirs.map((e) => join(githubRoot, e.name, ".archon", "events.jsonl"));
-  } catch { /* no root */ }
+    return dirs.map((e) => join(githubRoot, e.name));
+  } catch {
+    return [];
+  }
+}
+
+// Thin I/O wrapper: runs all collectors in parallel and assembles.
+export async function buildSnapshot({ portRegistryPath, githubRoot, amberNode, anomaliesPath, repoRegistryPath } = {}) {
+  // Per-repo signal files live under githubRoot: noticed.md at
+  // <repo>/.claude/noticed.md and the event stream at <repo>/.archon/events.jsonl.
+  const registry = await loadRepoRegistry(repoRegistryPath);
+  const repoPaths = await repoSignalPaths(githubRoot, registry);
+  const noticedPaths = repoPaths.map((repoPath) => join(repoPath, ".claude", "noticed.md"));
+  const eventsJsonlPaths = repoPaths.map((repoPath) => join(repoPath, ".archon", "events.jsonl"));
 
   const [ports, repos, governance, amber, signals, events] = await Promise.all([
     collectPorts(portRegistryPath),
-    collectRepos(githubRoot),
+    collectRepos({ githubRoot, registry, repoRegistryPath }),
     collectGovernance(),
     collectAmber(amberNode),
     collectSignals(anomaliesPath, noticedPaths),

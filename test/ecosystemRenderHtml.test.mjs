@@ -7,6 +7,15 @@ const SNAP = {
   summary: { green: 2, yellow: 1, red: 1 },
   ports: [{ port: 5174, command: "vite", live: true, recordedAt: "t" }],
   repos: [{ name: "archon-setup", branch: "main", dirty: false, worktrees: [] }],
+  repoRegistry: {
+    active: 1,
+    inactive: 1,
+    sourcePath: "C:/GitHub/archon-setup/src/server/ecosystem/repoRegistry.json",
+    repositories: [
+      { id: "archon-setup", name: "archon-setup", lifecycle: "active", healthTarget: true },
+      { id: "jma-ui", name: "jma-ui", lifecycle: "inactive", healthTarget: false, reason: "retired" },
+    ],
+  },
   governance: {
     repos: [{
       owner: "ArchonVII",
@@ -33,6 +42,9 @@ test("renderHtml emits a self-contained document with the key facts", () => {
   assert.match(html, /5174/);
   assert.match(html, /archon-setup/);
   assert.match(html, /Repository governance/);
+  assert.match(html, /Repo registry: 1 active/);
+  assert.match(html, /Inactive registry entries/);
+  assert.match(html, /jma-ui/);
   assert.match(html, /classic: present/);
   assert.match(html, /required gate: required/);
   assert.match(html, /offline/i);

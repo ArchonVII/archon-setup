@@ -16,6 +16,7 @@
 | ----------------- | ------------------------------ | --------------------------------------------------------------- |
 | `--out-dir`       | `~/.claude`                    | where both artifacts are written                                |
 | `--github-root`   | `C:\GitHub`                    | root scanned for first-level git repos                          |
+| `--repo-registry` | built-in active repo registry  | JSON registry for active/inactive repo health targets; `none` disables it |
 | `--port-registry` | `~/.claude/port-registry.json` | the port→pid→command registry                                   |
 | `--anomalies`     | `~/.claude/anomalies.md`       | anomaly log                                                     |
 | `--amber-node`    | `amber`                        | case-insensitive regex matched against tailscale peer HostNames |
@@ -41,13 +42,40 @@
   "repos": [
     {
       "name": "archon-setup",
+      "owner": "ArchonVII",
+      "repo": "archon-setup",
+      "role": "ecosystem-health-hub",
+      "lifecycle": "active",
+      "healthTarget": true,
       "path": "C:\\GitHub\\archon-setup",
+      "available": true,
       "branch": "main",
       "dirty": false,
       "lastCommit": { "hash": "…", "committedAt": "ISO", "subject": "…" },
       "worktrees": [{ "path": "…", "branch": "…" }]
     }
   ],
+  "repoRegistry": {
+    "schemaVersion": 1,
+    "updatedAt": "2026-06-09",
+    "sourcePath": "…\\src\\server\\ecosystem\\repoRegistry.json",
+    "active": 9,
+    "inactive": 1,
+    "total": 10,
+    "repositories": [
+      {
+        "id": "skills-review",
+        "name": "skills-review",
+        "owner": "ArchonVII",
+        "repo": "jma-skill-review",
+        "path": "C:\\Users\\josep\\skills",
+        "lifecycle": "active",
+        "healthTarget": true,
+        "role": "skill-source",
+        "reason": null
+      }
+    ]
+  },
   "governance": {
     "id": "governance",
     "status": "green|yellow|red",
@@ -96,6 +124,14 @@
   `recordedAt` is when the registry entry was written — it may be stale. Treat port
   ownership as **timestamped evidence, not authority** (PIDs are reused; the registry
   can lag in both directions).
+- **`repoRegistry`** is the canonical active/inactive repository list for this
+  ecosystem health surface. The built-in registry lives at
+  `src/server/ecosystem/repoRegistry.json`; active entries are collected into
+  `repos[]`, inactive entries stay visible in `repoRegistry.repositories[]` but
+  are not scanned as health targets. As of 2026-06-09, `jma-ui` is intentionally
+  inactive, while `pigafetta`, `jma-history`, `skills-review`
+  (`ArchonVII/jma-skill-review` at `C:\Users\josep\skills`), and `hudson-bend`
+  are active alongside the core ArchonVII repos.
 - **`governance`** queries GitHub through read-only `gh api` calls for the four hub
   repos: `ArchonVII/.github`, `ArchonVII/github-workflows`, `ArchonVII/repo-template`,
   and `ArchonVII/archon-setup`. `classic` is the default branch protection endpoint;

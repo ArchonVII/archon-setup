@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-06-09",
+  "description": "Canonical local active repository registry for archon-setup ecosystem health.",
+  "repositories": [
+    {
+      "id": "archon",
+      "name": "archon",
+      "owner": "ArchonVII",
+      "repo": "archon",
+      "path": "C:/GitHub/archon",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "application"
+    },
+    {
+      "id": "archon-setup",
+      "name": "archon-setup",
+      "owner": "ArchonVII",
+      "repo": "archon-setup",
+      "path": "C:/GitHub/archon-setup",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "ecosystem-health-hub"
+    },
+    {
+      "id": "github-workflows",
+      "name": "github-workflows",
+      "owner": "ArchonVII",
+      "repo": "github-workflows",
+      "path": "C:/GitHub/github-workflows",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "workflow-provider"
+    },
+    {
+      "id": "repo-template",
+      "name": "repo-template",
+      "owner": "ArchonVII",
+      "repo": "repo-template",
+      "path": "C:/GitHub/repo-template",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "baseline-provider"
+    },
+    {
+      "id": "org-defaults",
+      "name": ".github",
+      "owner": "ArchonVII",
+      "repo": ".github",
+      "path": "C:/GitHub/.github",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "org-defaults-provider"
+    },
+    {
+      "id": "pigafetta",
+      "name": "pigafetta",
+      "owner": "ArchonVII",
+      "repo": "pigafetta",
+      "path": "C:/PythonProjects/pigafetta",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "application"
+    },
+    {
+      "id": "jma-history",
+      "name": "jma-history",
+      "owner": "ArchonVII",
+      "repo": "jma-history",
+      "path": "C:/jma/jma-history",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "application"
+    },
+    {
+      "id": "skills-review",
+      "name": "skills-review",
+      "owner": "ArchonVII",
+      "repo": "jma-skill-review",
+      "path": "C:/Users/josep/skills",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "skill-source"
+    },
+    {
+      "id": "hudson-bend",
+      "name": "hudson-bend",
+      "owner": "ArchonVII",
+      "repo": "hudson-bend",
+      "path": "C:/jill/hudson-bend",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "application"
+    },
+    {
+      "id": "jma-ui",
+      "name": "jma-ui",
+      "owner": "ArchonVII",
+      "repo": "jma-ui",
+      "path": "C:/jma/jma-ui",
+      "lifecycle": "inactive",
+      "healthTarget": false,
+      "role": "application",
+      "reason": "User marked inactive on 2026-06-09; do not include in active ecosystem health targets."
+    }
+  ]
+}

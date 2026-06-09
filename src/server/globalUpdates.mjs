@@ -1,6 +1,7 @@
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { collectRepos } from "./ecosystem/collectRepos.mjs";
+import { DEFAULT_REPO_REGISTRY_PATH } from "./ecosystem/repoRegistry.mjs";
 
 const BROWSER_BACKEND_UPDATE_ID = "2026-05-31-browser-backend-preflight";
 const STRICT_PR_READY_UPDATE_ID = "2026-05-31-strict-pr-ready-contract";
@@ -240,6 +241,7 @@ export async function distributeGlobalUpdate({
   confirmation,
   dryRun = true,
   githubRoot = "C:\\GitHub",
+  repoRegistryPath = DEFAULT_REPO_REGISTRY_PATH,
   repos,
   now = new Date().toISOString(),
   logPath,
@@ -261,7 +263,7 @@ export async function distributeGlobalUpdate({
     };
   }
 
-  const targetRepos = repos ?? (await collectRepos(githubRoot)).repos;
+  const targetRepos = repos ?? (await collectRepos({ githubRoot, repoRegistryPath })).repos;
   const protectedBranches = new Set(record.distribution.protectedBranches || ["main", "master"]);
   const results = [];
 

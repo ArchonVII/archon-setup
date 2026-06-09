@@ -799,15 +799,35 @@ function renderSnapshot(snap) {
     const wt = r.worktrees?.length ?? 0;
     reposUl.append(
       h("li", { class: "flex items-center gap-2 text-sm" },
-        dotEl(!r.dirty),
+        dotEl(r.available !== false && !r.dirty),
         h("span", { class: "font-medium" }, r.name),
         h("span", { class: "text-slate-500" }, "@" + (r.branch || "?")),
         r.dirty ? h("span", { class: "text-xs text-amber-700" }, "dirty") : null,
+        r.available === false ? h("span", { class: "text-xs text-rose-700" }, r.reason || "unavailable") : null,
         wt > 1 ? h("span", { class: "text-xs text-slate-400" }, "· " + wt + " worktrees") : null
       )
     );
   }
   wrap.append(reposUl);
+
+  if (snap.repoRegistry) {
+    const inactive = (snap.repoRegistry.repositories || []).filter((r) => r.lifecycle !== "active" || r.healthTarget === false);
+    wrap.append(
+      h("div", { class: "mt-3 rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600" },
+        h("div", { class: "font-medium text-slate-800" }, `Repo registry: ${snap.repoRegistry.active} active, ${snap.repoRegistry.inactive} inactive`),
+        h("div", { class: "mt-1 font-mono truncate", title: snap.repoRegistry.sourcePath || "" }, snap.repoRegistry.sourcePath || "embedded registry"),
+        inactive.length
+          ? h("ul", { class: "mt-2 space-y-1" },
+              ...inactive.map((r) => h("li", {},
+                h("span", { class: "font-medium text-slate-700" }, r.name),
+                h("span", {}, " - inactive"),
+                r.reason ? h("span", { class: "text-slate-500" }, ": " + r.reason) : null
+              ))
+            )
+          : null
+      )
+    );
+  }
 
   wrap.append(
     h("h3", { class: "mt-5 font-medium" }, "Recent signals ",
