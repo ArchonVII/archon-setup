@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 import * as writeAgentLifecycle from "../src/server/tasks/writeAgentLifecycle.mjs";
 import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
-import { REPO_TEMPLATE_SNAPSHOT } from "../src/server/tasks/repoTemplateSnapshot.mjs";
+import { normalizeSnapshotText, REPO_TEMPLATE_SNAPSHOT } from "../src/server/tasks/repoTemplateSnapshot.mjs";
 
 const SCRIPT_FILES = [
   "scripts/agent/lib.mjs",
@@ -28,7 +28,7 @@ async function readPkg(targetPath) {
 }
 
 function snapshotBody(file) {
-  return readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8");
+  return readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8").then(normalizeSnapshotText);
 }
 
 test("apply copies the four agent lifecycle scripts into the target", async () => {

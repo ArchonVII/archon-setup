@@ -4,6 +4,14 @@
 
 ### Changed
 
+- Managed repo-template snapshot comparisons now normalize CRLF/LF line endings,
+  and snapshot writes normalize to LF, so LF-enforced consumer repos do not
+  report false stale doc-sweep or agent-lifecycle files when `archon-setup` is
+  checked out on Windows. Scoped onboarding manifest writes now merge prior
+  `selectedFeatures`, `createdFiles`, skipped files, remote actions, and
+  post-check history instead of replacing it with only the current scoped run.
+  (#133)
+
 - Refreshed the `repo-template` snapshot to `6a8fda9`, adding the versioned
   startup baseline, plan README, startup-aware `agent:status`, managed AGENTS
   start map, and concrete agent lifecycle/doc-sweep startup file contract from

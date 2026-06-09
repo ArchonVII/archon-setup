@@ -14,6 +14,10 @@ export const REPO_TEMPLATE_SNAPSHOT = join(
   "repo-template"
 );
 
+export function normalizeSnapshotText(body) {
+  return body.replace(/\r\n/g, "\n");
+}
+
 export async function checkAllExist(ctx, relativePaths) {
   try {
     for (const relativePath of relativePaths) {
@@ -49,7 +53,7 @@ async function targetMatchesSnapshot(ctx, relativePath) {
     return false; // missing counts as a mismatch
   }
   const expected = await readFile(join(REPO_TEMPLATE_SNAPSHOT, relativePath), "utf8");
-  return actual === expected;
+  return normalizeSnapshotText(actual) === normalizeSnapshotText(expected);
 }
 
 export async function checkAllMatch(ctx, relativePaths) {
@@ -74,7 +78,7 @@ export async function writeSnapshotFile(ctx, relativePath, {
   transform = (body) => body,
   overwrite = false,
 } = {}) {
-  const body = transform(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8"));
+  const body = transform(normalizeSnapshotText(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8")));
   const result = await safeWriteFile(ctx.targetPath, relativePath, body, { overwrite });
   recordCreatedFile(ctx, result, { path: relativePath, source });
   return result;

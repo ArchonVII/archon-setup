@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 import * as writeDocSweep from "../src/server/tasks/writeDocSweep.mjs";
 import { DOC_SWEEP_FILES } from "../src/server/tasks/writeDocSweep.mjs";
-import { REPO_TEMPLATE_SNAPSHOT } from "../src/server/tasks/repoTemplateSnapshot.mjs";
+import { normalizeSnapshotText, REPO_TEMPLATE_SNAPSHOT } from "../src/server/tasks/repoTemplateSnapshot.mjs";
 
 async function makeTarget() {
   return mkdtemp(join(tmpdir(), "archon-docsweep-"));
@@ -17,10 +17,15 @@ function makeCtx(targetPath, extra = {}) {
 }
 
 function snapshotBody(file) {
-  return readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8");
+  return readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8").then(normalizeSnapshotText);
 }
 
-test("apply installs the doc-sweep runner + spec byte-identical to the snapshot", async () => {
+function flipLineEndings(body) {
+  const lf = normalizeSnapshotText(body);
+  return body.includes("\r\n") ? lf : lf.replace(/\n/g, "\r\n");
+}
+
+test("apply installs the doc-sweep runner + spec matching the normalized snapshot", async () => {
   const target = await makeTarget();
   await writeDocSweep.apply(makeCtx(target));
   for (const file of DOC_SWEEP_FILES) {
@@ -40,6 +45,18 @@ test("check is needs-apply before and already-done after apply", async () => {
 test("verify passes after apply", async () => {
   const target = await makeTarget();
   await writeDocSweep.apply(makeCtx(target));
+  assert.deepEqual(await writeDocSweep.verify(makeCtx(target)), { ok: true });
+});
+
+test("check/verify tolerate CRLF/LF differences for managed snapshot files", async () => {
+  const target = await makeTarget();
+  for (const file of DOC_SWEEP_FILES) {
+    await mkdir(join(target, file, ".."), { recursive: true });
+    const snapshot = await readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8");
+    await writeFile(join(target, file), flipLineEndings(snapshot), "utf8");
+  }
+
+  assert.equal(await writeDocSweep.check(makeCtx(target)), "already-done");
   assert.deepEqual(await writeDocSweep.verify(makeCtx(target)), { ok: true });
 });
 
