@@ -33,7 +33,9 @@ const body = renderEcosystemMapBlock(map, manifest.snapshots || {});
 const doc = await readFile(docPath, "utf8");
 
 // Compare on normalized newlines so CRLF (local) vs LF (CI) never trips the gate.
-const norm = (s) => s.replace(/\r\n/g, "\n");
+// Strip every \r (not just \r\n pairs) — a lone trailing \r from a CRLF doc would
+// otherwise survive and false-fail the comparison on Windows checkouts.
+const norm = (s) => s.replace(/\r/g, "");
 const current = extractEcosystemMapBlock(doc);
 
 if (check) {

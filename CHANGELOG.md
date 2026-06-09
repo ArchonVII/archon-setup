@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+
+- The `ecosystem-overview.md` sync gate no longer false-fails on a Windows
+  checkout (autocrlf → CRLF): `extractEcosystemMapBlock` is CRLF-aware and the
+  comparison strips every `\r` rather than only `\r\n` pairs. Regression test
+  added that exercises a CRLF document on any platform. (#151)
+
 ### Added
 
 - Began the granular marker-based distributor (#145): a repo-owned-by-default

@@ -12,7 +12,9 @@ import {
 } from "../src/server/ecosystem/ecosystemMap.mjs";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const norm = (s) => s.replace(/\r\n/g, "\n");
+// Strip every \r, not just \r\n pairs, so a lone trailing \r from a CRLF working
+// tree (Windows autocrlf) cannot false-fail the comparison.
+const norm = (s) => s.replace(/\r/g, "");
 
 const FIXTURE_MAP = {
   repos: [
@@ -65,6 +67,19 @@ test("applyEcosystemMapBlock replaces between markers and is idempotent", () => 
 
 test("applyEcosystemMapBlock throws on missing markers rather than appending", () => {
   assert.throws(() => applyEcosystemMapBlock("no markers here", "x"), /markers not found/);
+});
+
+// Regression for #151: a CRLF working tree (Windows autocrlf) must not false-fail
+// the sync gate. Build the doc with LF, convert to CRLF as a checkout would, and
+// assert extraction + normalized comparison still match the LF body. This runs on
+// LF CI runners too, so the case is guarded everywhere — not just on Windows.
+test("extract + compare tolerate a CRLF document (#151)", () => {
+  const body = renderEcosystemMapBlock(FIXTURE_MAP, FIXTURE_SNAPS);
+  const lfDoc = `pre\n${BLOCK_START}\n${body}\n${BLOCK_END}\npost\n`;
+  const crlfDoc = lfDoc.replace(/\n/g, "\r\n");
+  const extracted = extractEcosystemMapBlock(crlfDoc);
+  assert.ok(!/\r$/.test(extracted), "extracted block must not end with an orphaned \\r");
+  assert.equal(norm(extracted), norm(body), "CRLF extraction must match the LF body after normalization");
 });
 
 // The anti-staleness gate: the committed doc block must match what the current
