@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, normalize } from "node:path";
 
 import { safeJoin } from "../lib/paths.mjs";
-import { REPO_TEMPLATE_SNAPSHOT } from "../tasks/repoTemplateSnapshot.mjs";
+import { normalizeSnapshotText, REPO_TEMPLATE_SNAPSHOT } from "../tasks/repoTemplateSnapshot.mjs";
 import { template as readmeTemplate } from "../tasks/writeReadme.mjs";
 import { TEMPLATE as CLAUDE_TEMPLATE } from "../tasks/writeClaudeMd.mjs";
 import { TEMPLATE as GEMINI_TEMPLATE } from "../tasks/writeGeminiMd.mjs";
@@ -19,7 +19,7 @@ const GITHUB_WORKFLOWS_SNAPSHOT = join(__dirname, "..", "..", "snapshots", "gith
 const REPO_ROOT = join(__dirname, "..", "..", "..");
 
 async function repoTemplateBody(snapshotPath, transform = (body) => body) {
-  return transform(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8"));
+  return transform(normalizeSnapshotText(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8")));
 }
 
 async function workflowBody(unit) {
@@ -28,7 +28,7 @@ async function workflowBody(unit) {
   if (unit.options?.snapshotSource === "repo-template") {
     return repoTemplateBody(join(".github", "workflows", `${name}.yml`));
   }
-  return readFile(join(GITHUB_WORKFLOWS_SNAPSHOT, `${name}.yml`), "utf8");
+  return readFile(join(GITHUB_WORKFLOWS_SNAPSHOT, `${name}.yml`), "utf8").then(normalizeSnapshotText);
 }
 
 async function expectedBodyFor({ path, unit, context }) {
@@ -166,7 +166,7 @@ export async function auditPlan(plan) {
         continue;
       }
       const actual = await readFile(fullPath, "utf8");
-      const matches = markdownMatchesSnapshotAllowingFrontmatter(actual, expected.body);
+      const matches = markdownMatchesSnapshotAllowingFrontmatter(normalizeSnapshotText(actual), expected.body);
       items.push({
         path: file.path,
         feature: file.feature,
@@ -205,7 +205,7 @@ export async function auditPlan(plan) {
     }
 
     const actual = await readFile(fullPath, "utf8");
-    const matches = actual === expected;
+    const matches = normalizeSnapshotText(actual) === expected;
     items.push({
       path: file.path,
       feature: file.feature,
@@ -305,7 +305,7 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
 }
 
 async function agentsHasCurrentStartMap(root) {
-  const body = await readFile(safeJoin(root, "AGENTS.md"), "utf8");
+  const body = normalizeSnapshotText(await readFile(safeJoin(root, "AGENTS.md"), "utf8"));
   const expected = extractManagedAgentStartMap(await repoTemplateBody("AGENTS.md"));
   return body.includes(expected) || hasCurrentManagedBlock(body, "agents-start-map", expected);
 }
@@ -333,13 +333,13 @@ async function fileMatches(root, relativePath, pattern) {
 async function fileMatchesSnapshot(root, relativePath) {
   const actual = await readFile(safeJoin(root, relativePath), "utf8");
   const expected = await repoTemplateBody(relativePath);
-  return actual === expected;
+  return normalizeSnapshotText(actual) === expected;
 }
 
 async function markdownFileMatchesSnapshot(root, relativePath) {
   const actual = await readFile(safeJoin(root, relativePath), "utf8");
   const expected = await repoTemplateBody(relativePath);
-  return markdownMatchesSnapshotAllowingFrontmatter(actual, expected);
+  return markdownMatchesSnapshotAllowingFrontmatter(normalizeSnapshotText(actual), expected);
 }
 
 async function packageHasAgentScripts(root) {

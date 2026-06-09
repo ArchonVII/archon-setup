@@ -4,6 +4,11 @@
 
 ### Changed
 
+- `onboard --audit` now uses the same CRLF/LF-normalized managed-file
+  comparison as the apply/check path, so `audit.startupReadiness` does not mark
+  LF-enforced consumer script files stale when the setup snapshot checkout is
+  CRLF on Windows. (#135)
+
 - Managed repo-template snapshot comparisons now normalize CRLF/LF line endings,
   and snapshot writes normalize to LF, so LF-enforced consumer repos do not
   report false stale doc-sweep or agent-lifecycle files when `archon-setup` is
