@@ -56,10 +56,26 @@ if (argv[0] === "distribute") {
   );
 
   const flags = new Set(args);
-  const targetPath = readOption(args, "--target");
-  const all = flags.has("--all");
-  if (!targetPath && !all) {
-    console.error("distribute: pass --target <path> or --all (see --help)");
+  function readDistributeOption(name, fallback = "") {
+    const index = args.indexOf(name);
+    if (index < 0) return fallback;
+    const value = args[index + 1];
+    if (!value || value.startsWith("--")) {
+      throw new Error(`missing value for ${name}`);
+    }
+    return value;
+  }
+
+  let targetPath;
+  let all;
+  try {
+    targetPath = readDistributeOption("--target");
+    all = flags.has("--all");
+    if ((targetPath ? 1 : 0) + (all ? 1 : 0) !== 1) {
+      throw new Error("choose exactly one of --target <path> or --all");
+    }
+  } catch (err) {
+    console.error(`distribute: ${err.message}`);
     process.exit(1);
   }
 
@@ -72,7 +88,7 @@ if (argv[0] === "distribute") {
     // id tokens are rejected loudly — a typo must never read as "nothing to
     // do" with exit 0.
     const SPEC_GROUPS = ["callers", "agents", "hooks", "baseline"];
-    let groups = csv(readOption(args, "--group"));
+    let groups = csv(readDistributeOption("--group"));
     if (groups?.includes("all")) groups = null;
     const knownGroups = new Set([...SPEC_GROUPS, ...catalog.entries.map((e) => e.group)]);
     for (const group of groups ?? []) {
@@ -81,7 +97,7 @@ if (argv[0] === "distribute") {
         process.exit(1);
       }
     }
-    const ids = csv(readOption(args, "--id"));
+    const ids = csv(readDistributeOption("--id"));
     for (const id of ids ?? []) {
       if (!catalog.knownIds.has(id)) {
         console.error(`distribute: unknown id "${id}" — not in the managed-regions catalog`);
@@ -96,12 +112,12 @@ if (argv[0] === "distribute") {
       repos,
       all,
       apply: flags.has("--apply"),
-      confirmation: readOption(args, "--confirm", null) || null,
+      confirmation: readDistributeOption("--confirm", null) || null,
       catalog,
       groups,
       ids,
       writePreview: flags.has("--write-preview"),
-      logPath: readOption(args, "--log", DEFAULT_LOG_PATH),
+      logPath: readDistributeOption("--log", DEFAULT_LOG_PATH),
     });
   } catch (err) {
     console.error(`distribute: ${err.message}`);

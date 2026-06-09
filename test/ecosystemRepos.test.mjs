@@ -78,7 +78,7 @@ test("collectRepos uses active registry entries and keeps inactive repos out of 
     [gitRoute("C:/Users/josep/skills", ["rev-parse", "--is-inside-work-tree"])]: { code: 0, stdout: "true\n", stderr: "" },
     [gitRoute("C:/Users/josep/skills", ["log", "-1", "--format=%h|%cI|%s"])]: { code: 0, stdout: "abc123|2026-06-09T00:00:00Z|fix: registry\n", stderr: "" },
     [gitRoute("C:/Users/josep/skills", ["status", "--porcelain"])]: { code: 0, stdout: "", stderr: "" },
-    [gitRoute("C:/Users/josep/skills", ["rev-parse", "--abbrev-ref", "HEAD"])]: { code: 0, stdout: "main\n", stderr: "" },
+    [gitRoute("C:/Users/josep/skills", ["branch", "--show-current"])]: { code: 0, stdout: "main\n", stderr: "" },
     [gitRoute("C:/Users/josep/skills", ["worktree", "list", "--porcelain"])]: { code: 0, stdout: "worktree C:/Users/josep/skills\nbranch refs/heads/main\n", stderr: "" },
   });
 
@@ -116,4 +116,33 @@ test("collectRepos reports missing active registry paths as unavailable", async 
   assert.equal(result.status, "yellow");
   assert.equal(result.repos[0].available, false);
   assert.equal(result.repos[0].reason, "not a git worktree");
+});
+
+test("collectRepos fails closed when critical git state cannot be read", async () => {
+  const registry = normalizeRepoRegistry({
+    repositories: [
+      {
+        id: "status-fails",
+        name: "status-fails",
+        path: "C:/GitHub/status-fails",
+        lifecycle: "active",
+        healthTarget: true,
+      },
+    ],
+  }, "registry.json");
+  const runCommand = makeGit({
+    [gitRoute("C:/GitHub/status-fails", ["rev-parse", "--is-inside-work-tree"])]: { code: 0, stdout: "true\n", stderr: "" },
+    [gitRoute("C:/GitHub/status-fails", ["log", "-1", "--format=%h|%cI|%s"])]: { code: 0, stdout: "abc123|2026-06-09T00:00:00Z|fix: fixture\n", stderr: "" },
+    [gitRoute("C:/GitHub/status-fails", ["status", "--porcelain"])]: { code: 1, stdout: "", stderr: "fatal: index locked" },
+    [gitRoute("C:/GitHub/status-fails", ["branch", "--show-current"])]: { code: 0, stdout: "agent/codex/155-fix\n", stderr: "" },
+    [gitRoute("C:/GitHub/status-fails", ["worktree", "list", "--porcelain"])]: { code: 0, stdout: "worktree C:/GitHub/status-fails\nbranch refs/heads/agent/codex/155-fix\n", stderr: "" },
+  });
+
+  const result = await collectRepos({ githubRoot: "C:/ignored", registry, runCommand });
+
+  assert.equal(result.status, "yellow");
+  assert.equal(result.repos[0].available, false);
+  assert.equal(result.repos[0].dirty, false);
+  assert.equal(result.repos[0].branch, null);
+  assert.equal(result.repos[0].reason, "git state unavailable");
 });

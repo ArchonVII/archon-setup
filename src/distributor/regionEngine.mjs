@@ -54,7 +54,7 @@ export function parseRegions(body, style) {
       continue;
     }
 
-    if (line.text.includes("ARCHONVII MANAGED")) {
+    if (/ARCHONVII\s+(?:MANAGED(?:\s+BLOCK)?|GLOBAL UPDATE)/.test(line.text)) {
       diagnostics.push({ kind: "malformed-marker", line: line.number });
     }
   }

@@ -288,6 +288,24 @@ test("unknown --group or --id tokens are rejected with exit 1", async () => {
   assert.match(badId.stderr, /unknown id/);
 });
 
+test("missing option values and mutually exclusive target modes are rejected", async () => {
+  const path = await makeGitRepo("# Agents\n");
+
+  const missingTargetValue = spawnSync(process.execPath, [BIN, "distribute", "--target", "--apply"], {
+    env: GIT_ENV,
+    encoding: "utf8",
+  });
+  assert.equal(missingTargetValue.status, 1);
+  assert.match(missingTargetValue.stderr, /missing value for --target/);
+
+  const bothModes = spawnSync(process.execPath, [BIN, "distribute", "--target", path, "--all"], {
+    env: GIT_ENV,
+    encoding: "utf8",
+  });
+  assert.equal(bothModes.status, 1);
+  assert.match(bothModes.stderr, /choose exactly one/);
+});
+
 // ---- Path safety (§10 NFR / §11 matrix) ----
 
 test("a traversal targetRelpath is skipped as path-safety and never written", async () => {

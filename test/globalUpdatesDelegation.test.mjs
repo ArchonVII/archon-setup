@@ -92,6 +92,30 @@ test("an AGENTS.md block whose id left the catalog now surfaces as a conflict in
   assert.equal(await readFile(join(repo.path, "AGENTS.md"), "utf8"), body);
 });
 
+test("malformed legacy global-update markers surface as a conflict instead of appending a duplicate", async () => {
+  const record = getGlobalUpdate("2026-05-31-browser-backend-preflight");
+  const body = [
+    "# Agents",
+    "",
+    "<!-- BEGIN ARCHONVII GLOBAL UPDATE: -->",
+    "broken guidance",
+    "<!-- END ARCHONVII GLOBAL UPDATE: -->",
+    "",
+  ].join("\n");
+  const repo = await makeRepo(body);
+
+  const result = await distributeGlobalUpdate({
+    updateId: record.id,
+    confirmation: record.confirmationPhrase,
+    dryRun: false,
+    repos: [repo],
+  });
+
+  assert.equal(result.results[0].status, "failed");
+  assert.equal(result.results[0].reason, "managed-region-conflict");
+  assert.equal(await readFile(join(repo.path, "AGENTS.md"), "utf8"), body);
+});
+
 test("blocks from OTHER catalog updates in the same file stay untouched and unflagged (A1/A8)", async () => {
   const record = getGlobalUpdate("2026-05-31-browser-backend-preflight");
   const other = getGlobalUpdate("2026-05-31-strict-pr-ready-contract");
