@@ -50,6 +50,8 @@ export function parseRegions(body, style) {
           endLine: line.number,
         });
         open = null;
+      } else if (!open) {
+        diagnostics.push({ kind: "orphan-end", id: end[1], line: line.number });
       }
       continue;
     }

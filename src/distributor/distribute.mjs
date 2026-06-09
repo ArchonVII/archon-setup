@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { appendFile, chmod, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { appendFile, chmod, lstat, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -112,6 +112,21 @@ function toEol(text, eol) {
   return eol === "\n" ? normalized : normalized.replaceAll("\n", eol);
 }
 
+async function assertNoSymlinkPath(root, relativePath) {
+  const parts = relativePath.split(/[\\/]+/).filter(Boolean);
+  let current = root;
+  for (const part of parts) {
+    current = join(current, part);
+    try {
+      const info = await lstat(current);
+      if (info.isSymbolicLink()) throw new Error(`path contains symlink: ${relativePath}`);
+    } catch (err) {
+      if (err.code === "ENOENT") return;
+      throw err;
+    }
+  }
+}
+
 // Exact legacy append format (globalUpdates.applyGlobalUpdateToAgents):
 // trailing newline ensured, one blank separator line, then the marked block —
 // rendered in the target file's EOL (legacy LF files stay byte-identical).
@@ -194,13 +209,31 @@ async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePrev
     regions.push({ id: consumerRegion.id, status: "conflict", reason: "unknown-id", changed: false });
   }
 
+  const applicableEntries = [];
+  for (const entry of entries) {
+    const decision = appliesTo(entry, { targetExists: true });
+    if (decision.applies) {
+      applicableEntries.push(entry);
+    } else {
+      regions.push({ id: entry.id, status: "skip", reason: decision.reason, changed: false });
+    }
+  }
+  if (applicableEntries.length === 0) {
+    return {
+      ...base,
+      status: hasConflict ? "conflict" : "skip",
+      reason: hasConflict ? undefined : regions[0]?.reason ?? "not-applicable",
+      regions,
+    };
+  }
+
   const presentIds = new Set(parsed.regions.map((r) => r.id));
   const eol = detectEol(body);
   let working = body;
   let changed = false;
   const adoptions = [];
 
-  for (const entry of entries) {
+  for (const entry of applicableEntries) {
     if (presentIds.has(entry.id)) {
       const desiredInner = toEol(entry.inner, eol);
       let replaced;
@@ -263,7 +296,9 @@ async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePrev
       let proposed = working;
       for (const entry of anchored) proposed = appendBlock(proposed, entry, style, eol);
       try {
-        previewPath = safeJoin(repo.path, join(".archon", "distribute-preview", `${relpath}.patch`));
+        const previewRelpath = join(".archon", "distribute-preview", `${relpath}.patch`);
+        previewPath = safeJoin(repo.path, previewRelpath);
+        await assertNoSymlinkPath(repo.path, previewRelpath);
         await mkdir(dirname(previewPath), { recursive: true });
         await writeAtomic(
           previewPath,

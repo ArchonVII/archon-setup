@@ -339,3 +339,18 @@ test("parseRegions reports malformed legacy global-update marker lines", () => {
     { kind: "malformed-marker", line: 3 },
   ]);
 });
+
+test("parseRegions reports orphan legacy global-update END markers", () => {
+  const body = [
+    "# Agents",
+    "<!-- END ARCHONVII GLOBAL UPDATE: 2026-05-31-browser-backend-preflight -->",
+    "",
+  ].join("\n");
+
+  const parsed = parseRegions(body, "markdown");
+
+  assert.deepEqual(parsed.regions, []);
+  assert.deepEqual(parsed.diagnostics, [
+    { kind: "orphan-end", id: "2026-05-31-browser-backend-preflight", line: 2 },
+  ]);
+});

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { chmod, mkdir, mkdtemp, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, stat, symlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -173,6 +173,34 @@ test("a preview-write failure in one repo is isolated; the fleet run and log con
   assert.equal(run.results[1].files[0].status, "adoption_needed");
   assert.ok(existsSync(logPath));
   assert.equal(exitCodeFor(run), 1);
+});
+
+test("existing-file applicability failures are skipped before replacing present regions", async () => {
+  const repo = await makeRepo({ "AGENTS.md": `# Agents\n\n${guBlock("old content")}` });
+  const entry = guEntry({ inner: "new content", appliesToDefault: "future-policy" });
+
+  const result = await distributeRepo({ repo, catalog: catalogOf(entry), mode: "apply" });
+
+  assert.equal(result.files[0].status, "skip");
+  assert.equal(result.files[0].reason, "unknown-applies-to-default");
+  assert.equal(await readFile(join(repo.path, "AGENTS.md"), "utf8"), `# Agents\n\n${guBlock("old content")}`);
+});
+
+test("write-preview refuses a symlinked .archon path before writing outside the repo", { skip: process.platform === "win32" }, async () => {
+  const outside = await mkdtemp(join(tmpdir(), "archon-preview-outside-"));
+  const repo = await makeRepo({ "AGENTS.md": "# Local\n" });
+  await symlink(outside, join(repo.path, ".archon"), "dir");
+
+  const result = await distributeRepo({
+    repo,
+    catalog: catalogOf(guEntry()),
+    mode: "dry-run",
+    writePreview: true,
+  });
+
+  assert.equal(result.files[0].status, "failed");
+  assert.equal(result.files[0].reason, "preview-write-failed");
+  assert.equal(existsSync(join(outside, "distribute-preview", "AGENTS.md.patch")), false);
 });
 
 // ---- EOL preservation inside the managed inner ----
