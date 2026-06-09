@@ -37,10 +37,15 @@ function byPath(audit, path) {
   return item;
 }
 
-async function copySnapshot(root, relativePath) {
+function flipLineEndings(body) {
+  const lf = body.replace(/\r\n/g, "\n");
+  return body.includes("\r\n") ? lf : lf.replace(/\n/g, "\r\n");
+}
+
+async function copySnapshot(root, relativePath, { flipEol = false } = {}) {
   const body = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", relativePath), "utf8");
   await mkdir(dirname(join(root, relativePath)), { recursive: true });
-  await writeFile(join(root, relativePath), body, "utf8");
+  await writeFile(join(root, relativePath), flipEol ? flipLineEndings(body) : body, "utf8");
 }
 
 test("audit mode reports present, missing, and drifted baseline files without writing", async () => {
@@ -166,7 +171,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
     "scripts/doc-sweep/sweep.mjs",
     "docs/agent-process/doc-sweep.md",
   ]) {
-    await copySnapshot(root, relativePath);
+    await copySnapshot(root, relativePath, { flipEol: relativePath.startsWith("scripts/") });
   }
 
   const { stdout } = await execFileP(
