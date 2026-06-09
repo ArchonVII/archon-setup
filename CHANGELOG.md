@@ -11,6 +11,19 @@
 
 ### Added
 
+- The `distribute` subcommand (#145 PR2, #155): repo-owned-by-default
+  reconciliation of ArchonVII-managed regions across consumer repos. Dry-run by
+  default (writes nothing; exit 10 signals pending changes), `--apply` writes
+  only `clean_apply` files atomically with exec bit/shebang/EOL preserved,
+  `--write-preview` emits adoption proposals under `.archon/distribute-preview/`,
+  `--all --apply` is gated by a scope-bound confirmation phrase, and every run
+  appends a JSONL log outside consumer worktrees
+  (`~/.claude/archon-distribute-log.jsonl`). Exit codes `0/10/20/1` are stable
+  for automation. `distributeGlobalUpdate` now delegates through the same
+  engine with byte-compatible results; a malformed or catalog-orphaned AGENTS
+  block now surfaces as `failed/managed-region-conflict` instead of being
+  silently bypassed. (#155)
+
 - Began the granular marker-based distributor (#145): a repo-owned-by-default
   capability that updates only ArchonVII-managed regions
   (`BEGIN`/`END ARCHONVII MANAGED: <id>` markers) and surfaces conflict/adoption

@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-06-05.
+Last updated: 2026-06-09.
 
 This roadmap tracks the `archon-setup` product surface: the local wizard and
 update tooling that scaffold ArchonVII repositories.
@@ -19,6 +19,12 @@ update tooling that scaffold ArchonVII repositories.
 - **Update command** - `node bin/archon-setup.mjs update --target <repo>`
   refreshes managed workflow callers that reference
   `ArchonVII/github-workflows@v1`.
+- **Granular distributor (`distribute`)** - marker-based, repo-owned-by-default
+  reconciliation of managed regions (#145/#155): dry-run default,
+  confirmation-gated fleet apply, adoption/conflict surfacing instead of
+  overwriting, JSONL run-log, stable `0/10/20/1` exit codes. The AGENTS group
+  is live via the globalUpdates catalog; hooks/callers/baseline groups follow
+  (#145 PR3-PR5).
 - **Workflow drift detection + upgrade** - `update --check` classifies each
   managed caller as current / drifted / unmanaged against the recorded snapshot
   (exits non-zero on drift, so it gates CI / pre-push); `update --upgrade`
