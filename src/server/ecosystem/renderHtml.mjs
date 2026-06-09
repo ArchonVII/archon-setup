@@ -7,8 +7,12 @@ export function renderHtml(snap) {
     `<li>${dot(p.live)} <a href="http://127.0.0.1:${p.port}">:${p.port}</a> <code>${esc(p.command)}</code> <small>${esc(p.recordedAt)}</small></li>`
   ).join("");
   const repos = snap.repos.map((r) =>
-    `<li>${dot(!r.dirty)} <b>${esc(r.name)}</b> @${esc(r.branch)}${r.dirty ? " (dirty)" : ""}${(r.worktrees?.length ?? 0) > 1 ? ` · ${r.worktrees.length} worktrees` : ""}</li>`
+    `<li>${dot(r.available !== false && !r.dirty)} <b>${esc(r.name)}</b> @${esc(r.branch || "?")}${r.dirty ? " (dirty)" : ""}${r.available === false ? ` (${esc(r.reason || "unavailable")})` : ""}${(r.worktrees?.length ?? 0) > 1 ? ` · ${r.worktrees.length} worktrees` : ""}</li>`
   ).join("");
+  const inactiveRepos = (snap.repoRegistry?.repositories || [])
+    .filter((r) => r.lifecycle !== "active" || r.healthTarget === false)
+    .map((r) => `<li><b>${esc(r.name)}</b> <small>${esc(r.reason || r.lifecycle || "inactive")}</small></li>`)
+    .join("");
   const governance = (snap.governance?.repos || []).map((r) =>
     `<li>${dot(r.status === "green")} <b>${esc(r.fullName || `${r.owner}/${r.name}`)}</b> @${esc(r.defaultBranch || "unknown")} ` +
     `<small>classic: ${esc(r.classic?.status)} · rulesets: ${esc(r.rulesets?.status)} · PR: ${esc(r.posture?.prRequired)} · direct push: ${esc(r.posture?.directPush)} · force push: ${esc(r.posture?.forcePush)} · deletion: ${esc(r.posture?.deletion)} · required gate: ${esc(r.posture?.requiredGate)}</small></li>`
@@ -28,8 +32,10 @@ export function renderHtml(snap) {
 </style></head><body>
 <h1>AI Ecosystem <span class="meta">— generated ${esc(snap.generatedAt)}</span></h1>
 <p class="meta">Amber: ${dot(snap.amber.online)} ${esc(snap.amber.detail)} · signals: ${snap.signals.anomalies} anomalies, ${snap.signals.noticed} noticed</p>
+${snap.repoRegistry ? `<p class="meta">Repo registry: ${esc(snap.repoRegistry.active)} active · ${esc(snap.repoRegistry.inactive)} inactive · ${esc(snap.repoRegistry.sourcePath || "embedded")}</p>` : ""}
 <h2>Ports (timestamped, not authoritative)</h2><ul>${ports || "<li>none</li>"}</ul>
 <h2>Repos</h2><ul>${repos || "<li>none</li>"}</ul>
+${inactiveRepos ? `<h2>Inactive registry entries</h2><ul>${inactiveRepos}</ul>` : ""}
 <h2>Repository governance</h2><ul>${governance || "<li>none</li>"}</ul>
 <h2>Recent signals</h2><ul>${recent || "<li>none</li>"}</ul>
 <h2>Recent events</h2><ul>${events || "<li>none</li>"}</ul>

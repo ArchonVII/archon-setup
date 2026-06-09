@@ -66,8 +66,9 @@ Your default browser opens to a local URL. The wizard walks you through:
    repo mode also shows present/missing/drifted audit results and requires an
    explicit target confirmation before write-capable steps.
 4. **Execute** — streaming progress plus applied/skipped/failed task results.
-5. **Ecosystem** — current repo/port/signals snapshot plus recorded global
-   update fixes that can be dry-run or distributed with explicit confirmation.
+5. **Ecosystem** — current active-repo/port/signals snapshot plus recorded
+   global update fixes that can be dry-run or distributed with explicit
+   confirmation.
 
 Nothing leaves your machine except the `git` / `gh` calls you approve.
 
@@ -307,6 +308,27 @@ node C:\GitHub\archon-setup\bin\onboard.mjs C:\path\to\repo --audit --json
 This reports `audit.startupReadiness` without writing files. An incomplete
 startup readiness status means the repo needs repair, but the command still
 exits successfully unless CLI usage or repo access fails.
+
+## Ecosystem Health Registry
+
+The Ecosystem screen and `npm run snapshot` use
+`src/server/ecosystem/repoRegistry.json` as the canonical active/inactive repo
+list before falling back to a first-level `C:\GitHub` scan. Active registry
+entries are collected into `ecosystem-state.json` `repos[]`; inactive entries
+remain visible in `repoRegistry.repositories[]` but are not scanned as health
+targets.
+
+As of 2026-06-09, the active set is `archon`, `archon-setup`,
+`github-workflows`, `repo-template`, `.github`, `pigafetta`, `jma-history`,
+`skills-review` (`ArchonVII/jma-skill-review` at `C:\Users\josep\skills`), and
+`hudson-bend`. `jma-ui` is explicitly marked inactive.
+
+Override the registry for ad hoc runs with:
+
+```powershell
+npm run snapshot -- --repo-registry C:\path\to\repoRegistry.json
+npm run snapshot -- --repo-registry none
+```
 
 ## Global Update Distribution
 

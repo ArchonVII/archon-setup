@@ -5,7 +5,13 @@ import { assembleSnapshot } from "../src/server/ecosystem/snapshot.mjs";
 test("assembleSnapshot builds summary and merges payloads", () => {
   const snap = assembleSnapshot({
     ports: { id: "ports", status: "green", detail: "", ports: [{ port: 5174 }] },
-    repos: { id: "repos", status: "green", detail: "", repos: [{ name: "x" }] },
+    repos: {
+      id: "repos",
+      status: "green",
+      detail: "",
+      repos: [{ name: "x" }],
+      registry: { active: 1, inactive: 1, repositories: [{ id: "x" }, { id: "old", lifecycle: "inactive" }] },
+    },
     governance: { id: "governance", status: "green", detail: "", repos: [{ name: "archon-setup" }] },
     amber: { id: "amber", status: "red", detail: "", online: false, lastSeen: "z" },
     signals: { id: "signals", status: "yellow", detail: "", anomalies: 1, noticed: 0, recent: [] },
@@ -14,6 +20,8 @@ test("assembleSnapshot builds summary and merges payloads", () => {
   assert.equal(snap.generatedAt, "2026-05-30T20:00:00.000Z");
   assert.deepEqual(snap.summary, { green: 3, yellow: 1, red: 1 });
   assert.equal(snap.ports[0].port, 5174);
+  assert.equal(snap.repoRegistry.active, 1);
+  assert.equal(snap.repoRegistry.inactive, 1);
   assert.equal(snap.governance.repos[0].name, "archon-setup");
   assert.equal(snap.amber.online, false);
 });

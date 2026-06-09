@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import { resolve, join } from "node:path";
 import { homedir } from "node:os";
+import { mkdir } from "node:fs/promises";
 import { buildSnapshot } from "../src/server/ecosystem/snapshot.mjs";
 import { redactDeep } from "../src/server/ecosystem/redact.mjs";
 import { renderHtml } from "../src/server/ecosystem/renderHtml.mjs";
 import { writeAtomic } from "../src/server/ecosystem/writeAtomic.mjs";
+import { DEFAULT_REPO_REGISTRY_PATH } from "../src/server/ecosystem/repoRegistry.mjs";
 
 function flag(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
@@ -14,13 +16,16 @@ function flag(name, fallback) {
 const home = homedir();
 const outDir = resolve(flag("out-dir", join(home, ".claude")));
 const githubRoot = resolve(flag("github-root", "C:\\GitHub"));
+const repoRegistryFlag = flag("repo-registry", DEFAULT_REPO_REGISTRY_PATH);
+const repoRegistryPath = repoRegistryFlag === "none" ? null : resolve(repoRegistryFlag);
 const portRegistryPath = resolve(flag("port-registry", join(home, ".claude", "port-registry.json")));
 const anomaliesPath = resolve(flag("anomalies", join(home, ".claude", "anomalies.md")));
 const amberNode = new RegExp(flag("amber-node", "amber"), "i");
 
-const snap = await buildSnapshot({ portRegistryPath, githubRoot, amberNode, anomaliesPath });
+const snap = await buildSnapshot({ portRegistryPath, githubRoot, amberNode, anomaliesPath, repoRegistryPath });
 const safe = redactDeep(snap); // SECRETS NEVER TOUCH DISK — redact before any write
 
+await mkdir(outDir, { recursive: true });
 await writeAtomic(join(outDir, "ecosystem-state.json"), JSON.stringify(safe, null, 2));
 await writeAtomic(join(outDir, "ecosystem.html"), renderHtml(safe));
 

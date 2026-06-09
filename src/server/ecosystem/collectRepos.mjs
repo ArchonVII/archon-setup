@@ -1,7 +1,12 @@
 // src/server/ecosystem/collectRepos.mjs
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { runCommand } from "../lib/commandRunner.mjs";
+import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
+import {
+  activeRepoEntries,
+  loadRepoRegistry,
+  summarizeRepoRegistry,
+} from "./repoRegistry.mjs";
 
 export function parseLastCommit(raw) {
   const line = (raw || "").trim();
@@ -24,7 +29,7 @@ export function isDirty(porcelain) {
   return (porcelain || "").trim().length > 0;
 }
 
-async function git(repoPath, args) {
+async function git(repoPath, args, runCommand = defaultRunCommand) {
   try {
     const { code, stdout } = await runCommand("git", ["-C", repoPath, ...args], { timeoutMs: 15_000 });
     return code === 0 ? stdout : "";
@@ -33,16 +38,44 @@ async function git(repoPath, args) {
   }
 }
 
-async function collectOneRepo(name, repoPath) {
+async function collectOneRepo(entry, runCommand = defaultRunCommand) {
+  const name = entry.name;
+  const repoPath = entry.path;
+  const inside = await git(repoPath, ["rev-parse", "--is-inside-work-tree"], runCommand);
+  if (inside.trim() !== "true") {
+    return {
+      id: entry.id ?? name,
+      name,
+      owner: entry.owner ?? null,
+      repo: entry.repo ?? null,
+      role: entry.role ?? null,
+      lifecycle: entry.lifecycle ?? "active",
+      healthTarget: entry.healthTarget ?? true,
+      path: repoPath,
+      available: false,
+      branch: null,
+      dirty: false,
+      lastCommit: null,
+      worktrees: [],
+      reason: "not a git worktree",
+    };
+  }
   const [logOut, statusOut, branchOut, wtOut] = await Promise.all([
-    git(repoPath, ["log", "-1", "--format=%h|%cI|%s"]),
-    git(repoPath, ["status", "--porcelain"]),
-    git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"]),
-    git(repoPath, ["worktree", "list", "--porcelain"]),
+    git(repoPath, ["log", "-1", "--format=%h|%cI|%s"], runCommand),
+    git(repoPath, ["status", "--porcelain"], runCommand),
+    git(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"], runCommand),
+    git(repoPath, ["worktree", "list", "--porcelain"], runCommand),
   ]);
   return {
+    id: entry.id ?? name,
     name,
+    owner: entry.owner ?? null,
+    repo: entry.repo ?? null,
+    role: entry.role ?? null,
+    lifecycle: entry.lifecycle ?? "active",
+    healthTarget: entry.healthTarget ?? true,
     path: repoPath,
+    available: true,
     branch: branchOut.trim() || null,
     dirty: isDirty(statusOut),
     lastCommit: parseLastCommit(logOut),
@@ -50,8 +83,37 @@ async function collectOneRepo(name, repoPath) {
   };
 }
 
-// Enumerates first-level git repos under githubRoot and collects health for each.
-export async function collectRepos(githubRoot) {
+async function collectRegisteredRepos(registry, runCommand) {
+  const targets = activeRepoEntries(registry);
+  const repos = [];
+  for (const entry of targets) {
+    repos.push(await collectOneRepo(entry, runCommand));
+  }
+  const dirty = repos.filter((r) => r.dirty).length;
+  const unavailable = repos.filter((r) => r.available === false).length;
+  return {
+    id: "repos",
+    status: repos.length === 0 || unavailable > 0 ? "yellow" : "green",
+    detail: `${repos.length} active repos, ${dirty} dirty, ${unavailable} unavailable, ${registry.summary.inactive} inactive`,
+    repos,
+    registry: summarizeRepoRegistry(registry),
+  };
+}
+
+// Collects registered active repos when a registry is provided; otherwise
+// enumerates first-level git repos under githubRoot.
+export async function collectRepos(githubRoot, options = {}) {
+  if (githubRoot && typeof githubRoot === "object") {
+    options = githubRoot;
+    githubRoot = options.githubRoot;
+  }
+  const runCommand = options.runCommand ?? defaultRunCommand;
+  let registry = options.registry;
+  if (registry === undefined && Object.hasOwn(options, "repoRegistryPath")) {
+    registry = await loadRepoRegistry(options.repoRegistryPath);
+  }
+  if (registry) return collectRegisteredRepos(registry, runCommand);
+
   let entries;
   try {
     entries = await readdir(githubRoot, { withFileTypes: true });
@@ -63,8 +125,16 @@ export async function collectRepos(githubRoot) {
   const repos = [];
   for (const e of candidates) {
     const repoPath = join(githubRoot, e.name);
-    const head = await git(repoPath, ["rev-parse", "--is-inside-work-tree"]);
-    if (head.trim() === "true") repos.push(await collectOneRepo(e.name, repoPath));
+    const head = await git(repoPath, ["rev-parse", "--is-inside-work-tree"], runCommand);
+    if (head.trim() === "true") {
+      repos.push(await collectOneRepo({
+        id: e.name,
+        name: e.name,
+        path: repoPath,
+        lifecycle: "active",
+        healthTarget: true,
+      }, runCommand));
+    }
   }
   const dirty = repos.filter((r) => r.dirty).length;
   return {

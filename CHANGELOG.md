@@ -60,6 +60,13 @@
 
 ### Added
 
+- Added a canonical ecosystem repo registry for the Ecosystem snapshot/health
+  surface. `src/server/ecosystem/repoRegistry.json` now defines the active set
+  (`archon`, `archon-setup`, `github-workflows`, `repo-template`, `.github`,
+  `pigafetta`, `jma-history`, `skills-review`, and `hudson-bend`) and marks
+  `jma-ui` inactive; `ecosystem-state.json` now exposes both active repo health
+  and the registry metadata. (#143)
+
 - Added startup readiness auditing for `onboard --audit`: JSON output now
   includes `audit.startupReadiness` with a baseline version, missing, stale,
   misplaced, and legacy-path findings plus a warning-level repair command.

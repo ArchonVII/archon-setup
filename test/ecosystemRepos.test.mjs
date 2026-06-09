@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseLastCommit, parseWorktrees, isDirty } from "../src/server/ecosystem/collectRepos.mjs";
+import { collectRepos, parseLastCommit, parseWorktrees, isDirty } from "../src/server/ecosystem/collectRepos.mjs";
+import { normalizeRepoRegistry } from "../src/server/ecosystem/repoRegistry.mjs";
 
 test("parseLastCommit splits hash|iso|subject (subject may contain pipes)", () => {
   const c = parseLastCommit("abc1234|2026-05-30T10:00:00-05:00|feat: add a|b thing");
@@ -32,4 +33,87 @@ test("parseWorktrees reads porcelain blocks", () => {
 test("isDirty true only when porcelain has content", () => {
   assert.equal(isDirty(""), false);
   assert.equal(isDirty(" M src/x.mjs\n"), true);
+});
+
+function gitRoute(repoPath, args) {
+  return `${repoPath} ${args.join(" ")}`;
+}
+
+function makeGit(routes) {
+  return async (cmd, args) => {
+    assert.equal(cmd, "git");
+    assert.equal(args[0], "-C");
+    const repoPath = args[1];
+    const gitArgs = args.slice(2);
+    return routes[gitRoute(repoPath, gitArgs)] || { code: 1, stdout: "", stderr: "not found" };
+  };
+}
+
+test("collectRepos uses active registry entries and keeps inactive repos out of health targets", async () => {
+  const registry = normalizeRepoRegistry({
+    repositories: [
+      {
+        id: "skills-review",
+        name: "skills-review",
+        owner: "ArchonVII",
+        repo: "jma-skill-review",
+        path: "C:/Users/josep/skills",
+        lifecycle: "active",
+        healthTarget: true,
+        role: "skill-source",
+      },
+      {
+        id: "jma-ui",
+        name: "jma-ui",
+        owner: "ArchonVII",
+        repo: "jma-ui",
+        path: "C:/jma/jma-ui",
+        lifecycle: "inactive",
+        healthTarget: false,
+        reason: "retired",
+      },
+    ],
+  }, "registry.json");
+  const runCommand = makeGit({
+    [gitRoute("C:/Users/josep/skills", ["rev-parse", "--is-inside-work-tree"])]: { code: 0, stdout: "true\n", stderr: "" },
+    [gitRoute("C:/Users/josep/skills", ["log", "-1", "--format=%h|%cI|%s"])]: { code: 0, stdout: "abc123|2026-06-09T00:00:00Z|fix: registry\n", stderr: "" },
+    [gitRoute("C:/Users/josep/skills", ["status", "--porcelain"])]: { code: 0, stdout: "", stderr: "" },
+    [gitRoute("C:/Users/josep/skills", ["rev-parse", "--abbrev-ref", "HEAD"])]: { code: 0, stdout: "main\n", stderr: "" },
+    [gitRoute("C:/Users/josep/skills", ["worktree", "list", "--porcelain"])]: { code: 0, stdout: "worktree C:/Users/josep/skills\nbranch refs/heads/main\n", stderr: "" },
+  });
+
+  const result = await collectRepos({ githubRoot: "C:/ignored", registry, runCommand });
+
+  assert.equal(result.status, "green");
+  assert.equal(result.repos.length, 1);
+  assert.equal(result.repos[0].id, "skills-review");
+  assert.equal(result.repos[0].repo, "jma-skill-review");
+  assert.equal(result.repos[0].role, "skill-source");
+  assert.equal(result.registry.active, 1);
+  assert.equal(result.registry.inactive, 1);
+  assert.equal(result.registry.repositories.find((entry) => entry.id === "jma-ui").healthTarget, false);
+});
+
+test("collectRepos reports missing active registry paths as unavailable", async () => {
+  const registry = normalizeRepoRegistry({
+    repositories: [
+      {
+        id: "missing",
+        name: "missing",
+        path: "C:/missing",
+        lifecycle: "active",
+        healthTarget: true,
+      },
+    ],
+  }, "registry.json");
+
+  const result = await collectRepos({
+    githubRoot: "C:/ignored",
+    registry,
+    runCommand: makeGit({}),
+  });
+
+  assert.equal(result.status, "yellow");
+  assert.equal(result.repos[0].available, false);
+  assert.equal(result.repos[0].reason, "not a git worktree");
 });
