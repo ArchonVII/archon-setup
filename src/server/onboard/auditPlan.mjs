@@ -1,7 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { dirname, join, normalize } from "node:path";
 
 import { safeJoin } from "../lib/paths.mjs";
 import { REPO_TEMPLATE_SNAPSHOT } from "../tasks/repoTemplateSnapshot.mjs";
@@ -10,9 +10,11 @@ import { TEMPLATE as CLAUDE_TEMPLATE } from "../tasks/writeClaudeMd.mjs";
 import { TEMPLATE as GEMINI_TEMPLATE } from "../tasks/writeGeminiMd.mjs";
 import { scrubHookBody } from "../tasks/writeGithooks.mjs";
 import { AGENT_SCRIPTS } from "../tasks/writeAgentLifecycle.mjs";
+import { hasCurrentManagedBlock } from "../tasks/managedMarkdownBlock.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GITHUB_WORKFLOWS_SNAPSHOT = join(__dirname, "..", "..", "snapshots", "github-workflows");
+const REPO_ROOT = join(__dirname, "..", "..", "..");
 
 async function repoTemplateBody(snapshotPath, transform = (body) => body) {
   return transform(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8"));
@@ -42,6 +44,12 @@ async function expectedBodyFor({ path, unit, context }) {
       }
       if (path === "docs/repo-update-log.md") {
         return repoTemplateBody(join("docs", "repo-update-log.md"));
+      }
+      if (path === ".agent/startup-baseline.json") {
+        return repoTemplateBody(join(".agent", "startup-baseline.json"));
+      }
+      if (path === "docs/plans/README.md") {
+        return repoTemplateBody(join("docs", "plans", "README.md"));
       }
       return null;
     case "writeClaudeMd":
@@ -172,5 +180,133 @@ export async function auditPlan(plan) {
   return {
     summary: summarize(items),
     items,
+    startupReadiness: await startupReadiness(plan, items),
   };
+}
+
+async function startupReadiness(plan, items) {
+  const baseline = await readStartupBaseline();
+  const required = Array.isArray(baseline.required) ? baseline.required : [];
+  const expectedDirectories = Array.isArray(baseline.expectedDirectories) ? baseline.expectedDirectories : [];
+  const legacy = Array.isArray(baseline.legacy) ? baseline.legacy : [];
+  const byPath = new Map(items.map((item) => [item.path, item]));
+  const present = [];
+  const missing = [];
+  const stale = [];
+  const misplaced = [];
+  const legacyDetected = [];
+
+  for (const path of required) {
+    const status = await startupRequiredPathStatus(plan.context.targetPath, path, byPath.get(path), baseline);
+    if (status === "present") present.push(path);
+    else if (status === "stale") stale.push(path);
+    else missing.push(path);
+  }
+
+  for (const path of expectedDirectories) {
+    if (await pathExists(plan.context.targetPath, path)) present.push(path);
+    else missing.push(path);
+  }
+
+  for (const path of legacy) {
+    if (await pathExists(plan.context.targetPath, path)) legacyDetected.push(path);
+  }
+
+  const agentsPath = "AGENTS.md";
+  if (await pathExists(plan.context.targetPath, agentsPath)) {
+    const body = await readFile(safeJoin(plan.context.targetPath, agentsPath), "utf8");
+    if (managedBlockMisplaced(body)) misplaced.push(agentsPath);
+  }
+
+  const status = missing.length || stale.length || misplaced.length
+    ? "incomplete"
+    : legacyDetected.length
+      ? "warning"
+      : "complete";
+
+  return {
+    status,
+    baselineVersion: baseline.version || "unknown",
+    missing: unique(missing),
+    present: unique(present),
+    stale: unique(stale),
+    misplaced: unique(misplaced),
+    legacyDetected: unique(legacyDetected),
+    repairCommand: `node ${normalize(join(REPO_ROOT, "bin", "onboard.mjs")).replace(/\\/g, "/")} ${String(plan.context.targetPath).replace(/\\/g, "/")} --dry-run`,
+  };
+}
+
+async function readStartupBaseline() {
+  return JSON.parse(await repoTemplateBody(join(".agent", "startup-baseline.json")));
+}
+
+async function startupRequiredPathStatus(root, relativePath, item, baseline) {
+  if (item?.status === "present") return "present";
+  if (!(await pathExists(root, relativePath))) return "missing";
+
+  switch (relativePath) {
+    case "AGENTS.md":
+      return (await agentsHasCurrentStartMap(root)) ? "present" : "stale";
+    case ".agent/startup-baseline.json":
+      return (await startupBaselineCurrent(root, baseline)) ? "present" : "stale";
+    case "docs/plans/README.md":
+      return (await fileMatches(root, relativePath, /docs\/plans\/YYYY-MM-DD-<slug>\.md/)) ? "present" : "stale";
+    case "docs/repo-update-log.md":
+      return (await fileMatches(root, relativePath, /^# Repository Update Log/m)) ? "present" : "stale";
+    default:
+      return "present";
+  }
+}
+
+async function agentsHasCurrentStartMap(root) {
+  const body = await readFile(safeJoin(root, "AGENTS.md"), "utf8");
+  const expected = extractManagedAgentStartMap(await repoTemplateBody("AGENTS.md"));
+  return body.includes(expected) || hasCurrentManagedBlock(body, "agents-start-map", expected);
+}
+
+function extractManagedAgentStartMap(body) {
+  const match = body.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/);
+  if (!match) throw new Error("repo-template AGENTS.md is missing the managed agent start map");
+  return match[0].trim();
+}
+
+async function startupBaselineCurrent(root, expectedBaseline) {
+  try {
+    const actual = JSON.parse(await readFile(safeJoin(root, ".agent/startup-baseline.json"), "utf8"));
+    return actual.version === expectedBaseline.version;
+  } catch {
+    return false;
+  }
+}
+
+async function fileMatches(root, relativePath, pattern) {
+  const body = await readFile(safeJoin(root, relativePath), "utf8");
+  return pattern.test(body);
+}
+
+async function pathExists(root, relativePath) {
+  try {
+    await access(safeJoin(root, relativePath), constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function managedBlockMisplaced(body) {
+  const markers = [
+    "BEGIN ARCHONVII MANAGED BLOCK: agents-start-map",
+    "BEGIN ARCHONVII MANAGED BLOCK: agents-workflow-contract",
+  ];
+  const blockIndex = markers
+    .map((marker) => body.indexOf(marker))
+    .filter((index) => index !== -1)
+    .sort((a, b) => a - b)[0] ?? -1;
+  if (blockIndex === -1) return false;
+  const firstWorkflowSection = body.search(/^##\s+/m);
+  return firstWorkflowSection !== -1 && blockIndex > firstWorkflowSection;
+}
+
+function unique(values) {
+  return [...new Set(values)];
 }

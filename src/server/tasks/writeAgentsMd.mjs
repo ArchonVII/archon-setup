@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { recordCreatedFile } from "../lib/manifest.mjs";
-import { hasCurrentManagedBlock, reconcileManagedBlock } from "./managedMarkdownBlock.mjs";
+import { hasCurrentManagedBlock, reconcileManagedBlockNearTop } from "./managedMarkdownBlock.mjs";
 
 const AGENTS_SNAPSHOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -24,7 +24,27 @@ const UPDATE_LOG_SNAPSHOT = join(
   "docs",
   "repo-update-log.md"
 );
-const AGENTS_MANAGED_BLOCK_ID = "agents-workflow-contract";
+const STARTUP_BASELINE_SNAPSHOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "snapshots",
+  "repo-template",
+  ".agent",
+  "startup-baseline.json"
+);
+const PLANS_README_SNAPSHOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "snapshots",
+  "repo-template",
+  "docs",
+  "plans",
+  "README.md"
+);
+const AGENTS_MANAGED_BLOCK_ID = "agents-start-map";
+const LEGACY_AGENTS_MANAGED_BLOCK_IDS = ["agents-workflow-contract"];
 
 async function readAgentsSnapshot(ctx) {
   let body = await readFile(AGENTS_SNAPSHOT, "utf8");
@@ -36,7 +56,14 @@ async function readAgentsSnapshot(ctx) {
 }
 
 function managedAgentsBody(snapshotBody) {
-  return snapshotBody.replace(/^# AGENTS\.md\r?\n+/, "");
+  const start = "<!-- BEGIN MANAGED AGENT START MAP -->";
+  const end = "<!-- END MANAGED AGENT START MAP -->";
+  const startIndex = snapshotBody.indexOf(start);
+  const endIndex = snapshotBody.indexOf(end);
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    throw new Error("repo-template AGENTS.md is missing the managed agent start map");
+  }
+  return snapshotBody.slice(startIndex, endIndex + end.length).trim();
 }
 
 async function fileExists(root, relativePath) {
@@ -58,7 +85,9 @@ export async function check(ctx) {
     const current = await readFile(safeJoin(ctx.targetPath, "AGENTS.md"), "utf8");
     const snapshotBody = await readAgentsSnapshot(ctx);
     const updateLogDone = await fileExists(ctx.targetPath, "docs/repo-update-log.md");
-    return agentsContractCurrent(current, snapshotBody) && updateLogDone
+    const startupDone = await fileExists(ctx.targetPath, ".agent/startup-baseline.json");
+    const plansReadmeDone = await fileExists(ctx.targetPath, "docs/plans/README.md");
+    return agentsContractCurrent(current, snapshotBody) && updateLogDone && startupDone && plansReadmeDone
       ? "already-done"
       : "needs-apply";
   } catch {
@@ -69,6 +98,8 @@ export async function check(ctx) {
 export async function apply(ctx) {
   const body = await readAgentsSnapshot(ctx);
   const updateLog = await readFile(UPDATE_LOG_SNAPSHOT, "utf8");
+  const startupBaseline = await readFile(STARTUP_BASELINE_SNAPSHOT, "utf8");
+  const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
 
   let agentsResult;
   const agentsPath = safeJoin(ctx.targetPath, "AGENTS.md");
@@ -77,8 +108,8 @@ export async function apply(ctx) {
     if (current === body) {
       agentsResult = { status: "unchanged", path: agentsPath };
     } else {
-      const reconciled = reconcileManagedBlock(
-        current,
+      const reconciled = reconcileManagedBlockNearTop(
+        stripLegacyManagedBlocks(current),
         AGENTS_MANAGED_BLOCK_ID,
         managedAgentsBody(body)
       );
@@ -98,6 +129,18 @@ export async function apply(ctx) {
     "docs/repo-update-log.md",
     updateLog
   );
+  const startupBaselineResult = await safeWriteFile(
+    ctx.targetPath,
+    ".agent/startup-baseline.json",
+    startupBaseline,
+    { overwrite: true }
+  );
+  const plansReadmeResult = await safeWriteFile(
+    ctx.targetPath,
+    "docs/plans/README.md",
+    plansReadme,
+    { overwrite: true }
+  );
   recordCreatedFile(ctx, agentsResult, {
     path: "AGENTS.md",
     source: "snapshot:repo-template/AGENTS.md",
@@ -106,7 +149,15 @@ export async function apply(ctx) {
     path: "docs/repo-update-log.md",
     source: "snapshot:repo-template/docs/repo-update-log.md",
   });
-  return [agentsResult, updateLogResult];
+  recordCreatedOnly(ctx, startupBaselineResult, {
+    path: ".agent/startup-baseline.json",
+    source: "snapshot:repo-template/.agent/startup-baseline.json",
+  });
+  recordCreatedOnly(ctx, plansReadmeResult, {
+    path: "docs/plans/README.md",
+    source: "snapshot:repo-template/docs/plans/README.md",
+  });
+  return [agentsResult, updateLogResult, startupBaselineResult, plansReadmeResult];
 }
 
 export async function verify(ctx) {
@@ -114,9 +165,11 @@ export async function verify(ctx) {
     const current = await readFile(safeJoin(ctx.targetPath, "AGENTS.md"), "utf8");
     const snapshotBody = await readAgentsSnapshot(ctx);
     if (!agentsContractCurrent(current, snapshotBody)) {
-      return { ok: false, error: "AGENTS.md is missing the ArchonVII workflow contract" };
+      return { ok: false, error: "AGENTS.md is missing the ArchonVII startup map" };
     }
     await access(safeJoin(ctx.targetPath, "docs/repo-update-log.md"), constants.F_OK);
+    await access(safeJoin(ctx.targetPath, ".agent/startup-baseline.json"), constants.F_OK);
+    await access(safeJoin(ctx.targetPath, "docs/plans/README.md"), constants.F_OK);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err.message };
@@ -124,5 +177,26 @@ export async function verify(ctx) {
 }
 
 export function rollbackHint(ctx) {
-  return `Delete ${ctx.targetPath}/AGENTS.md and ${ctx.targetPath}/docs/repo-update-log.md to retry.`;
+  return `Delete ${ctx.targetPath}/AGENTS.md, ${ctx.targetPath}/docs/repo-update-log.md, ${ctx.targetPath}/.agent/startup-baseline.json, and ${ctx.targetPath}/docs/plans/README.md to retry.`;
+}
+
+function recordCreatedOnly(ctx, result, entry) {
+  if (result?.status === "created") ctx.manifest.createdFiles.push(entry);
+}
+
+function stripLegacyManagedBlocks(current) {
+  return LEGACY_AGENTS_MANAGED_BLOCK_IDS.reduce(
+    (body, id) => body.replace(managedBlockPattern(id), "").replace(/\r?\n{3,}/g, "\n\n"),
+    current
+  );
+}
+
+function managedBlockPattern(id) {
+  const start = `<!-- BEGIN ARCHONVII MANAGED BLOCK: ${id} -->`;
+  const end = `<!-- END ARCHONVII MANAGED BLOCK: ${id} -->`;
+  return new RegExp(`${escapeRegExp(start)}[\\s\\S]*?${escapeRegExp(end)}\\r?\\n?`, "g");
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -30,7 +30,9 @@ const SOURCES = [
     copyFiles: [
       "README.md",
       "AGENTS.md",
+      ".agent/startup-baseline.json",
       "docs/repo-update-log.md",
+      "docs/plans/README.md",
       "docs/template-library-inventory.md",
       "docs/agent-process/doc-sweep.md",
       "package.json",

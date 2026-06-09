@@ -99,7 +99,10 @@ the F19 rollout.
 `--audit` is the read-only existing-repo entrypoint: it builds the same plan but
 checks each planned baseline file in the target repo, reporting `present` when
 it matches, `missing` when absent, and `drifted` when the existing content
-differs from the managed baseline.
+differs from the managed baseline. The JSON result also includes
+`audit.startupReadiness`, a warning-level startup/process baseline summary with
+the baseline version, missing files, stale content, misplaced managed blocks,
+legacy plan paths, and a repair command.
 
 **Existing repos.** In the browser wizard, choose **Existing repo** on Location.
 The wizard accepts a populated git repo, detects its GitHub `origin`, runs a
@@ -202,6 +205,10 @@ Existing agent-facing capabilities:
 - **Required gate plus check map** - `.agent/check-map.yml` and
   `repo-required-gate.yml` give agents and branch protection one shared map from
   changed paths to required verification.
+- **Versioned startup baseline** - `.agent/startup-baseline.json`,
+  `docs/plans/README.md`, `AGENTS.md`, and `agent:status` give agents one
+  canonical first-stop map for plans, process files, coordination, PR flow, and
+  repair actions.
 - **Repo update log** - generated repos receive `docs/repo-update-log.md` so
   agents can leave durable operational history separate from user-facing release
   notes.
@@ -254,6 +261,9 @@ Planned agent-facing capabilities:
 - The existing-repo updater intentionally updates only managed workflow callers
   that already reference `ArchonVII/github-workflows@v1`. It does not rewrite
   repo-specific `AGENTS.md` content.
+- `archon-setup update` is workflow-only. Use
+  `node C:\GitHub\archon-setup\bin\onboard.mjs C:\path\to\repo --audit` to
+  check the full startup/process baseline.
 - Baseline branch protection can require PRs immediately, but named required
   checks must wait until the check has run at least once.
 - Use `node bin/archon-setup.mjs tighten-required-gate --target <repo-path>`
@@ -280,6 +290,18 @@ The updater only changes workflow callers that already reference
 `ArchonVII/github-workflows@v1`, and preserves repo-specific inputs such as Node
 versions and script names. Bespoke local workflows, hooks, and repo-specific
 `AGENTS.md` sections are skipped unless they gain an explicit managed sync path.
+
+Use the onboard audit command when the question is whether the repo has the full
+startup/process baseline:
+
+```bash
+node C:\GitHub\archon-setup\bin\onboard.mjs C:\path\to\repo --audit
+node C:\GitHub\archon-setup\bin\onboard.mjs C:\path\to\repo --audit --json
+```
+
+This reports `audit.startupReadiness` without writing files. An incomplete
+startup readiness status means the repo needs repair, but the command still
+exits successfully unless CLI usage or repo access fails.
 
 ## Global Update Distribution
 
@@ -314,6 +336,9 @@ Current recorded global fixes include:
 - `2026-06-05-owner-docs-safe-paths` - records that add-only `docs/**` files are
   owner-maintenance safe by default while explicit unsafe paths still require
   normal PR lanes.
+- `2026-06-09-agent-startup-baseline` - records the canonical startup map for
+  plans, process files, coordination, PR flow, and the onboard audit repair
+  command.
 
 ## Local Workflow Validation
 

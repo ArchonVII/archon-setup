@@ -5,6 +5,7 @@ import { collectRepos } from "./ecosystem/collectRepos.mjs";
 const BROWSER_BACKEND_UPDATE_ID = "2026-05-31-browser-backend-preflight";
 const STRICT_PR_READY_UPDATE_ID = "2026-05-31-strict-pr-ready-contract";
 const OWNER_DOCS_SAFE_PATHS_UPDATE_ID = "2026-06-05-owner-docs-safe-paths";
+const STARTUP_BASELINE_UPDATE_ID = "2026-06-09-agent-startup-baseline";
 
 const GLOBAL_UPDATES = [
   {
@@ -106,6 +107,56 @@ const GLOBAL_UPDATES = [
         "- Explicit unsafe paths still win. Protected policy/architecture/process docs, code, config, modifications, deletes, renames, copies, and unclear files require the normal issue -> branch -> worktree -> PR lifecycle.",
         "- Prefer the repo-owned predicate, usually `.githooks/scripts/owner-maintenance.sh`, over retyping path globs.",
         "- Use the repo-prescribed direct commit format, such as `docs(owner): ...` or `chore(owner): ...`, and stage only exact safe files.",
+      ].join("\n"),
+    },
+  },
+  {
+    id: STARTUP_BASELINE_UPDATE_ID,
+    date: "2026-06-09",
+    status: "ready",
+    title: "Agent startup baseline map",
+    summary:
+      "Records the first-stop map for agent plans and process files so agents use the repo baseline before searching for known paths.",
+    source: [
+      "ArchonVII/repo-template AGENTS.md",
+      "ArchonVII/repo-template .agent/startup-baseline.json",
+      "ArchonVII/repo-template scripts/agent/status.mjs",
+      "ArchonVII/repo-template docs/plans/README.md",
+      "ArchonVII/archon-setup issue #130",
+    ],
+    agentInstruction:
+      "Agents must use repo-local AGENTS.md and agent:status startup maps before searching for process paths; if baseline files are missing, run the full archon-setup onboard audit.",
+    confirmationPhrase: `DISTRIBUTE ${STARTUP_BASELINE_UPDATE_ID}`,
+    distribution: {
+      kind: "agents-managed-block",
+      targetPath: "AGENTS.md",
+      protectedBranches: ["main", "master"],
+      heading: "Agent Startup Baseline",
+      body: [
+        "## Agent Startup Baseline",
+        "",
+        "- Start with the repo-local `AGENTS.md` and `npm run agent:status` before searching for process paths.",
+        "- Canonical startup files and directories:",
+        "  - `AGENTS.md`",
+        "  - `.agent/startup-baseline.json`",
+        "  - `.agent/check-map.yml`",
+        "  - `.agent/coordination/README.md`",
+        "  - `docs/plans/README.md`",
+        "  - `docs/plans/`",
+        "  - `docs/agent-process/`",
+        "  - `docs/repo-update-log.md`",
+        "  - `.github/PULL_REQUEST_TEMPLATE.md`",
+        "  - `scripts/agent/`",
+        "  - `scripts/doc-sweep/`",
+        "- Active implementation plans belong in `docs/plans/YYYY-MM-DD-<slug>.md`; `docs/superpowers/plans/` is legacy/history only unless repo-local guidance says otherwise.",
+        "- If startup files are missing, stale, misplaced, or unclear, stop searching and run the full startup/process audit:",
+        "",
+        "  ```powershell",
+        "  node C:/GitHub/archon-setup/bin/onboard.mjs <repo> --audit",
+        "  ```",
+        "",
+        "- `archon-setup update` is workflow-only; it does not prove the startup/process baseline is present.",
+        "- Treat missing or stale startup readiness as a warning-level repair item, not a CI blocker, unless repo-local policy adds a strict mode.",
       ].join("\n"),
     },
   },
