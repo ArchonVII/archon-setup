@@ -1,6 +1,6 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-06-09 by Codex_
+_Last updated: 2026-06-09 by Claude (granular-distributor #145 lane)_
 
 The canonical "what is the ecosystem doing right now?" document for the core ArchonVII source-of-truth repos and the active local health set. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
 
@@ -56,16 +56,16 @@ Notes:
 
 | Repo               | Status        | Detail                                                                                                                                         |
 | ------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `github-workflows` | In progress   | PR #35 is ready for review and documents the current release/agent lifecycle gaps; strict PR contract PR #39 landed at `90c0a89` and `v1`.     |
-| `archon-setup`     | In progress   | Issue #100 is refreshing repo-template snapshots after Owner Maintenance Lane docs safe paths landed upstream.                                |
-| `repo-template`    | Clean on main | Owner Maintenance Lane docs safe paths PR #47 landed at `e2fc1f5`; add-only `docs/**` is safe by default with explicit unsafe overrides.       |
-| `.github`          | Clean on main | Strict PR contract PR #23 landed at `792fc81`; role/lane policy exists and executable-vs-marker taxonomy still needs clarification.            |
+| `github-workflows` | Clean on main | `v1` moved to `c1ad03e` on 2026-06-09 (#140), shipping the first-class Go lane; opt-in for consumers. No open PRs.                              |
+| `archon-setup`     | In progress   | #145 granular marker-based distributor — PR1 (pure engine/adapters/lint) landing; `distribute` subcommand + provider markup follow.           |
+| `repo-template`    | Clean on main | `origin/main` at `de95850`; snapshotted into `archon-setup`. No open PRs.                                                                      |
+| `.github`          | Clean on main | `origin/main` at `1962f27`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 
 ## In-flight PRs
 
 | Repo | PR | Purpose |
 | --- | --- | --- |
-| `archon-setup` | #101 | Refresh repo-template snapshots to `e2fc1f5` and record the owner docs safe-path global update. |
+| `archon-setup` | #145 | Granular marker-based distributor (repo-owned-by-default); PR1 = region engine + adapters + marker lint/manifest. |
 
 ## F-roadmap
 
@@ -101,6 +101,7 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Recently completed
 
+- **2026-06-09** — Released the `github-workflows` Go lane: moved `v1` to `c1ad03e` (#140), refreshed `archon-setup` snapshots across #139/#141/#142 (`githubWorkflows@c1ad03e`, `repoTemplate@de95850`, `orgDefaults@1962f27`), and added the active repo health registry (#144). Began the granular marker-based distributor (#145).
 - **2026-06-05** — `repo-template` PR #47 expanded the Owner Maintenance Lane safe docs set to add-only `docs/**` by default while preserving explicit unsafe docs paths.
 - **2026-06-02** — Distribution/lifecycle rollout landed in `archon-setup`: no-remote smoke-test policy + leaked-repo cleanup (#81), npm publication prep (#83), workflow drift detection + upgrade (#87), `.archon/events.jsonl` stream + ecosystem "Recent events" view (#89), thin Windows `npx` bootstrap `install.ps1` (#91), staged-disabled Copilot/secrets (#93), and the agent-lifecycle baseline (#64). Owner-gated remainder: delete the five leaked smoke-test repos, `npm publish`, and real secret values.
 - **2026-05-31** — `archon-setup` issue #59 completed through merged PR #60; snapshot manifest now records `github-workflows@v1` `00fbaab`, `repo-template` `7aa1e91`, and `.github` `0717902`.

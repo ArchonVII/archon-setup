@@ -1,0 +1,16 @@
+name: Required gate
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  decision:
+    # BEGIN ARCHONVII MANAGED: workflow.required-gate.uses
+    uses: ArchonVII/github-workflows/.github/workflows/repo-required-gate.yml@v1
+    # END ARCHONVII MANAGED: workflow.required-gate.uses
+    permissions:
+      # BEGIN ARCHONVII MANAGED: workflow.required-gate.permissions.base
+      contents: read
+      pull-requests: read
+      # END ARCHONVII MANAGED: workflow.required-gate.permissions.base
+    with:
+      stack: node

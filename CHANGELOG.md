@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- Began the granular marker-based distributor (#145): a repo-owned-by-default
+  capability that updates only ArchonVII-managed regions
+  (`BEGIN`/`END ARCHONVII MANAGED: <id>` markers) and surfaces conflict/adoption
+  instead of the `update --upgrade` clobber, which discards intentional repo
+  customization. This first slice ships the pure layer — the region engine
+  (`parse`/`replace`/`reconcile`, with legacy AGENTS marker support), the
+  markdown/yaml/shell adapters (path-aware YAML duplicate-key detection), and the
+  marker lint/manifest (`npm run lint:markers`). The `distribute` subcommand and
+  provider markup follow. Design:
+  `docs/superpowers/specs/2026-06-09-granular-distributor-design.md`.
+
 ### Changed
 
 - Refreshed the `repo-template` snapshot to `main` commit `de95850`: agents no

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# BEGIN ARCHONVII MANAGED: hooks.pre-push.core
+set -euo pipefail
+echo "archonvii managed pre-push"
+# END ARCHONVII MANAGED: hooks.pre-push.core
+
+exec ./scripts/local-guard.sh

@@ -1,0 +1,29 @@
+[
+  {
+    "provider": "github-workflows",
+    "snapshotFile": "callers/repo-required-gate.yml",
+    "targetRelpath": ".github/workflows/repo-required-gate.yml",
+    "adapter": "yaml",
+    "group": "callers",
+    "wholeFile": false,
+    "appliesToDefault": "existing-file-only"
+  },
+  {
+    "provider": "repo-template",
+    "snapshotFile": "agents/AGENTS.md",
+    "targetRelpath": "AGENTS.md",
+    "adapter": "markdown",
+    "group": "agents",
+    "wholeFile": false,
+    "appliesToDefault": "existing-file-only"
+  },
+  {
+    "provider": "repo-template",
+    "snapshotFile": "hooks/pre-push",
+    "targetRelpath": ".githooks/pre-push",
+    "adapter": "shell",
+    "group": "hooks",
+    "wholeFile": false,
+    "appliesToDefault": "existing-file-only"
+  }
+]

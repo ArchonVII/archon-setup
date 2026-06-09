@@ -81,6 +81,15 @@ tighten-required-gate --target <repo>` marks `repo-required-gate / decision`
 
 ## In Progress
 
+- **Granular marker-based distributor (#145)** - a repo-owned-by-default
+  `distribute` capability that updates only ArchonVII-managed regions
+  (`BEGIN`/`END ARCHONVII MANAGED: <id>` markers) and surfaces conflict/adoption
+  instead of the `update --upgrade` clobber (which discards intentional repo
+  customization). PR1 shipped the pure layer (region engine, file adapters,
+  marker lint/manifest); the `distribute` subcommand and per-group provider
+  markup follow. Design:
+  `docs/superpowers/specs/2026-06-09-granular-distributor-design.md`.
+
 - **npm publication** - the publication prep merged (#82/#83): `npx` quickstart,
   a `prepublishOnly` gate, the `npm pack` tarball guard, and a manual-dispatch
   `publish.yml`. The actual `npm publish` stays owner-gated (NPM_TOKEN + version
