@@ -157,6 +157,66 @@ if (argv[0] === "distribute") {
   process.exit(exitCodeFor(run));
 }
 
+const PRLANE_HELP = `archon-setup verify-merged/rollback/cleanup - manage PR-lane runs
+
+Usage:
+  node bin/archon-setup.mjs verify-merged (--run <id> | --last) [options]
+  node bin/archon-setup.mjs rollback (--run <id> | --last) [options]
+  node bin/archon-setup.mjs cleanup  (--run <id> | --last) [options]
+
+Options:
+  --run <id>          Run id to load from the PR-lane run-record directory
+  --last              Use the newest run record
+  --record-root <dir> Run-record directory (default: ~/.claude/archon-prlane-runs)
+  --target <path>     Target repo override; normally read from the run record
+  --json              Emit the full result as JSON
+  --help              Show this help`;
+
+if (argv[0] === "verify-merged" || argv[0] === "rollback" || argv[0] === "cleanup") {
+  const command = argv[0];
+  const args = argv.slice(1);
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(PRLANE_HELP);
+    process.exit(0);
+  }
+
+  function readPrLaneOption(name, fallback = null) {
+    const index = args.indexOf(name);
+    if (index < 0) return fallback;
+    const value = args[index + 1];
+    if (!value || value.startsWith("--")) {
+      console.error(`${command}: missing value for ${name}`);
+      process.exit(1);
+    }
+    return value;
+  }
+
+  try {
+    const { cleanupRun, resolveRunRecordPath, rollbackRun, verifyMergedRun } = await import("../src/server/prlane/rollback.mjs");
+    const recordPath = await resolveRunRecordPath({
+      runId: readPrLaneOption("--run", null),
+      last: args.includes("--last"),
+      root: readPrLaneOption("--record-root", undefined),
+    });
+    const targetPath = readPrLaneOption("--target", null);
+    const result =
+      command === "verify-merged"
+        ? await verifyMergedRun({ recordPath, targetPath })
+        : command === "rollback"
+          ? await rollbackRun({ recordPath, targetPath })
+          : await cleanupRun({ recordPath, targetPath });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      console.log(`${result.state}: ${result.report?.rollbackCommand ?? recordPath}`);
+    }
+    process.exit(0);
+  } catch (err) {
+    console.error(`${command}: ${err.message}`);
+    process.exit(1);
+  }
+}
+
 const REFRESH_HELP = `archon-setup refresh - audit one repo's ecosystem state (read-only)
 
 Runs the refresh audit (#157): reconciles ArchonVII-managed regions in audit

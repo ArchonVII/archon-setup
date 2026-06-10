@@ -38,7 +38,12 @@
     { "id": "rollback_requested", "terminal": false, "requires": ["runId", "mergeSha"] },
     { "id": "rollback_pr_created", "terminal": false, "requires": ["runId", "mergeSha", "rollbackPrNumber"] },
     { "id": "rollback_merged", "terminal": false, "requires": ["runId", "mergeSha", "rollbackPrNumber", "rollbackMergeSha"] },
-    { "id": "rollback_verified", "terminal": true, "requires": ["runId", "mergeSha", "rollbackPrNumber", "rollbackMergeSha"] },
+    {
+      "id": "rollback_verified",
+      "terminal": true,
+      "requires": ["runId", "mergeSha", "rollbackMergeSha"],
+      "notes": "rollbackPrNumber is present for revert-PR rollbacks; absent when affected paths were already reverted before this command"
+    },
     {
       "id": "failed",
       "terminal": true,
@@ -67,6 +72,7 @@
     { "from": "cleaned_up", "to": "rollback_requested" },
     { "from": "failed", "to": "rollback_requested" },
     { "from": "rollback_requested", "to": "rollback_pr_created" },
+    { "from": "rollback_requested", "to": "rollback_verified" },
     { "from": "rollback_pr_created", "to": "rollback_merged" },
     { "from": "rollback_merged", "to": "rollback_verified" }
   ],

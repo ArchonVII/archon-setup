@@ -180,6 +180,36 @@ passes: confirmation phrase, allowed categories/paths, no unresolved or
 auto-resolved conflict items, `automated-distribution` label, PR body evidence,
 required checks passing, and a clean post-apply audit.
 
+After GitHub reports the PR merged, verify and clean up the run record:
+
+```bash
+node bin/archon-setup.mjs verify-merged --run <run-id>
+node bin/archon-setup.mjs cleanup --run <run-id>
+```
+
+`verify-merged` fetches `origin/<default>`, audits the recorded merge commit in
+a detached disposable worktree, and requires every applied item to report
+`clean_apply changed:false`. A failed post-merge audit leaves a rollback-ready
+RunReport. `cleanup` is idempotent: after `verified_merged`, it removes the
+recorded worktree and local/remote run branch; before a merge, it closes the PR
+when possible, deletes the branch, and records the run as aborted.
+
+Rollback is a guaranteed-safe revert attempt, not a promise to restore the whole
+tree:
+
+```bash
+node bin/archon-setup.mjs rollback --run <run-id>
+node bin/archon-setup.mjs rollback --last
+```
+
+It never mutates `main` directly. If the original PR never merged, rollback
+falls back to cleanup. If it did merge, rollback creates a new revert branch
+from `origin/<default>`, auto-detects squash versus merge commits
+(`git revert` versus `git revert -m 1`), checks that affected paths match the
+recorded base tree, pushes the branch, and opens a rollback PR. Later commits in
+the same managed region can make the revert unsafe; in that case rollback stops
+with a manual-review failure and creates no PR.
+
 ## Canonical New-Repo Setup
 
 Use `archon-setup` as the canonical path for new ArchonVII repos. It wraps the
