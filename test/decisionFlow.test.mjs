@@ -326,6 +326,35 @@ test("intake re-derives resolution options from the fresh audit mapping", async 
   assert.equal(intake.code, "malformed-resolution");
 });
 
+test("intake requires every fresh actionable item to be represented once", async () => {
+  const repo = await makeRepo({ "AGENTS.md": `# A\n\n${guBlock("stale")}${guBlock("rogue", "mystery-block")}` });
+  const catalog = catalogOf(guEntry());
+  const doc = await docOf(repo, catalog);
+  assert.equal(doc.items.length, 2);
+
+  const missing = resolveAll(JSON.parse(JSON.stringify({ ...doc, items: [doc.items[0]] })), "apply-central");
+  assert.equal((await intakeDecisionDoc({ input: missing, ...intakeDeps(repo, catalog), now: NOW })).code, "missing-decision");
+
+  const duplicate = resolveAll(JSON.parse(JSON.stringify({ ...doc, items: [doc.items[0], doc.items[0]] })), "apply-central");
+  assert.equal((await intakeDecisionDoc({ input: duplicate, ...intakeDeps(repo, catalog), now: NOW })).code, "duplicate-item");
+});
+
+test("intake rebuilds ApplySet target fields from the fresh audit item", async () => {
+  const repo = await makeRepo({ "AGENTS.md": `# A\n\n${guBlock("stale")}` });
+  const catalog = catalogOf(guEntry());
+  const doc = await docOf(repo, catalog);
+  const tampered = resolveAll(doc, "apply-central");
+  tampered.items[0].category = "hooks";
+  tampered.items[0].file = ".archon/region-ownership.json";
+  tampered.items[0].regionId = "fake-region";
+
+  const intake = await intakeDecisionDoc({ input: tampered, ...intakeDeps(repo, catalog), now: NOW });
+  assert.equal(intake.ok, true);
+  assert.equal(intake.applySet.items[0].category, "agents");
+  assert.equal(intake.applySet.items[0].file, "AGENTS.md");
+  assert.equal(intake.applySet.items[0].regionId, DRIFT_ID);
+});
+
 // ---- intake: rejection matrix (AC2) ----
 
 test("intake rejects: unknown schemaVersion, repo mismatch, stale base, malformed resolution, missing rationale", async () => {

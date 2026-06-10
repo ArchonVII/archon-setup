@@ -32,6 +32,8 @@ export const DEFAULT_GUARDS_CONFIG = {
   allowedPathPatterns: ["AGENTS.md", "**/AGENTS.md", ".archon/region-ownership.json"],
 };
 
+const ACTIONABLE = new Set(["merge", "create", "needs_review", "blocked"]);
+
 // Scope-bound confirmation phrase, mirroring distribute's confirmationPhraseFor:
 // a pasted phrase can never authorize a different repo's or run's apply.
 export function confirmationPhraseForRun({ repoName, runId }) {
@@ -162,9 +164,18 @@ export async function intakeDecisionDoc({
   if (audit.repo.baseSha !== doc.repo.baseSha) {
     return reject("stale-base", `doc base ${doc.repo.baseSha} != current HEAD ${audit.repo.baseSha}`);
   }
-  const auditItems = new Map(
-    audit.categories.flatMap((category) => category.items).map((item) => [item.itemId, item]),
+  const freshDecisionItems = audit.categories.flatMap((category) =>
+    category.items.filter((item) => ACTIONABLE.has(item.operation.action)),
   );
+  const docItemIds = new Set(doc.items.map((item) => item.itemId));
+  if (docItemIds.size !== doc.items.length) {
+    return reject("duplicate-item", "DecisionDoc contains duplicate itemId values");
+  }
+  const missingDecision = freshDecisionItems.find((item) => !docItemIds.has(item.itemId));
+  if (missingDecision) {
+    return reject("missing-decision", `${missingDecision.itemId}: fresh actionable item missing from DecisionDoc`);
+  }
+  const auditItems = new Map(freshDecisionItems.map((item) => [item.itemId, item]));
 
   // Reviewer-error gates are never partial-skippable: a malformed resolution
   // means the completed doc itself is untrustworthy.
@@ -172,13 +183,6 @@ export async function intakeDecisionDoc({
     const choice = item.resolution.choice;
     if (choice === null) {
       return reject("malformed-resolution", `${item.itemId}: choice is required`);
-    }
-    if (item.operation.action === "blocked" && choice !== "defer" && !item.resolution.rationale) {
-      return reject("missing-rationale", `${item.itemId}: blocked item resolved as ${choice} without a rationale`);
-    }
-    const unsupported = unsupportedApplyCentralReason(item);
-    if (unsupported) {
-      return reject("unsupported-resolution", `${item.itemId}: apply-central cannot target ${unsupported}`);
     }
   }
 
@@ -188,14 +192,14 @@ export async function intakeDecisionDoc({
 
   for (const item of doc.items) {
     const choice = item.resolution.choice;
-    if (choice === "defer" || choice === "merge-manual") {
-      manual.push({ itemId: item.itemId, choice });
+    const freshItem = auditItems.get(item.itemId);
+    if (!freshItem) {
+      if (!allowPartial) return reject("stale-state", `${item.itemId}: stale-state (re-run refresh, or use --allow-partial)`);
+      skipped.push({ itemId: item.itemId, reason: "stale-state" });
       continue;
     }
-
-    const body = await currentBody(repo.path, item.file);
-    const staleness = stalenessOf(item, body);
-    const freshItem = auditItems.get(item.itemId);
+    const body = await currentBody(repo.path, freshItem.file);
+    const staleness = stalenessOf({ ...item, regionId: freshItem.regionId }, body);
     const drifted = staleness ?? (!freshItem || !sameRawState(freshItem.raw, item.raw) ? "stale-state" : null);
     if (drifted) {
       if (!allowPartial) return reject(drifted, `${item.itemId}: ${drifted} (re-run refresh, or use --allow-partial)`);
@@ -206,17 +210,36 @@ export async function intakeDecisionDoc({
     if (!freshOptions.includes(choice)) {
       return reject("malformed-resolution", `${item.itemId}: choice ${JSON.stringify(choice)} not in fresh options`);
     }
+    const trustedItem = {
+      ...item,
+      category: freshItem.category,
+      regionId: freshItem.regionId,
+      file: freshItem.file,
+      raw: freshItem.raw,
+      operation: freshItem.operation,
+    };
+    if (trustedItem.operation.action === "blocked" && choice !== "defer" && !item.resolution.rationale) {
+      return reject("missing-rationale", `${item.itemId}: blocked item resolved as ${choice} without a rationale`);
+    }
+    const unsupported = unsupportedApplyCentralReason({ ...trustedItem, resolution: item.resolution });
+    if (unsupported) {
+      return reject("unsupported-resolution", `${item.itemId}: apply-central cannot target ${unsupported}`);
+    }
+    if (choice === "defer" || choice === "merge-manual") {
+      manual.push({ itemId: trustedItem.itemId, choice });
+      continue;
+    }
 
-    const target = writePlanFor(item);
+    const target = writePlanFor({ ...trustedItem, resolution: item.resolution });
     applyItems.push({
-      itemId: item.itemId,
-      category: item.category,
-      regionId: item.regionId,
+      itemId: trustedItem.itemId,
+      category: trustedItem.category,
+      regionId: trustedItem.regionId,
       file: target.file,
       resolution: choice,
       expectedFileSha256: body === null ? null : contentFingerprint(body),
       expectedRegionInnerSha256: (() => {
-        const inner = regionInnerOf(body, item.regionId);
+        const inner = regionInnerOf(body, trustedItem.regionId);
         return inner === null ? null : contentFingerprint(inner);
       })(),
       writePlan: target.writePlan,
