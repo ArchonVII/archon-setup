@@ -89,6 +89,22 @@ function writePlanFor(item) {
   return { file: item.file, writePlan };
 }
 
+function sameRawState(a, b) {
+  return (
+    a.status === b.status &&
+    a.changed === b.changed &&
+    (a.created ?? false) === (b.created ?? false) &&
+    (a.reason ?? null) === (b.reason ?? null)
+  );
+}
+
+function unsupportedApplyCentralReason(item) {
+  if (item.resolution.choice !== "apply-central") return null;
+  if (item.regionId === null) return "missing region id";
+  if (item.raw.status === "conflict" && item.raw.reason === "unknown-id") return "unknown local region id";
+  return null;
+}
+
 export async function intakeDecisionDoc({
   input, // DecisionDoc object or JSON string
   targetPath,
@@ -145,6 +161,10 @@ export async function intakeDecisionDoc({
     if (item.operation.action === "blocked" && choice !== "defer" && !item.resolution.rationale) {
       return reject("missing-rationale", `${item.itemId}: blocked item resolved as ${choice} without a rationale`);
     }
+    const unsupported = unsupportedApplyCentralReason(item);
+    if (unsupported) {
+      return reject("unsupported-resolution", `${item.itemId}: apply-central cannot target ${unsupported}`);
+    }
   }
 
   const applyItems = [];
@@ -161,7 +181,7 @@ export async function intakeDecisionDoc({
     const body = await currentBody(repo.path, item.file);
     const staleness = stalenessOf(item, body);
     const freshItem = auditItems.get(item.itemId);
-    const drifted = staleness ?? (freshItem && freshItem.raw.status !== item.raw.status ? "stale-state" : null);
+    const drifted = staleness ?? (!freshItem || !sameRawState(freshItem.raw, item.raw) ? "stale-state" : null);
     if (drifted) {
       if (!allowPartial) return reject(drifted, `${item.itemId}: ${drifted} (re-run refresh, or use --allow-partial)`);
       skipped.push({ itemId: item.itemId, reason: drifted });

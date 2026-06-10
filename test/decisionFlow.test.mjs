@@ -286,6 +286,19 @@ test("intake rejects: unknown schemaVersion, repo mismatch, stale base, malforme
   });
   assert.equal(staleBase.code, "stale-base");
 
+  const mergeOnlyRepo = await makeRepo({ "AGENTS.md": `# A\n\n${guBlock("stale")}` });
+  const mergeOnlyCompleted = resolveAll(await docOf(mergeOnlyRepo, catalog), "apply-central");
+  const staleState = await intakeDecisionDoc({
+    input: mergeOnlyCompleted,
+    ...intakeDeps(mergeOnlyRepo, catalog),
+    refresh: async () => ({
+      status: "ok",
+      repo: { name: mergeOnlyRepo.name, path: mergeOnlyRepo.path, baseSha: BASE_SHA },
+      categories: [],
+    }),
+  });
+  assert.equal(staleState.code, "stale-state");
+
   const badChoice = JSON.parse(JSON.stringify(completed));
   badChoice.items[0].resolution.choice = null;
   assert.equal((await intakeDecisionDoc({ input: badChoice, ...deps })).code, "malformed-resolution");
@@ -294,7 +307,22 @@ test("intake rejects: unknown schemaVersion, repo mismatch, stale base, malforme
   noRationale.items[1].resolution.rationale = null; // blocked item resolved without rationale
   assert.equal((await intakeDecisionDoc({ input: noRationale, ...deps })).code, "missing-rationale");
 
+  assert.equal((await intakeDecisionDoc({ input: completed, ...deps })).code, "unsupported-resolution");
+
   assert.equal((await intakeDecisionDoc({ input: "{not json", ...deps })).code, "parse-failed");
+});
+
+test("intake rejects apply-central for file-level conflicts without a source region", async () => {
+  const repo = await makeRepo({
+    "AGENTS.md": `# A\n\n<!-- BEGIN ARCHONVII GLOBAL UPDATE: ${DRIFT_ID} -->\nmissing end marker\n`,
+  });
+  const doc = await docOf(repo, catalogOf(guEntry()));
+  assert.equal(doc.items[0].regionId, null);
+  assert.equal(doc.items[0].operation.action, "blocked");
+
+  const completed = resolveAll(doc, "apply-central", { rationale: "operator wants central to win" });
+  const intake = await intakeDecisionDoc({ input: completed, ...intakeDeps(repo, catalogOf(guEntry())), now: NOW });
+  assert.equal(intake.code, "unsupported-resolution");
 });
 
 test("intake rejects stale hashes with the precise reason: in-region edit vs outside-the-region edit", async () => {
