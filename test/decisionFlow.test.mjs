@@ -49,6 +49,15 @@ const BASE_SHA = "deadbeef".repeat(5);
 const PROVENANCE = { managedRegionsSha256: "0123456701234567".repeat(4) };
 const DRIFT_ID = "2026-01-01-decision-block";
 const ADOPT_ID = "2026-02-02-adoption-block";
+const CREATE_ID = "agents.core";
+const CREATE_SNAPSHOT = [
+  "# AGENTS",
+  "",
+  `<!-- BEGIN ARCHONVII MANAGED: ${CREATE_ID} -->`,
+  "Managed core guidance.",
+  `<!-- END ARCHONVII MANAGED: ${CREATE_ID} -->`,
+  "",
+].join("\n");
 
 function sha256(text) {
   return createHash("sha256").update(text, "utf8").digest("hex");
@@ -78,6 +87,18 @@ function guBlock(inner, id = DRIFT_ID) {
     `<!-- END ARCHONVII GLOBAL UPDATE: ${id} -->`,
     "",
   ].join("\n");
+}
+
+function createEntry() {
+  return guEntry({
+    id: CREATE_ID,
+    markerShape: "managed",
+    anchor: null,
+    wholeFile: true,
+    appliesToDefault: "always",
+    inner: "Managed core guidance.",
+    snapshotBody: CREATE_SNAPSHOT,
+  });
 }
 
 function catalogOf(...entries) {
@@ -283,6 +304,26 @@ test("intake verifies the recorded owner against the live target origin", async 
     originRemote: async () => ({ originDetected: { owner: "OtherOrg", repo: repo.name } }),
   });
   assert.equal(mismatch.code, "repo-mismatch");
+});
+
+test("intake re-derives resolution options from the fresh audit mapping", async () => {
+  const repo = await makeRepo({});
+  const catalog = catalogOf(createEntry());
+  const doc = await docOf(repo, catalog);
+  assert.deepEqual(doc.items[0].options, ["apply-central", "defer"]);
+
+  const tampered = JSON.parse(JSON.stringify(doc));
+  tampered.items[0].options.push("keep-local");
+  tampered.items[0].resolution = {
+    choice: "keep-local",
+    rationale: "manual tamper",
+    freeText: null,
+    decidedBy: "t",
+    decidedAt: NOW,
+  };
+
+  const intake = await intakeDecisionDoc({ input: tampered, ...intakeDeps(repo, catalog), now: NOW });
+  assert.equal(intake.code, "malformed-resolution");
 });
 
 // ---- intake: rejection matrix (AC2) ----

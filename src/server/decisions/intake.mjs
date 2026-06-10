@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseRegions } from "../../distributor/regionEngine.mjs";
 import { assertSchemaSupported, validate } from "../../contracts/validate.mjs";
+import { loadOperationMapping, operationRowFor } from "../../contracts/operationMapping.mjs";
 import { refreshTarget } from "../refresh/refreshRepo.mjs";
 import { repoContextFor } from "../../distributor/distribute.mjs";
 import { checkOriginRemote } from "../preflight/checkOriginRemote.mjs";
@@ -98,6 +99,10 @@ function sameRawState(a, b) {
   );
 }
 
+function mappingRawState(raw) {
+  return { status: raw.status, changed: raw.changed, created: raw.created ?? false };
+}
+
 function unsupportedApplyCentralReason(item) {
   if (item.resolution.choice !== "apply-central") return null;
   if (item.regionId === null) return "missing region id";
@@ -113,6 +118,7 @@ export async function intakeDecisionDoc({
   repoContext = repoContextFor,
   refresh = refreshTarget,
   originRemote = checkOriginRemote,
+  mapping = loadOperationMapping(),
   now = new Date().toISOString(),
 }) {
   // F18: transport-level JSON must parse before anything else looks at it.
@@ -164,8 +170,8 @@ export async function intakeDecisionDoc({
   // means the completed doc itself is untrustworthy.
   for (const item of doc.items) {
     const choice = item.resolution.choice;
-    if (choice === null || !item.options.includes(choice)) {
-      return reject("malformed-resolution", `${item.itemId}: choice ${JSON.stringify(choice)} not in options`);
+    if (choice === null) {
+      return reject("malformed-resolution", `${item.itemId}: choice is required`);
     }
     if (item.operation.action === "blocked" && choice !== "defer" && !item.resolution.rationale) {
       return reject("missing-rationale", `${item.itemId}: blocked item resolved as ${choice} without a rationale`);
@@ -195,6 +201,10 @@ export async function intakeDecisionDoc({
       if (!allowPartial) return reject(drifted, `${item.itemId}: ${drifted} (re-run refresh, or use --allow-partial)`);
       skipped.push({ itemId: item.itemId, reason: drifted });
       continue;
+    }
+    const freshOptions = operationRowFor(mapping, mappingRawState(freshItem.raw)).options;
+    if (!freshOptions.includes(choice)) {
+      return reject("malformed-resolution", `${item.itemId}: choice ${JSON.stringify(choice)} not in fresh options`);
     }
 
     const target = writePlanFor(item);
