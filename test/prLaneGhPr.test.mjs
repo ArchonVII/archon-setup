@@ -48,7 +48,7 @@ test("ghPr creates a draft PR with a stdin body and parses the returned URL", as
 test("ghPr labels the PR and reads JSON check status", async () => {
   const { calls, runGh } = fakeGh([
     { code: 0, stdout: "", stderr: "" },
-    { code: 0, stdout: JSON.stringify([{ name: "test", status: "passed" }]), stderr: "" },
+    { code: 0, stdout: JSON.stringify([{ name: "test", state: "SUCCESS", bucket: "pass" }]), stderr: "" },
   ]);
 
   await addPrLabel({ repoSlug: "ArchonVII/consumer-repo", prNumber: 457, label: "automated-distribution", runGh });
@@ -63,8 +63,34 @@ test("ghPr labels the PR and reads JSON check status", async () => {
     "--add-label",
     "automated-distribution",
   ]);
-  assert.deepEqual(calls[1].args, ["pr", "checks", "457", "--repo", "ArchonVII/consumer-repo", "--json", "name,status,conclusion"]);
-  assert.deepEqual(checks, [{ name: "test", status: "passed" }]);
+  assert.deepEqual(calls[1].args, ["pr", "checks", "457", "--repo", "ArchonVII/consumer-repo", "--json", "name,state,bucket,link,workflow"]);
+  assert.deepEqual(checks, [{ name: "test", state: "SUCCESS", bucket: "pass" }]);
+});
+
+test("ghPr treats pending check exit code 8 as resumable status output", async () => {
+  const { runGh } = fakeGh([
+    { code: 8, stdout: JSON.stringify([{ name: "test", state: "PENDING", bucket: "pending" }]), stderr: "" },
+  ]);
+
+  const checks = await listPrChecks({ repoSlug: "ArchonVII/consumer-repo", prNumber: 457, runGh });
+
+  assert.deepEqual(checks, [{ name: "test", state: "PENDING", bucket: "pending" }]);
+});
+
+test("ghPr can create a non-draft PR for auto-merge mode", async () => {
+  const { calls, runGh } = fakeGh([{ code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/457\n", stderr: "" }]);
+
+  await createDraftPr({
+    repoSlug: "ArchonVII/consumer-repo",
+    base: "main",
+    head: "agent/refresh/run-159",
+    title: "feat(agents): refresh managed regions",
+    body: "body",
+    draft: false,
+    runGh,
+  });
+
+  assert.equal(calls[0].args.includes("--draft"), false);
 });
 
 test("ghPr queues auto-merge without force flags", async () => {

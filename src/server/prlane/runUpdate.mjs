@@ -392,6 +392,7 @@ export async function runUpdate({
       head: branchName,
       title: `feat(agents): apply refresh ${applySet.runId}`,
       body: prBody,
+      draft: mode !== "auto",
       runGh,
     });
     await addPrLabel({ repoSlug, prNumber: pr.number, label: "automated-distribution", runGh });

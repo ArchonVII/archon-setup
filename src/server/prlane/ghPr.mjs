@@ -15,23 +15,24 @@ function parsePrUrl(stdout) {
   return { number: Number(match[1]), url };
 }
 
-export async function createDraftPr({ repoSlug, base, head, title, body, runGh = ghRunner }) {
+export async function createDraftPr({ repoSlug, base, head, title, body, draft = true, runGh = ghRunner }) {
+  const args = [
+    "pr",
+    "create",
+    "--repo",
+    repoSlug,
+    "--base",
+    base,
+    "--head",
+    head,
+    "--title",
+    title,
+  ];
+  if (draft) args.push("--draft");
+  args.push("--body-file", "-");
+
   const res = await runGh(
-    [
-      "pr",
-      "create",
-      "--repo",
-      repoSlug,
-      "--base",
-      base,
-      "--head",
-      head,
-      "--title",
-      title,
-      "--draft",
-      "--body-file",
-      "-",
-    ],
+    args,
     { stdin: body },
   );
   if (res.code !== 0) throw new Error(`gh pr create failed: ${errorText(res)}`);
@@ -44,8 +45,8 @@ export async function addPrLabel({ repoSlug, prNumber, label, runGh = ghRunner }
 }
 
 export async function listPrChecks({ repoSlug, prNumber, runGh = ghRunner }) {
-  const res = await runGh(["pr", "checks", String(prNumber), "--repo", repoSlug, "--json", "name,status,conclusion"]);
-  if (res.code !== 0) throw new Error(`gh pr checks failed: ${errorText(res)}`);
+  const res = await runGh(["pr", "checks", String(prNumber), "--repo", repoSlug, "--json", "name,state,bucket,link,workflow"]);
+  if (res.code !== 0 && res.code !== 8) throw new Error(`gh pr checks failed: ${errorText(res)}`);
   try {
     return res.stdout.trim() ? JSON.parse(res.stdout) : [];
   } catch (err) {

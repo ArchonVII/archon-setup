@@ -33,11 +33,11 @@ function labelsOf(pr) {
 }
 
 function checkStatus(check) {
-  return String(check?.conclusion ?? check?.status ?? "").toLowerCase();
+  return String(check?.bucket ?? check?.conclusion ?? check?.status ?? check?.state ?? "").toLowerCase();
 }
 
 function checkPassed(check) {
-  return ["passed", "success", "completed", "ok"].includes(checkStatus(check));
+  return ["pass", "passed", "success", "completed", "ok"].includes(checkStatus(check));
 }
 
 function bodyIncludesIssue(body, issueNumber) {

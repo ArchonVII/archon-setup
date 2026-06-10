@@ -371,6 +371,8 @@ test("runUpdate auto mode queues auto-merge when the gate is eligible", async ()
   });
 
   assert.equal(result.state, "merge_queued");
+  const createCall = ghCalls.find((call) => call.args[0] === "pr" && call.args[1] === "create");
+  assert.equal(createCall.args.includes("--draft"), false);
   assert.equal(ghCalls.some((call) => call.args[0] === "pr" && call.args[1] === "merge" && call.args.includes("--auto")), true);
 });
 
