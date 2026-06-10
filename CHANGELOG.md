@@ -11,6 +11,16 @@
 
 ### Added
 
+- PR-lane rollback and post-merge closeout (#160, M4): `verify-merged --run`
+  audits the recorded merge commit in a detached disposable worktree and
+  requires all applied items to be `clean_apply changed:false`; `cleanup --run`
+  idempotently removes recorded worktrees and branches; `rollback --run|--last`
+  opens a safe revert PR without mutating `main`, auto-detecting squash versus
+  merge commits and stopping for manual review on same-region collisions.
+  Already-reverted affected paths are detected and recorded as
+  `rollback_verified` without opening a duplicate PR. Run records now carry the
+  original `ApplySet` context needed for later verification and rollback.
+
 - The PR lane (#159, M3): `refresh --intake <doc.json|issue:#N> --execute
   --confirm "<phrase>"` now consumes the M2 `ApplySet`, creates a disposable
   branch/worktree from `origin/<default>`, applies allowed managed-region

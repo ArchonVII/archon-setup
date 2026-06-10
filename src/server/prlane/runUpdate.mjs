@@ -214,7 +214,13 @@ export async function runUpdate({
     throw new Error(`runUpdate mode ${mode} is not implemented yet`);
   }
 
-  const base = { runId: applySet.runId, baseSha: applySet.repo.baseSha };
+  const absoluteTarget = resolve(targetPath);
+  const base = {
+    runId: applySet.runId,
+    baseSha: applySet.repo.baseSha,
+    targetPath: absoluteTarget,
+    applySet,
+  };
   const activeCatalog = augmentKnownIdsForOwnership(catalog ?? (await loadDefaultCatalog()), applySet);
   let failedStage = "planned";
 
@@ -240,7 +246,6 @@ export async function runUpdate({
     for (const item of applySet.items) assertAllowedRelpath(item.file, applySet.guards.allowedPathPatterns);
     assertCatalogMatchesApplySet(activeCatalog, applySet);
 
-    const absoluteTarget = resolve(targetPath);
     const toplevel = await git({ runCommand, cwd: absoluteTarget, args: ["rev-parse", "--show-toplevel"] });
     if (basename(resolve(toplevel)) !== applySet.repo.name) {
       throw new Error(`target repo mismatch: ApplySet is for ${applySet.repo.name}, target is ${basename(resolve(toplevel))}`);
@@ -401,7 +406,7 @@ export async function runUpdate({
     await appendRunState({
       recordPath,
       state: "pr_created",
-      entry: { ...base, branch: branchName, headSha, prNumber: pr.number },
+      entry: { ...base, branch: branchName, headSha, prNumber: pr.number, prUrl: pr.url },
       now: now(),
     });
 
