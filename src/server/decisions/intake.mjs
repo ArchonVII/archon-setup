@@ -112,6 +112,7 @@ export async function intakeDecisionDoc({
   guardsConfig = DEFAULT_GUARDS_CONFIG,
   repoContext = repoContextFor,
   refresh = refreshTarget,
+  originRemote = checkOriginRemote,
   now = new Date().toISOString(),
 }) {
   // F18: transport-level JSON must parse before anything else looks at it.
@@ -138,6 +139,14 @@ export async function intakeDecisionDoc({
   if (repo.available === false) return reject("target-unavailable", `${targetPath} is not a readable git worktree`);
   if (repo.name !== doc.repo.name) {
     return reject("repo-mismatch", `doc is for "${doc.repo.name}", target is "${repo.name}"`);
+  }
+  let origin = null;
+  if (doc.repo.owner) {
+    origin = (await originRemote(repo.path)).originDetected;
+    if (!origin || origin.owner !== doc.repo.owner || origin.repo !== doc.repo.name) {
+      const targetSlug = origin ? `${origin.owner}/${origin.repo}` : "no github.com origin";
+      return reject("repo-mismatch", `doc is for "${doc.repo.owner}/${doc.repo.name}", target is "${targetSlug}"`);
+    }
   }
 
   // F1/F21: the world must not have moved since the doc was generated. The
@@ -211,7 +220,7 @@ export async function intakeDecisionDoc({
   if (applyItems.length > 0) {
     // Owner preference: the doc's recorded owner, else the live origin remote
     // (M3's gh calls need a real slug), else a recorded placeholder.
-    const origin = doc.repo.owner ? null : (await checkOriginRemote(repo.path)).originDetected;
+    origin = origin ?? (doc.repo.owner ? null : (await originRemote(repo.path)).originDetected);
     applySet = {
       schemaVersion: 1,
       kind: "apply-set",

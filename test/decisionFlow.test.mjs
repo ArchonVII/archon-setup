@@ -262,6 +262,29 @@ test("intake: keep-local records ownership; defer and merge-manual never enter t
   assert.deepEqual(intake.manual, [{ itemId: `agents/AGENTS.md#${DRIFT_ID}`, choice: "defer" }]);
 });
 
+test("intake verifies the recorded owner against the live target origin", async () => {
+  const repo = await makeRepo({ "AGENTS.md": `# A\n\n${guBlock("stale")}` });
+  const catalog = catalogOf(guEntry());
+  const report = await auditOf(repo, catalog);
+  const doc = await buildDecisionDoc({ report, runId: "run-owner-0001", now: NOW, provenance: PROVENANCE, owner: "ArchonVII" });
+  const completed = resolveAll(doc, "apply-central");
+
+  const ok = await intakeDecisionDoc({
+    input: completed,
+    ...intakeDeps(repo, catalog),
+    originRemote: async () => ({ originDetected: { owner: "ArchonVII", repo: repo.name } }),
+  });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.applySet.repo.owner, "ArchonVII");
+
+  const mismatch = await intakeDecisionDoc({
+    input: completed,
+    ...intakeDeps(repo, catalog),
+    originRemote: async () => ({ originDetected: { owner: "OtherOrg", repo: repo.name } }),
+  });
+  assert.equal(mismatch.code, "repo-mismatch");
+});
+
 // ---- intake: rejection matrix (AC2) ----
 
 test("intake rejects: unknown schemaVersion, repo mismatch, stale base, malformed resolution, missing rationale", async () => {
