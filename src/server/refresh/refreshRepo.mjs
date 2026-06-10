@@ -118,6 +118,36 @@ function probeExistence(repo, relpaths) {
   return exists;
 }
 
+function readOwnership(repoPath) {
+  const empty = { itemIds: new Set(), malformed: false };
+  if (!repoPath) return empty;
+
+  let body;
+  try {
+    body = readFileSync(safeJoin(repoPath, ".archon/region-ownership.json"), "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return empty;
+    return { itemIds: new Set(), malformed: true };
+  }
+
+  try {
+    const parsed = JSON.parse(body);
+    const records = Array.isArray(parsed.records) ? parsed.records : Array.isArray(parsed.regions) ? parsed.regions : null;
+    if (!records) return { itemIds: new Set(), malformed: true };
+
+    const itemIds = new Set();
+    for (const record of records) {
+      if (record && typeof record.itemId === "string") itemIds.add(record.itemId);
+      if (record && typeof record.file === "string" && typeof record.regionId === "string") {
+        itemIds.add(`${record.category ?? "agents"}/${record.file}#${record.regionId}`);
+      }
+    }
+    return { itemIds, malformed: false };
+  } catch {
+    return { itemIds: new Set(), malformed: true };
+  }
+}
+
 export async function refreshRepo({
   repo,
   catalog,
@@ -138,6 +168,8 @@ export async function refreshRepo({
     categories: [],
   };
 
+  const ownership = readOwnership(repo.path);
+
   for (const category of categories) {
     const relpaths = [
       ...new Set(catalog.entries.filter((e) => e.group === category).map((e) => e.targetRelpath)),
@@ -153,10 +185,27 @@ export async function refreshRepo({
       break;
     }
 
-    const items = result.files
+    let items = result.files
       .flatMap((file) =>
         itemsForFile({ mapping, category, file, fileExisted: exists.get(file.relpath) ?? false }),
-      )
+      );
+    if (ownership.malformed && category === "agents") {
+      items.push(
+        buildItem({
+          mapping,
+          category,
+          relpath: ".archon/region-ownership.json",
+          regionId: null,
+          status: "conflict",
+          reason: "malformed-region-ownership",
+          changed: false,
+          fileExisted: true,
+          diff: null,
+        }),
+      );
+    }
+    items = items
+      .filter((item) => !ownership.itemIds.has(item.itemId))
       .sort((a, b) => (a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0));
 
     report.categories.push({ category, items });

@@ -16,6 +16,13 @@
   narrow, or supersede lane-created or lane-used plan/status artifacts before
   PR ready/merge. (#182)
 
+- The M6 single-repo e2e gate (#163): a hermetic test now composes refresh,
+  DecisionDoc resolution, intake, PR-lane execution, local-bare-origin merge,
+  post-merge verification, cleanup, and the second-run no-op path. Intake now
+  carries source issue numbers into ApplySets for PR execution, and refresh
+  honors `.archon/region-ownership.json` keep-local records so later audits do
+  not keep recommending owned local items.
+
 - PR-lane rollback and post-merge closeout (#160, M4): `verify-merged --run`
   audits the recorded merge commit in a detached disposable worktree and
   requires all applied items to be `clean_apply changed:false`; `cleanup --run`
