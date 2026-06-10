@@ -50,6 +50,7 @@
     { "from": "planned", "to": "preflight_started" },
     { "from": "preflight_started", "to": "preflight_passed" },
     { "from": "preflight_passed", "to": "issue_created" },
+    { "from": "preflight_passed", "to": "worktree_created" },
     { "from": "issue_created", "to": "worktree_created" },
     { "from": "worktree_created", "to": "applied" },
     { "from": "applied", "to": "verified_local" },

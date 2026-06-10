@@ -181,7 +181,11 @@ Options:
                       <ref> is a JSON file path or issue:#N. Emits the ApplySet
                       and the confirmation summary.
   --allow-partial     With --intake: skip stale items instead of rejecting
-  --execute           Ships with the PR lane (M3, #159)
+  --execute           Execute the validated ApplySet through the PR lane
+  --local-only        With --execute: stop after applying/verifying a temp worktree
+  --pr-only           With --execute: commit, push, and open a PR without auto-merge
+  --no-automerge      With --execute: alias for --pr-only
+  --confirm <phrase>  Required with --execute; must match the intake summary
   --help              Show this help
 
 Exit codes: 0 nothing to do / intake ok; 10 clean update pending; 20 a human
@@ -214,13 +218,12 @@ if (argv[0] === "refresh") {
     process.exit(1);
   }
 
-  if (flags.has("--execute")) {
-    console.error("refresh: --execute ships with the PR lane (M3, #159); use --intake to validate decisions today");
-    process.exit(1);
-  }
-
   // ---- intake path (#158): validate a completed decision doc -> ApplySet ----
   const intakeRef = readRefreshOption("--intake", null);
+  if (flags.has("--execute") && !intakeRef) {
+    console.error("refresh: --execute requires --intake <completed-decision-doc>");
+    process.exit(1);
+  }
   if (intakeRef) {
     const { intakeDecisionDoc } = await import("../src/server/decisions/intake.mjs");
     let input;
@@ -258,6 +261,39 @@ if (argv[0] === "refresh") {
       if (flags.has("--json")) console.log(JSON.stringify(intake, null, 2));
       else console.error(`intake rejected (${intake.code}): ${intake.detail}`);
       process.exit(20);
+    }
+    if (flags.has("--execute")) {
+      if (!intake.applySet) {
+        const empty = { ok: true, state: "nothing_to_execute", intake };
+        if (flags.has("--json")) console.log(JSON.stringify(empty, null, 2));
+        else console.log("execute: nothing to apply");
+        process.exit(0);
+      }
+      const confirmationPhrase = readRefreshOption("--confirm", null);
+      if (!confirmationPhrase) {
+        console.error("refresh: --execute requires --confirm <phrase>");
+        process.exit(1);
+      }
+      const mode = flags.has("--local-only") ? "local-only" : flags.has("--pr-only") || flags.has("--no-automerge") ? "pr-only" : "auto";
+      try {
+        const { homedir } = await import("node:os");
+        const { join } = await import("node:path");
+        const { runUpdate } = await import("../src/server/prlane/runUpdate.mjs");
+        const recordPath = join(homedir(), ".claude", "archon-prlane-runs", `${intake.applySet.runId}.jsonl`);
+        const result = await runUpdate({
+          applySet: intake.applySet,
+          targetPath,
+          mode,
+          confirmationPhrase,
+          recordPath,
+        });
+        if (flags.has("--json")) console.log(JSON.stringify(result, null, 2));
+        else console.log(`${result.state}: ${result.branch ?? intake.applySet.runId}`);
+        process.exit(0);
+      } catch (err) {
+        console.error(`refresh: ${err.message}`);
+        process.exit(1);
+      }
     }
     if (flags.has("--json")) {
       console.log(JSON.stringify(intake, null, 2));

@@ -92,7 +92,7 @@ snapshot refresh or the change unblocks active work.
 
 | Repo | PR | Purpose |
 | --- | --- | --- |
-| `archon-setup` | `agent/claude/158-decision-doc` | M2 (#158): decision doc + HTML face + intake + issue sync (`refresh --report/--save-issue/--intake/--allow-partial`). M3 (#159) unblocked in parallel (briefing on the issue); M7 (#164) and #145 PR3 also available. |
+| `archon-setup` | `agent/codex/159-pr-lane` | M3 (#159): PR lane execution from M2 `ApplySet` (`refresh --intake ... --execute`) with temp worktree apply, JSONL run states, PR-only mode, and auto-merge eligibility gate. |
 
 ## F-roadmap
 

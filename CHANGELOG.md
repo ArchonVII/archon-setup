@@ -11,6 +11,16 @@
 
 ### Added
 
+- The PR lane (#159, M3): `refresh --intake <doc.json|issue:#N> --execute
+  --confirm "<phrase>"` now consumes the M2 `ApplySet`, creates a disposable
+  branch/worktree from `origin/<default>`, applies allowed managed-region
+  changes outside the source checkout, verifies with a post-apply audit, records
+  JSONL run states, and supports `--local-only`, `--pr-only`/`--no-automerge`,
+  and default auto mode. Auto mode gates `gh pr merge --auto` behind the
+  confirmation hash, resolved-item/path/category allowlists, the
+  `automated-distribution` label, decision-doc/issue PR-body evidence, required
+  checks passing, and a clean post-apply audit. (#159)
+
 - The decision flow (#158, M2): `refresh --report` renders a self-contained
   HTML decision face (canonical JSON embedded byte-equal; oversized diffs
   truncate in the face only; submit affordance renders only with a live
