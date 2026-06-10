@@ -9,6 +9,7 @@ const BROWSER_BACKEND_UPDATE_ID = "2026-05-31-browser-backend-preflight";
 const STRICT_PR_READY_UPDATE_ID = "2026-05-31-strict-pr-ready-contract";
 const OWNER_DOCS_SAFE_PATHS_UPDATE_ID = "2026-06-05-owner-docs-safe-paths";
 const STARTUP_BASELINE_UPDATE_ID = "2026-06-09-agent-startup-baseline";
+const PLAN_STATUS_CLOSEOUT_UPDATE_ID = "2026-06-10-plan-status-closeout";
 
 const GLOBAL_UPDATES = [
   {
@@ -163,6 +164,36 @@ const GLOBAL_UPDATES = [
         "",
         "- `archon-setup update` is workflow-only; it does not prove the startup/process baseline is present.",
         "- Treat missing or stale startup readiness as a warning-level repair item, not a CI blocker, unless repo-local policy adds a strict mode.",
+      ].join("\n"),
+    },
+  },
+  {
+    id: PLAN_STATUS_CLOSEOUT_UPDATE_ID,
+    date: "2026-06-10",
+    status: "ready",
+    title: "Plan/status artifact closeout",
+    summary:
+      "Records that delivery is incomplete while lane-created or lane-used plan, progress, handoff, audit, roadmap, status, or coordination artifacts still read as active execution guidance.",
+    source: [
+      "ArchonVII/jma-skill-review PR #139",
+      "ArchonVII/repo-template PR #63",
+      "ArchonVII/archon-setup issue #182",
+    ],
+    agentInstruction:
+      "Agents must close, narrow, or supersede plan/status artifacts they created or used before PR ready/merge.",
+    confirmationPhrase: `DISTRIBUTE ${PLAN_STATUS_CLOSEOUT_UPDATE_ID}`,
+    distribution: {
+      kind: "agents-managed-block",
+      targetPath: "AGENTS.md",
+      protectedBranches: ["main", "master"],
+      heading: "Plan/Status Artifact Closeout",
+      body: [
+        "## Plan/Status Artifact Closeout",
+        "",
+        "- Delivery is incomplete while any plan, task file, progress file, findings file, handoff, audit, roadmap/status tracker, or coordination note created or used by the lane still reads as active execution guidance.",
+        "- Before PR ready/merge, close it, narrow it to remaining scoped work, or mark it deprecated/superseded with the current source of truth.",
+        "- Repo-facing artifacts follow the same branch/PR path as code, config, behavior, and protected docs. Do the closeout in the same branch/PR when the artifact lives in the repo.",
+        "- PR bodies should state the closeout result: closed, narrowed, deprecated/superseded, or not applicable because no plan/status artifact was created or used.",
       ].join("\n"),
     },
   },

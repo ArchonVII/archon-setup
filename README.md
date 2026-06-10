@@ -289,6 +289,10 @@ Existing agent-facing capabilities:
 - **Global update records** - archon-setup records shared agent/workflow fixes
   that may need ecosystem-wide dissemination, exposes them in the Ecosystem UI,
   and logs per-repo distribution results.
+- **Plan/status closeout guidance** - generated repos and global update records
+  now tell agents that delivery is incomplete while lane-created or lane-used
+  plan, progress, handoff, audit, roadmap/status, or coordination artifacts
+  still read as active execution guidance.
 - **Ecosystem overview** - `docs/ecosystem-overview.md` is the canonical
   high-level "what exists and how it connects" map of the meta layer (the three
   providers, this integrator, and the `jma-skill-review` skill source). It
@@ -451,6 +455,9 @@ Current recorded global fixes include:
 - `2026-06-09-agent-startup-baseline` - records the canonical startup map for
   plans, process files, coordination, PR flow, and the onboard audit repair
   command.
+- `2026-06-10-plan-status-closeout` - records that agents must close, narrow,
+  or supersede lane-created or lane-used plan/status artifacts before PR
+  ready/merge.
 
 ## Ecosystem Fix Queue
 
