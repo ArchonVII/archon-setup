@@ -215,6 +215,25 @@ test("audit mode keeps the read-trust gates: unavailable and unknown-branch repo
   assert.equal(second.reason, "unknown-branch");
 });
 
+test("audit mode ignores write-preview and stays read-only on protected dirty repos", async () => {
+  const before = "# Agents\n\nLocal-only content.\n";
+  const repo = { ...(await makeRepo({ "AGENTS.md": before })), branch: "main", dirty: true };
+  const previewPath = join(repo.path, ".archon", "distribute-preview", "AGENTS.md.patch");
+
+  const result = await distributeRepo({
+    repo,
+    catalog: catalogOf(guEntry()),
+    mode: "audit",
+    writePreview: true,
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].status, "adoption_needed");
+  assert.equal(result.files[0].previewPath, undefined);
+  assert.equal(existsSync(previewPath), false);
+  assert.equal(await readFile(join(repo.path, "AGENTS.md"), "utf8"), before);
+});
+
 test("apply writes only clean_apply files and is idempotent", async () => {
   const repo = await makeRepo({ "AGENTS.md": `# Agents\n\n${guBlock("stale")}` });
 

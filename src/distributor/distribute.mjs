@@ -288,7 +288,7 @@ async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePrev
   const fileStatus = hasConflict ? "conflict" : pendingAdoptions.length > 0 ? "adoption_needed" : "clean_apply";
 
   let previewPath;
-  if (writePreview && pendingAdoptions.length > 0) {
+  if (mode !== "audit" && writePreview && pendingAdoptions.length > 0) {
     // A2: only adoptions with a safe unique anchor get a concrete patch — an
     // applicable unified diff of the proposed insertion(s).
     const anchored = pendingAdoptions.filter((e) => e.anchor?.kind === "eof-append");
