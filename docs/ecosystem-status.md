@@ -1,6 +1,6 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-06-09 by Codex (required-gate label-skip concurrency #172 lane)_
+_Last updated: 2026-06-10 by Codex (plan/status closeout snapshot refresh #182 lane)_
 
 The canonical "what is the ecosystem doing right now?" document for the core ArchonVII source-of-truth repos and the active local health set. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
 
@@ -85,7 +85,7 @@ snapshot refresh or the change unblocks active work.
 | ------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `github-workflows` | Clean on main | `v1` moved to `af0ac6e` on 2026-06-09 (#62), isolating skipped non-`ci:full` label runs from the real required-gate concurrency group. No open PRs. |
 | `archon-setup`     | In progress   | E2E roadmap in flight (umbrella #154): M0 (#167), M0.5 (#176), M1 (#177, `e2ff766`) merged. M2 decision flow (#158) is the active lane; M3 (#159) is unblocked and briefed for a parallel agent (issue comment). |
-| `repo-template`    | Clean on main | `origin/main` at `de95850`; snapshotted into `archon-setup`. No open PRs.                                                                      |
+| `repo-template`    | Clean on main | `origin/main` at `292dada`; snapshotted into `archon-setup` for plan/status closeout guidance. No open PRs.                                    |
 | `.github`          | Clean on main | `origin/main` at `1962f27`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 
 ## In-flight PRs
@@ -128,6 +128,11 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Recently completed
 
+- **2026-06-10** — Plan/status artifact closeout guidance shipped across
+  `jma-history` #289, `jma-skill-review` #139, and `repo-template` #63. This
+  lane refreshes the `archon-setup` repo-template snapshot to `292dada` and adds
+  global update record `2026-06-10-plan-status-closeout` for existing repo
+  distribution.
 - **2026-06-09** — Granular distributor PR1 merged (#146: region engine, adapters, marker lint/manifest); canonical ecosystem overview (#148), fix queue process (#150), CRLF-robust sync gate (#152). Filed the e2e ecosystem-management roadmap (umbrella #154, milestones #155–#165) and recorded the auto-merge distribution-lane decision (below).
 - **2026-06-09** — Released the `github-workflows` Go lane: moved `v1` to `c1ad03e` (#140), refreshed `archon-setup` snapshots across #139/#141/#142 (`githubWorkflows@c1ad03e`, `repoTemplate@de95850`, `orgDefaults@1962f27`), and added the active repo health registry (#144). Began the granular marker-based distributor (#145).
 - **2026-06-09** — Moved `github-workflows` `v1` to `dc64da5` (#58) and refreshed `archon-setup` snapshots (#168) so generated required-gate callers no longer rerun on arbitrary PR label changes.

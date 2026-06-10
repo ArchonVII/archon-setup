@@ -11,6 +11,11 @@
 
 ### Added
 
+- Global update record `2026-06-10-plan-status-closeout`, so existing repos can
+  receive a confirmation-gated AGENTS.md block requiring agents to close,
+  narrow, or supersede lane-created or lane-used plan/status artifacts before
+  PR ready/merge. (#182)
+
 - The M6 single-repo e2e gate (#163): a hermetic test now composes refresh,
   DecisionDoc resolution, intake, PR-lane execution, local-bare-origin merge,
   post-merge verification, cleanup, and the second-run no-op path. Intake now
@@ -128,6 +133,12 @@
   required-gate runs. `archon-setup update` repairs customized required-gate
   callers to the isolated concurrency pattern while preserving repo-specific
   `with:` inputs. (#172, pairs with github-workflows#61/#62)
+
+- Refreshed the `repo-template` snapshot to `main` commit `292dada`, carrying
+  the default plan/status artifact closeout rule in `AGENTS.md` and the PR
+  template prompt that asks authors to record closed, narrowed,
+  deprecated/superseded, or not-applicable status. (#182, pairs with
+  repo-template#62/#63)
 
 - Refreshed the `repo-template` snapshot to `main` commit `de95850`: agents no
   longer get an untracked `.pr-body.md` scratch file from `agent:start-task`
