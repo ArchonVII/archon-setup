@@ -630,5 +630,5 @@ test("CLI --intake validates a completed doc file: defer-all is ok/exit 0, tampe
     encoding: "utf8",
   });
   assert.equal(execute.status, 1);
-  assert.match(execute.stderr, /M3/);
+  assert.match(execute.stderr, /requires --intake/);
 });

@@ -162,6 +162,24 @@ nothing to do, `10` means a clean update is pending, `20` means a human decision
 or conflict remains, and `1` means the target could not be audited or an
 operational failure occurred.
 
+Completed decision docs can be executed through the PR lane:
+
+```bash
+node bin/archon-setup.mjs refresh --target <repo> --intake <doc.json|issue:#N> --execute --confirm "<phrase>"
+node bin/archon-setup.mjs refresh --target <repo> --intake <doc.json|issue:#N> --execute --local-only --confirm "<phrase>"
+node bin/archon-setup.mjs refresh --target <repo> --intake <doc.json|issue:#N> --execute --pr-only --confirm "<phrase>"
+```
+
+`--execute` re-validates the decision doc into an `ApplySet`, creates a
+disposable branch/worktree from `origin/<default>`, applies allowed managed
+region changes there, and records a durable JSONL run state under
+`~/.claude/archon-prlane-runs/`. `--local-only` stops after the post-apply
+audit, `--pr-only` commits/pushes and opens a labeled draft PR without
+auto-merge, and the default mode queues auto-merge only after the machine gate
+passes: confirmation phrase, allowed categories/paths, no unresolved or
+auto-resolved conflict items, `automated-distribution` label, PR body evidence,
+required checks passing, and a clean post-apply audit.
+
 ## Canonical New-Repo Setup
 
 Use `archon-setup` as the canonical path for new ArchonVII repos. It wraps the

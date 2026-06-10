@@ -55,6 +55,10 @@ Before marking a PR ready:
 - For UI changes, launch `npm run dev`, exercise the wizard end-to-end with `ARCHON_SETUP_E2E=1`, and record what you exercised.
 - Tick a `- [x]` box **only after** the command actually passed.
 - Adversarial check: re-run the same plan twice — assert no duplicate state.
+- For `refresh --execute` changes, verify at least `--local-only` against a repo
+  with a local bare `origin`; `--pr-only` must prove no auto-merge call, and
+  auto mode must prove pending/missing required checks leave the PR open with a
+  resumable run record.
 - Do **not** run `gh pr ready` directly. Run the blessed wrapper so
   malformed PRs cannot trigger paid or expensive ready-for-review checks:
 
