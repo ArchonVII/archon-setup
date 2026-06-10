@@ -116,6 +116,7 @@ export async function intakeDecisionDoc({
   input, // DecisionDoc object or JSON string
   targetPath,
   allowPartial = false,
+  sourceIssueNumber = null,
   guardsConfig = DEFAULT_GUARDS_CONFIG,
   repoContext = repoContextFor,
   refresh = refreshTarget,
@@ -264,7 +265,10 @@ export async function intakeDecisionDoc({
         defaultBranch: doc.repo.defaultBranch,
         baseSha: doc.repo.baseSha,
       },
-      sourceDecisionDoc: { fingerprint: docFingerprint },
+      sourceDecisionDoc: {
+        fingerprint: docFingerprint,
+        ...(sourceIssueNumber ? { issueNumber: sourceIssueNumber } : {}),
+      },
       items: applyItems,
       guards: {
         allowAutoMerge: applyItems.every((item) =>

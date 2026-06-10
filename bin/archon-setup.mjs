@@ -287,10 +287,17 @@ if (argv[0] === "refresh") {
   if (intakeRef) {
     const { intakeDecisionDoc } = await import("../src/server/decisions/intake.mjs");
     let input;
+    let sourceIssueNumber = null;
     try {
       if (/^issue:/.test(intakeRef)) {
         const { resumeDecisionIssue } = await import("../src/server/decisions/issueSync.mjs");
         const { checkOriginRemote } = await import("../src/server/preflight/checkOriginRemote.mjs");
+        const match = /^issue:#?(\d+)$/.exec(intakeRef);
+        if (!match) {
+          console.error("refresh: --intake issue ref must look like issue:#123");
+          process.exit(1);
+        }
+        sourceIssueNumber = Number(match[1]);
         const origin = (await checkOriginRemote(targetPath)).originDetected;
         if (!origin) {
           console.error("refresh: --intake issue:#N needs a github.com origin remote on the target");
@@ -312,7 +319,7 @@ if (argv[0] === "refresh") {
 
     let intake;
     try {
-      intake = await intakeDecisionDoc({ input, targetPath, allowPartial: flags.has("--allow-partial") });
+      intake = await intakeDecisionDoc({ input, targetPath, allowPartial: flags.has("--allow-partial"), sourceIssueNumber });
     } catch (err) {
       console.error(`refresh: ${err.message}`);
       process.exit(1);

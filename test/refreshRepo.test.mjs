@@ -256,6 +256,24 @@ test("unknown-id conflict keeps per-region items: the rogue region blocks, the k
   assert.equal(refreshExitCodeFor(report), 20);
 });
 
+test("malformed keep-local ownership is reported as a blocked finding", async () => {
+  const repo = await makeRepo({
+    "AGENTS.md": `# Agents\n\n${guBlock()}`,
+    ".archon/region-ownership.json": "{not json",
+  });
+
+  const report = await refreshRepo({ repo, catalog: catalogOf(guEntry()), now: NOW });
+  const blocked = report.categories[0].items.find((item) => item.file === ".archon/region-ownership.json");
+
+  assert.ok(blocked, "expected ownership-file finding");
+  assert.equal(blocked.raw.status, "conflict");
+  assert.equal(blocked.raw.reason, "malformed-region-ownership");
+  assert.equal(blocked.operation.action, "blocked");
+  assert.equal(blocked.recommended, null);
+  assert.equal(refreshExitCodeFor(report), 20);
+  assert.deepEqual(validate(REPORT_SCHEMA, report).errors, []);
+});
+
 // ---- stability + no-op (acceptance criterion 3) ----
 
 test("clean repo: repeated audits are byte-identical and a no-op (exit 0)", async () => {
