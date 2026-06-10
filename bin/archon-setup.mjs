@@ -159,21 +159,33 @@ if (argv[0] === "distribute") {
 
 const REFRESH_HELP = `archon-setup refresh - audit one repo's ecosystem state (read-only)
 
-Runs the M1 refresh audit (#157): reconciles ArchonVII-managed regions in
-audit mode (never writes; audits repos sitting on main and dirty worktrees)
-and emits a schema-valid RepoRefreshReport with every finding projected to a
-frontend-spec Operation plus a deterministic recommendation.
+Runs the refresh audit (#157): reconciles ArchonVII-managed regions in audit
+mode (never writes; audits repos sitting on main and dirty worktrees) and
+emits a schema-valid RepoRefreshReport with every finding projected to a
+frontend-spec Operation plus a deterministic recommendation. The decision flow
+(#158) turns findings into a canonical JSON DecisionDoc with an HTML face and
+a Save-as-Issue transport, and validates completed docs into an ApplySet.
 
 Usage:
   node bin/archon-setup.mjs refresh --target <path> [options]
 
 Options:
-  --target <path>    Repo to audit (required)
-  --json             Emit the full RepoRefreshReport as JSON
-  --help             Show this help
+  --target <path>     Repo to audit (required)
+  --json              Emit the full result as JSON
+  --report            Also write the self-contained HTML decision report
+                      (under .html-artifacts/decision-reports/, never in the
+                      target repo) and print its path
+  --save-issue        Also save the decision report as a GitHub issue on the
+                      target's origin remote (canonical JSON in a fenced block)
+  --intake <ref>      Validate a completed decision doc instead of auditing:
+                      <ref> is a JSON file path or issue:#N. Emits the ApplySet
+                      and the confirmation summary.
+  --allow-partial     With --intake: skip stale items instead of rejecting
+  --execute           Ships with the PR lane (M3, #159)
+  --help              Show this help
 
-Exit codes: 0 nothing to do; 10 clean update pending; 20 a human decision
-remains (adoption/conflict); 1 failure or unauditable target.`;
+Exit codes: 0 nothing to do / intake ok; 10 clean update pending; 20 a human
+decision remains or intake rejected; 1 failure or unauditable target.`;
 
 if (argv[0] === "refresh") {
   const args = argv.slice(1);
@@ -185,11 +197,80 @@ if (argv[0] === "refresh") {
   const { refreshExitCodeFor, refreshTarget } = await import("../src/server/refresh/refreshRepo.mjs");
 
   const flags = new Set(args);
-  const targetIndex = args.indexOf("--target");
-  const targetPath = targetIndex >= 0 ? args[targetIndex + 1] : "";
-  if (!targetPath || targetPath.startsWith("--")) {
+  function readRefreshOption(name, fallback = "") {
+    const index = args.indexOf(name);
+    if (index < 0) return fallback;
+    const value = args[index + 1];
+    if (!value || value.startsWith("--")) {
+      console.error(`refresh: missing value for ${name}`);
+      process.exit(1);
+    }
+    return value;
+  }
+
+  const targetPath = readRefreshOption("--target");
+  if (!targetPath) {
     console.error("refresh: missing value for --target");
     process.exit(1);
+  }
+
+  if (flags.has("--execute")) {
+    console.error("refresh: --execute ships with the PR lane (M3, #159); use --intake to validate decisions today");
+    process.exit(1);
+  }
+
+  // ---- intake path (#158): validate a completed decision doc -> ApplySet ----
+  const intakeRef = readRefreshOption("--intake", null);
+  if (intakeRef) {
+    const { intakeDecisionDoc } = await import("../src/server/decisions/intake.mjs");
+    let input;
+    try {
+      if (/^issue:/.test(intakeRef)) {
+        const { resumeDecisionIssue } = await import("../src/server/decisions/issueSync.mjs");
+        const { checkOriginRemote } = await import("../src/server/preflight/checkOriginRemote.mjs");
+        const origin = (await checkOriginRemote(targetPath)).originDetected;
+        if (!origin) {
+          console.error("refresh: --intake issue:#N needs a github.com origin remote on the target");
+          process.exit(1);
+        }
+        const resumed = await resumeDecisionIssue({ ref: intakeRef, repoSlug: `${origin.owner}/${origin.repo}` });
+        if (!resumed.ok) {
+          console.error(`refresh: ${resumed.reason}`);
+          process.exit(20);
+        }
+        input = resumed.doc;
+      } else {
+        input = await (await import("node:fs/promises")).readFile(intakeRef, "utf8");
+      }
+    } catch (err) {
+      console.error(`refresh: ${err.message}`);
+      process.exit(1);
+    }
+
+    let intake;
+    try {
+      intake = await intakeDecisionDoc({ input, targetPath, allowPartial: flags.has("--allow-partial") });
+    } catch (err) {
+      console.error(`refresh: ${err.message}`);
+      process.exit(1);
+    }
+    if (!intake.ok) {
+      if (flags.has("--json")) console.log(JSON.stringify(intake, null, 2));
+      else console.error(`intake rejected (${intake.code}): ${intake.detail}`);
+      process.exit(20);
+    }
+    if (flags.has("--json")) {
+      console.log(JSON.stringify(intake, null, 2));
+    } else {
+      const h = intake.summary.human;
+      for (const line of h.applying) console.log(`apply: ${line}`);
+      for (const line of h.skippedStale) console.log(`skipped: ${line}`);
+      for (const line of h.manualOrDeferred) console.log(`manual: ${line}`);
+      console.log(`auto-merge eligible: ${h.autoMerge}`);
+      console.log(`confirmation phrase: ${h.confirmationPhrase}`);
+      console.log(`rollback: ${h.rollbackCommand}`);
+    }
+    process.exit(0);
   }
 
   let report;
@@ -198,6 +279,39 @@ if (argv[0] === "refresh") {
   } catch (err) {
     console.error(`refresh: ${err.message}`);
     process.exit(1);
+  }
+
+  // ---- decision-report faces (#158) ----
+  if ((flags.has("--report") || flags.has("--save-issue")) && report.status === "ok") {
+    const { buildDecisionDoc } = await import("../src/server/decisions/decisionDoc.mjs");
+    const { checkOriginRemote } = await import("../src/server/preflight/checkOriginRemote.mjs");
+    try {
+      const origin = (await checkOriginRemote(targetPath)).originDetected;
+      const runId = `run-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}-${process.pid}`;
+      const doc = await buildDecisionDoc({ report, runId, owner: origin?.owner ?? null });
+      if (!doc) {
+        console.error("decision report: nothing actionable to decide");
+      } else {
+        if (flags.has("--report")) {
+          const { writeDecisionReport } = await import("../src/server/decisions/renderHtml.mjs");
+          console.error(`decision report: ${await writeDecisionReport(doc)}`);
+        }
+        if (flags.has("--save-issue")) {
+          if (!origin) {
+            console.error("refresh: --save-issue needs a github.com origin remote on the target");
+            process.exit(1);
+          }
+          const { saveDecisionIssue } = await import("../src/server/decisions/issueSync.mjs");
+          const saved = await saveDecisionIssue({ doc, repoSlug: `${origin.owner}/${origin.repo}` });
+          console.error(
+            `decision issue: ${saved.url}${saved.superseded.length ? ` (superseded: ${saved.superseded.map((n) => `#${n}`).join(", ")})` : ""}`,
+          );
+        }
+      }
+    } catch (err) {
+      console.error(`refresh: ${err.message}`);
+      process.exit(1);
+    }
   }
 
   if (flags.has("--json")) {
