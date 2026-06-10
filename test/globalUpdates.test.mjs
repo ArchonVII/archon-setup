@@ -61,6 +61,18 @@ test("global update catalog records the agent startup baseline", () => {
   assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-06-09-agent-startup-baseline/);
 });
 
+test("global update catalog records plan/status artifact closeout", () => {
+  const updates = listGlobalUpdates();
+  const record = updates.find((entry) => entry.id === "2026-06-10-plan-status-closeout");
+
+  assert.ok(record);
+  assert.equal(record.status, "ready");
+  assert.equal(record.distribution.kind, "agents-managed-block");
+  assert.match(record.distribution.body, /Delivery is incomplete while any plan/);
+  assert.match(record.distribution.body, /close it, narrow it to remaining scoped work, or mark it deprecated\/superseded/);
+  assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-06-10-plan-status-closeout/);
+});
+
 test("applyGlobalUpdateToAgents appends and refreshes a managed update block idempotently", () => {
   const record = getGlobalUpdate("2026-05-31-browser-backend-preflight");
   const initial = "# Agent Guide\n\nKeep local instructions.\n";
@@ -173,5 +185,6 @@ test("RPC exposes global update list and treats distribution as state-changing",
   assert.ok(listed.updates.some((entry) => entry.id === "2026-05-31-strict-pr-ready-contract"));
   assert.ok(listed.updates.some((entry) => entry.id === "2026-06-05-owner-docs-safe-paths"));
   assert.ok(listed.updates.some((entry) => entry.id === "2026-06-09-agent-startup-baseline"));
+  assert.ok(listed.updates.some((entry) => entry.id === "2026-06-10-plan-status-closeout"));
   assert.equal(STATE_CHANGING.has("globalUpdates.distribute"), true);
 });
