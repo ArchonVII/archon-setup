@@ -11,6 +11,18 @@
 
 ### Added
 
+- The `refresh` subcommand (#157, M1): read-only single-repo ecosystem audit.
+  `refresh --target <path> [--json]` reconciles ArchonVII-managed regions in
+  the new distributor `audit` mode (write-safety gates don't apply — a repo
+  sitting clean on `main`, the normal consumer state, is auditable; read-trust
+  gates still skip unreadable targets) and emits a schema-valid
+  `RepoRefreshReport`: every finding carries its raw reconcile status, the
+  `Operation` projection through the M0.5 golden mapping, the server-computed
+  diff for drifted regions, and a deterministic recommendation
+  (conflicts always `recommended: null`). Exit codes `0/10/20/1` mirror
+  `distribute` (A6). The engine validates its own output against the M0.5
+  schema before returning. (#157)
+
 - M0.5 contract fixtures (#156): JSON Schemas for the e2e refresh seams
   (`RepoRefreshReport`, `DecisionDoc`, `ApplySet`, PR-lane `RunReport`) under
   `src/contracts/schemas/`, validated by a zero-dependency fail-closed subset

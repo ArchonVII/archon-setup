@@ -84,7 +84,7 @@ snapshot refresh or the change unblocks active work.
 | Repo               | Status        | Detail                                                                                                                                         |
 | ------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `github-workflows` | Clean on main | `v1` moved to `af0ac6e` on 2026-06-09 (#62), isolating skipped non-`ci:full` label runs from the real required-gate concurrency group. No open PRs. |
-| `archon-setup`     | In progress   | E2E roadmap in flight (umbrella #154): M0 merged (#155 via #167, `distribute` subcommand + AGENTS group); M0.5 contract fixtures (#156) is the active lane and gates M2/M3 parallelization. Snapshot refreshes #169/#171/#173 merged. |
+| `archon-setup`     | In progress   | E2E roadmap in flight (umbrella #154): M0 merged (#155 via #167), M0.5 merged (#156 via #176, `4a7f718`) — M2 (#158) and M3 (#159) may now run as parallel lanes. M1 refresh audit engine (#157) is the active lane. |
 | `repo-template`    | Clean on main | `origin/main` at `de95850`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 | `.github`          | Clean on main | `origin/main` at `1962f27`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 
@@ -92,7 +92,7 @@ snapshot refresh or the change unblocks active work.
 
 | Repo | PR | Purpose |
 | --- | --- | --- |
-| `archon-setup` | `agent/claude/156-contract-fixtures` | M0.5 (#156): contract schemas + golden fixtures for RepoRefreshReport / DecisionDoc / ApplySet / RunReport, run-state machine, operation-mapping goldens. Next planned: M1 (#157) refresh engine; parallel lanes M7 (#164) and #145 PR3 available. |
+| `archon-setup` | `agent/claude/157-refresh-audit` | M1 (#157): single-repo refresh audit engine (AGENTS category), distributor `audit` mode, `refresh --target --json` CLI. After it merges: M2 (#158) ∥ M3 (#159) lanes can be briefed against the M0.5 fixtures; M7 (#164) and #145 PR3 remain available in parallel. |
 
 ## F-roadmap
 
