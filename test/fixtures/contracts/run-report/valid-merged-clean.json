@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "kind": "run-report",
+  "runId": "run-2026-06-09-0001",
+  "ts": "2026-06-09T14:00:00.000Z",
+  "repo": {
+    "owner": "ArchonVII",
+    "name": "consumer-repo",
+    "path": null,
+    "defaultBranch": "main"
+  },
+  "baseSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+  "branch": "agent/refresh/run-2026-06-09-0001",
+  "issue": 456,
+  "pr": { "number": 457, "url": "https://github.com/ArchonVII/consumer-repo/pull/457" },
+  "mergeSha": "cafebabecafebabecafebabecafebabecafebabe",
+  "state": "cleaned_up",
+  "results": {
+    "applied": [
+      {
+        "itemId": "agents/AGENTS.md#2026-01-01-review-block",
+        "file": "AGENTS.md",
+        "regionId": "2026-01-01-review-block",
+        "action": "merge"
+      }
+    ],
+    "skipped": [
+      {
+        "itemId": "agents/AGENTS.md#agents-start-map",
+        "file": "AGENTS.md",
+        "regionId": "agents-start-map",
+        "action": "skip",
+        "detail": "already-current"
+      }
+    ],
+    "blocked": [],
+    "failed": []
+  },
+  "verification": {
+    "local": { "status": "passed", "detail": "post-apply audit: all applied items clean_apply changed:false" },
+    "postMerge": { "status": "passed", "detail": "post-merge audit on merge commit: clean" }
+  },
+  "rollbackCommand": "node bin/archon-setup.mjs rollback --run run-2026-06-09-0001",
+  "repoState": {
+    "branch": "main",
+    "dirty": false,
+    "commit": "cafebabecafebabecafebabecafebabecafebabe"
+  },
+  "copyable": "run-2026-06-09-0001: 1 applied, 1 skipped, 0 blocked, 0 failed; merged as cafebabe; rollback: node bin/archon-setup.mjs rollback --run run-2026-06-09-0001"
+}

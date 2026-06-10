@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "kind": "decision-doc",
+  "runId": "run-2026-06-09-0001",
+  "createdAt": "2026-06-09T12:00:00.000Z",
+  "repo": {
+    "owner": "ArchonVII",
+    "name": "consumer-repo",
+    "path": null,
+    "defaultBranch": "main",
+    "baseSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+  },
+  "repoFingerprint": {
+    "headSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    "files": {
+      "AGENTS.md": "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe"
+    }
+  },
+  "provenance": {
+    "managedRegionsSha256": "0123456701234567012345670123456701234567012345670123456701234567",
+    "snapshotShas": { "repo-template": "f181b48" }
+  },
+  "reviewBundle": {
+    "instructions": "Choose exactly one resolution per item. Never edit fingerprints or provenance. Conflict items require a rationale. Return the completed JSON document only."
+  },
+  "items": [
+    {
+      "itemId": "agents/AGENTS.md#2026-01-01-review-block",
+      "category": "agents",
+      "regionId": "2026-01-01-review-block",
+      "file": "AGENTS.md",
+      "raw": { "status": "clean_apply", "reason": "updated", "changed": true, "created": false },
+      "operation": { "action": "merge", "currentState": "drifted" },
+      "evidence": {
+        "diff": "--- a/AGENTS.md#2026-01-01-review-block\n+++ b/AGENTS.md#2026-01-01-review-block\n@@ -1 +1 @@\n-stale\n+fresh\n",
+        "diagnostics": [],
+        "truncated": false,
+        "redacted": false
+      },
+      "fingerprints": {
+        "fileSha256": "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe",
+        "regionInnerSha256": "feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface"
+      },
+      "options": ["apply-central", "keep-local", "defer"],
+      "recommended": "apply-central",
+      "recommendationReason": "managed-region-clean-update",
+      "resolution": { "choice": null, "rationale": null, "freeText": null, "decidedBy": null, "decidedAt": null }
+    },
+    {
+      "itemId": "agents/AGENTS.md#mystery-block",
+      "category": "agents",
+      "regionId": "mystery-block",
+      "file": "AGENTS.md",
+      "raw": { "status": "conflict", "reason": "unknown-id", "changed": false },
+      "operation": { "action": "blocked", "currentState": "unknown", "blockerReason": "unknown-id" },
+      "evidence": {
+        "diff": null,
+        "diagnostics": ["region id mystery-block is not in the catalog knownIds"],
+        "truncated": false,
+        "redacted": false
+      },
+      "fingerprints": {
+        "fileSha256": "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe",
+        "regionInnerSha256": null
+      },
+      "options": ["apply-central", "keep-local", "merge-manual", "defer"],
+      "recommended": null,
+      "recommendationReason": "blocked-conflict-requires-human-resolution",
+      "resolution": { "choice": null, "rationale": null, "freeText": null, "decidedBy": null, "decidedAt": null }
+    }
+  ]
+}

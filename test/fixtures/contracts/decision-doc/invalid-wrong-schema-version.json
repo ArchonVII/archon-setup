@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "kind": "decision-doc",
+  "runId": "run-2026-06-09-0001",
+  "createdAt": "2026-06-09T12:00:00.000Z",
+  "repo": {
+    "owner": "ArchonVII",
+    "name": "consumer-repo",
+    "defaultBranch": "main",
+    "baseSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+  },
+  "repoFingerprint": {
+    "headSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+    "files": {}
+  },
+  "provenance": {
+    "managedRegionsSha256": "0123456701234567012345670123456701234567012345670123456701234567"
+  },
+  "reviewBundle": { "instructions": "Choose exactly one resolution per item." },
+  "items": [
+    {
+      "itemId": "agents/AGENTS.md#2026-01-01-review-block",
+      "category": "agents",
+      "regionId": "2026-01-01-review-block",
+      "file": "AGENTS.md",
+      "raw": { "status": "clean_apply", "changed": true, "created": false },
+      "operation": { "action": "merge", "currentState": "drifted" },
+      "evidence": { "diff": null, "diagnostics": [], "truncated": false, "redacted": false },
+      "fingerprints": {
+        "fileSha256": "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe",
+        "regionInnerSha256": null
+      },
+      "options": ["apply-central", "keep-local", "defer"],
+      "recommended": "apply-central",
+      "recommendationReason": "managed-region-clean-update",
+      "resolution": { "choice": null, "rationale": null, "freeText": null, "decidedBy": null, "decidedAt": null }
+    }
+  ]
+}

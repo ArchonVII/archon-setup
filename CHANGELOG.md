@@ -11,6 +11,17 @@
 
 ### Added
 
+- M0.5 contract fixtures (#156): JSON Schemas for the e2e refresh seams
+  (`RepoRefreshReport`, `DecisionDoc`, `ApplySet`, PR-lane `RunReport`) under
+  `src/contracts/schemas/`, validated by a zero-dependency fail-closed subset
+  validator (`src/contracts/validate.mjs`). The PR-lane run state machine
+  (`src/contracts/run-states.json`) and the operation-mapping golden table
+  (`src/contracts/operation-mapping.json` + runtime accessor) pin every raw
+  AGENTS-group distributor state to exactly one `Operation` action, and golden
+  valid/invalid documents live under `test/fixtures/contracts/` so the M2
+  decision-doc and M3 PR-lane milestones can build in parallel against the
+  same contracts. (#156)
+
 - The `distribute` subcommand (#145 PR2, #155): repo-owned-by-default
   reconciliation of ArchonVII-managed regions across consumer repos. Dry-run by
   default (writes nothing; exit 10 signals pending changes), `--apply` writes

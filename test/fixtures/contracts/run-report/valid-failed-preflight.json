@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "run-report",
+  "runId": "run-2026-06-09-0002",
+  "ts": "2026-06-09T15:00:00.000Z",
+  "repo": {
+    "owner": "ArchonVII",
+    "name": "consumer-repo",
+    "path": null,
+    "defaultBranch": "main"
+  },
+  "baseSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+  "branch": "agent/refresh/run-2026-06-09-0002",
+  "issue": null,
+  "pr": null,
+  "mergeSha": null,
+  "state": "failed",
+  "results": {
+    "applied": [],
+    "skipped": [],
+    "blocked": [],
+    "failed": [
+      {
+        "itemId": "agents/AGENTS.md#2026-01-01-review-block",
+        "file": "AGENTS.md",
+        "regionId": "2026-01-01-review-block",
+        "detail": "fingerprint mismatch: file changed since the decision doc was generated"
+      }
+    ]
+  },
+  "verification": {
+    "local": { "status": "failed", "detail": "intake fingerprint re-validation failed (exit 20)" },
+    "postMerge": { "status": "skipped" }
+  },
+  "failure": {
+    "failedStage": "preflight_started",
+    "errorClass": "stale-fingerprint",
+    "safeNextAction": "regenerate the decision doc against the current base SHA and re-run intake"
+  },
+  "rollbackCommand": "node bin/archon-setup.mjs cleanup --run run-2026-06-09-0002"
+}

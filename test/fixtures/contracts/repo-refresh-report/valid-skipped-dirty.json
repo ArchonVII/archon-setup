@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "kind": "repo-refresh-report",
+  "generatedAt": "2026-06-09T12:00:00.000Z",
+  "repo": {
+    "name": "dirty-repo",
+    "path": null,
+    "branch": "main"
+  },
+  "status": "skipped",
+  "reason": "dirty-worktree",
+  "categories": []
+}

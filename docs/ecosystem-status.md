@@ -84,7 +84,7 @@ snapshot refresh or the change unblocks active work.
 | Repo               | Status        | Detail                                                                                                                                         |
 | ------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `github-workflows` | Clean on main | `v1` moved to `af0ac6e` on 2026-06-09 (#62), isolating skipped non-`ci:full` label runs from the real required-gate concurrency group. No open PRs. |
-| `archon-setup`     | In progress   | #172 refreshes the required-gate snapshot to `af0ac6e`; #145 PR1/PR2 merged (#146/#167). E2E roadmap filed: umbrella #154, milestones #155–#165. |
+| `archon-setup`     | In progress   | E2E roadmap in flight (umbrella #154): M0 merged (#155 via #167, `distribute` subcommand + AGENTS group); M0.5 contract fixtures (#156) is the active lane and gates M2/M3 parallelization. Snapshot refreshes #169/#171/#173 merged. |
 | `repo-template`    | Clean on main | `origin/main` at `de95850`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 | `.github`          | Clean on main | `origin/main` at `1962f27`; snapshotted into `archon-setup`. No open PRs.                                                                      |
 
@@ -92,7 +92,7 @@ snapshot refresh or the change unblocks active work.
 
 | Repo | PR | Purpose |
 | --- | --- | --- |
-| — | — | None open as of 2026-06-09. Next planned: `archon-setup` #155 (`distribute` subcommand, #145 PR2). |
+| `archon-setup` | `agent/claude/156-contract-fixtures` | M0.5 (#156): contract schemas + golden fixtures for RepoRefreshReport / DecisionDoc / ApplySet / RunReport, run-state machine, operation-mapping goldens. Next planned: M1 (#157) refresh engine; parallel lanes M7 (#164) and #145 PR3 available. |
 
 ## F-roadmap
 

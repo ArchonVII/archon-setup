@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "kind": "repo-refresh-report",
+  "generatedAt": "2026-06-09T12:00:00.000Z",
+  "repo": { "name": "consumer-repo", "branch": "main" },
+  "status": "ok",
+  "categories": [
+    {
+      "category": "agents",
+      "items": [
+        {
+          "itemId": "agents/AGENTS.md#2026-01-01-review-block",
+          "category": "agents",
+          "regionId": "2026-01-01-review-block",
+          "file": "AGENTS.md",
+          "raw": { "status": "clean_apply", "changed": true, "created": false },
+          "operation": { "action": "merge", "currentState": "drifted" },
+          "recommended": "apply-central"
+        }
+      ]
+    }
+  ]
+}

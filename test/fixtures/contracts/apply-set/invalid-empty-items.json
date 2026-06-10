@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "apply-set",
+  "runId": "run-2026-06-09-0001",
+  "repo": {
+    "owner": "ArchonVII",
+    "name": "consumer-repo",
+    "defaultBranch": "main",
+    "baseSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+  },
+  "sourceDecisionDoc": {
+    "fingerprint": "0123456701234567012345670123456701234567012345670123456701234567"
+  },
+  "items": [],
+  "guards": {
+    "allowAutoMerge": false,
+    "allowedPathPatterns": ["AGENTS.md"],
+    "requiredConfirmationPhraseHash": "abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01abcdef01"
+  }
+}

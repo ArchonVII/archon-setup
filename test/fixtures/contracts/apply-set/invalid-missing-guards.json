@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "kind": "apply-set",
+  "runId": "run-2026-06-09-0001",
+  "repo": {
+    "owner": "ArchonVII",
+    "name": "consumer-repo",
+    "defaultBranch": "main",
+    "baseSha": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+  },
+  "sourceDecisionDoc": {
+    "fingerprint": "0123456701234567012345670123456701234567012345670123456701234567"
+  },
+  "items": [
+    {
+      "itemId": "agents/AGENTS.md#2026-01-01-review-block",
+      "category": "agents",
+      "regionId": "2026-01-01-review-block",
+      "file": "AGENTS.md",
+      "resolution": "apply-central",
+      "expectedFileSha256": "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe",
+      "expectedRegionInnerSha256": null,
+      "writePlan": { "kind": "replace-region", "sourceCatalogId": "2026-01-01-review-block" }
+    }
+  ]
+}
