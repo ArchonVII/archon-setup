@@ -358,8 +358,14 @@ export async function distributeRepo({
   if (!repo.path) return { ...base, status: "skipped", reason: "missing-path" };
   if (repo.available === false) return { ...base, status: "skipped", reason: "repo-unavailable" };
   if (!repo.branch) return { ...base, status: "skipped", reason: "unknown-branch" };
-  if (repo.dirty) return { ...base, status: "skipped", reason: "dirty-worktree" };
-  if (PROTECTED_BRANCHES.has(repo.branch)) return { ...base, status: "skipped", reason: "protected-main" };
+  // Write-safety gates. "audit" mode (M1 refresh engine, #157) is read-only by
+  // construction — only mode "apply" ever writes — so it may audit a consumer
+  // repo sitting clean on main (the normal state of every refresh target) or a
+  // dirty one. The read-trust gates above still apply in every mode.
+  if (mode !== "audit") {
+    if (repo.dirty) return { ...base, status: "skipped", reason: "dirty-worktree" };
+    if (PROTECTED_BRANCHES.has(repo.branch)) return { ...base, status: "skipped", reason: "protected-main" };
+  }
 
   // A1: --group/--id scope which entries this run acts on; the unknown-id
   // check inside reconcileFile still runs against catalog.knownIds.
