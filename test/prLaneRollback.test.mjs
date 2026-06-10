@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { runCommand } from "../src/server/lib/commandRunner.mjs";
-import { readRunRecord } from "../src/server/prlane/runRecord.mjs";
+import { appendRunState, readRunRecord } from "../src/server/prlane/runRecord.mjs";
 import { runUpdate } from "../src/server/prlane/runUpdate.mjs";
 import { cleanupRun, rollbackRun, verifyMergedRun } from "../src/server/prlane/rollback.mjs";
 
@@ -365,4 +365,57 @@ test("CLI cleanup --run resolves run records and emits JSON", async () => {
   assert.equal(payload.state, "cleaned_up");
   assert.equal(payload.report.runId, "run-2026-06-09-0001");
   assert.equal(await pathExists(run.worktreePath), false);
+});
+
+test("cleanupRun reports remote branch deletion failures before marking cleaned", async () => {
+  const repo = await makeRepo();
+  const run = await executeAutoRun(repo);
+  mergeRefreshBranch(repo, run.branch, { mode: "squash" });
+  await verifyMergedRun({ recordPath: run.recordPath, targetPath: repo.target, catalog: catalog(), runCommand, now: () => NOW });
+
+  const failingRemoteDelete = async (cmd, args, options = {}) => {
+    if (cmd === "git" && args.includes("push") && args.includes("--delete")) {
+      return { code: 1, stdout: "", stderr: "remote rejected branch deletion" };
+    }
+    return runCommand(cmd, args, options);
+  };
+
+  await assert.rejects(
+    () => cleanupRun({ recordPath: run.recordPath, runCommand: failingRemoteDelete, now: () => NOW }),
+    /remote rejected branch deletion/,
+  );
+
+  const record = await readRunRecord(run.recordPath);
+  assert.equal(record.current.state, "verified_merged");
+  assert.equal(record.entries.some((entry) => entry.state === "cleaned_up"), false);
+});
+
+test("rollbackRun cleans up failed unmerged PR runs by closing the PR", async () => {
+  const repo = await makeRepo();
+  const run = await executeAutoRun(repo);
+  await appendRunState({
+    recordPath: run.recordPath,
+    state: "failed",
+    entry: {
+      runId: "run-2026-06-09-0001",
+      failedStage: "checks_pending",
+      errorClass: "ChecksDidNotPass",
+      safeNextAction: "rollback should cleanup the unmerged PR lane",
+    },
+    now: NOW,
+  });
+
+  const ghCalls = [];
+  const rollback = await rollbackRun({
+    recordPath: run.recordPath,
+    targetPath: repo.target,
+    runCommand,
+    runGh: fakeGh(ghCalls),
+    now: () => NOW,
+  });
+
+  assert.equal(rollback.state, "failed");
+  assert.ok(ghCalls.some((call) => call.args[0] === "pr" && call.args[1] === "close"), "unmerged PR must be closed");
+  assert.equal(await pathExists(run.worktreePath), false);
+  assert.equal(git(repo.target, ["branch", "--list", run.branch]), "");
 });

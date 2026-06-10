@@ -388,7 +388,11 @@ async function deleteRemoteBranchIfPresent({ targetPath, branch, runCommand }) {
   if (!branch) return;
   const remote = await gitResult({ runCommand, cwd: targetPath, args: ["ls-remote", "--heads", "origin", branch] });
   if (remote.code !== 0 || !remote.stdout.trim()) return;
-  await gitResult({ runCommand, cwd: targetPath, args: ["push", "origin", "--delete", branch] });
+  const deleted = await gitResult({ runCommand, cwd: targetPath, args: ["push", "origin", "--delete", branch] });
+  if (deleted.code === 0) return;
+  const after = await gitResult({ runCommand, cwd: targetPath, args: ["ls-remote", "--heads", "origin", branch] });
+  if (after.code === 0 && !after.stdout.trim()) return;
+  throw new Error(gitError(["push", "origin", "--delete", branch], deleted));
 }
 
 async function closePrIfOpen({ context, runGh }) {
@@ -409,6 +413,10 @@ export async function cleanupRun({
   const timestamp = now();
   if (record.current?.state === "cleaned_up" || record.current?.state === "aborted") {
     return { state: record.current.state, report: buildRunReport({ record, context, now: timestamp }) };
+  }
+
+  if (!context.mergeSha) {
+    await closePrIfOpen({ context, runGh });
   }
 
   await removeWorktreeIfPresent({ targetPath: context.targetPath, worktreePath: context.worktreePath, runCommand });
@@ -436,7 +444,6 @@ export async function cleanupRun({
     context = contextFromRecord(record, { targetPath });
     return { state: "failed", report: buildRunReport({ record, context, now: timestamp }) };
   } else {
-    await closePrIfOpen({ context, runGh });
     await appendRunState({
       recordPath,
       state: "aborted",
