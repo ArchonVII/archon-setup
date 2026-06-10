@@ -168,6 +168,72 @@ test("dirty repos and protected branches are skipped at repo level", async () =>
   assert.equal(mainResult.reason, "protected-main");
 });
 
+test("dry-run also skips dirty and protected repos (write-safety gates pin all non-audit modes)", async () => {
+  const onMain = { ...(await makeRepo({ "AGENTS.md": "# A\n" })), branch: "main" };
+
+  const result = await distributeRepo({ repo: onMain, catalog: catalogOf(guEntry()), mode: "dry-run" });
+
+  assert.equal(result.status, "skipped");
+  assert.equal(result.reason, "protected-main");
+});
+
+// ---- audit mode (M1 refresh engine, #157) ----
+
+test("audit mode reconciles a clean repo on main instead of skipping, and writes nothing", async () => {
+  const before = `# Agents\n\n${guBlock("stale content")}`;
+  const repo = { ...(await makeRepo({ "AGENTS.md": before })), branch: "main" };
+
+  const result = await distributeRepo({ repo, catalog: catalogOf(guEntry()), mode: "audit" });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].status, "clean_apply");
+  assert.equal(result.files[0].changed, true);
+  assert.equal(result.files[0].written, false);
+  assert.equal(await readFile(join(repo.path, "AGENTS.md"), "utf8"), before);
+});
+
+test("audit mode reconciles a dirty repo instead of skipping", async () => {
+  const repo = { ...(await makeRepo({ "AGENTS.md": `# Agents\n\n${guBlock()}` })), dirty: true };
+
+  const result = await distributeRepo({ repo, catalog: catalogOf(guEntry()), mode: "audit" });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].status, "clean_apply");
+  assert.equal(result.files[0].changed, false);
+});
+
+test("audit mode keeps the read-trust gates: unavailable and unknown-branch repos still skip", async () => {
+  const unavailable = { ...(await makeRepo({ "AGENTS.md": "# A\n" })), available: false };
+  const unknownBranch = { ...(await makeRepo({ "AGENTS.md": "# A\n" })), branch: null };
+
+  const first = await distributeRepo({ repo: unavailable, catalog: catalogOf(guEntry()), mode: "audit" });
+  assert.equal(first.status, "skipped");
+  assert.equal(first.reason, "repo-unavailable");
+
+  const second = await distributeRepo({ repo: unknownBranch, catalog: catalogOf(guEntry()), mode: "audit" });
+  assert.equal(second.status, "skipped");
+  assert.equal(second.reason, "unknown-branch");
+});
+
+test("audit mode ignores write-preview and stays read-only on protected dirty repos", async () => {
+  const before = "# Agents\n\nLocal-only content.\n";
+  const repo = { ...(await makeRepo({ "AGENTS.md": before })), branch: "main", dirty: true };
+  const previewPath = join(repo.path, ".archon", "distribute-preview", "AGENTS.md.patch");
+
+  const result = await distributeRepo({
+    repo,
+    catalog: catalogOf(guEntry()),
+    mode: "audit",
+    writePreview: true,
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].status, "adoption_needed");
+  assert.equal(result.files[0].previewPath, undefined);
+  assert.equal(existsSync(previewPath), false);
+  assert.equal(await readFile(join(repo.path, "AGENTS.md"), "utf8"), before);
+});
+
 test("apply writes only clean_apply files and is idempotent", async () => {
   const repo = await makeRepo({ "AGENTS.md": `# Agents\n\n${guBlock("stale")}` });
 

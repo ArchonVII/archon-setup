@@ -157,6 +157,74 @@ if (argv[0] === "distribute") {
   process.exit(exitCodeFor(run));
 }
 
+const REFRESH_HELP = `archon-setup refresh - audit one repo's ecosystem state (read-only)
+
+Runs the M1 refresh audit (#157): reconciles ArchonVII-managed regions in
+audit mode (never writes; audits repos sitting on main and dirty worktrees)
+and emits a schema-valid RepoRefreshReport with every finding projected to a
+frontend-spec Operation plus a deterministic recommendation.
+
+Usage:
+  node bin/archon-setup.mjs refresh --target <path> [options]
+
+Options:
+  --target <path>    Repo to audit (required)
+  --json             Emit the full RepoRefreshReport as JSON
+  --help             Show this help
+
+Exit codes: 0 nothing to do; 10 clean update pending; 20 a human decision
+remains (adoption/conflict); 1 failure or unauditable target.`;
+
+if (argv[0] === "refresh") {
+  const args = argv.slice(1);
+  if (args.includes("--help") || args.includes("-h")) {
+    console.log(REFRESH_HELP);
+    process.exit(0);
+  }
+
+  const { refreshExitCodeFor, refreshTarget } = await import("../src/server/refresh/refreshRepo.mjs");
+
+  const flags = new Set(args);
+  const targetIndex = args.indexOf("--target");
+  const targetPath = targetIndex >= 0 ? args[targetIndex + 1] : "";
+  if (!targetPath || targetPath.startsWith("--")) {
+    console.error("refresh: missing value for --target");
+    process.exit(1);
+  }
+
+  let report;
+  try {
+    report = await refreshTarget({ targetPath });
+  } catch (err) {
+    console.error(`refresh: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (flags.has("--json")) {
+    console.log(JSON.stringify(report, null, 2));
+  } else if (report.status === "skipped") {
+    console.log(`skipped (${report.reason}): ${report.repo.name}`);
+  } else {
+    for (const category of report.categories) {
+      for (const item of category.items) {
+        const rawText = [item.raw.status, item.raw.reason].filter(Boolean).join("/");
+        const rec = item.recommended
+          ? `recommended ${item.recommended}`
+          : `no recommendation (${item.recommendationReason})`;
+        console.log(`${item.operation.action} (${rawText}): ${item.itemId} — ${rec}`);
+        if (item.operation.diff) console.log(item.operation.diff.replace(/^/gm, "  "));
+      }
+    }
+    const items = report.categories.flatMap((c) => c.items);
+    const count = (action) => items.filter((i) => i.operation.action === action).length;
+    console.log(
+      `audit: ${count("merge")} merge, ${count("create")} create, ${count("needs_review")} needs_review, ` +
+        `${count("blocked")} blocked, ${count("skip")} skip.`,
+    );
+  }
+  process.exit(refreshExitCodeFor(report));
+}
+
 const TIGHTEN_HELP = `archon-setup tighten-required-gate - mark the stable repo gate required
 
 Usage:

@@ -142,6 +142,26 @@ beyond the standard budget defaults is discarded — use plain `update` when you
 need to preserve custom inputs. Both `--check` and `--upgrade` accept
 `--dry-run`, and `--target` defaults to the current directory.
 
+### Refreshing managed regions
+
+Use the `refresh` subcommand when you need a read-only audit of ArchonVII-managed
+regions in one existing repo, including AGENTS/global-update blocks:
+
+```bash
+node bin/archon-setup.mjs refresh --target <repo>
+node bin/archon-setup.mjs refresh --target <repo> --json
+```
+
+The command runs the distributor in `audit` mode, so it never writes files and
+can audit a repo that is sitting on `main` or has local changes. It still skips
+targets whose git state cannot be trusted, such as non-git paths or detached
+HEADs. JSON output is a `RepoRefreshReport` with raw reconcile state, the
+operation projection, any server-computed drift diff, and a deterministic
+recommendation for each item. Exit codes are stable for automation: `0` means
+nothing to do, `10` means a clean update is pending, `20` means a human decision
+or conflict remains, and `1` means the target could not be audited or an
+operational failure occurred.
+
 ## Canonical New-Repo Setup
 
 Use `archon-setup` as the canonical path for new ArchonVII repos. It wraps the
