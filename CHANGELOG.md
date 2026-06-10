@@ -11,6 +11,19 @@
 
 ### Added
 
+- The decision flow (#158, M2): `refresh --report` renders a self-contained
+  HTML decision face (canonical JSON embedded byte-equal; oversized diffs
+  truncate in the face only; submit affordance renders only with a live
+  nonce); `refresh --save-issue` ships the same canonical JSON to a GitHub
+  issue in a dedicated ` ```archon-decision-doc ` fence with supersession
+  comments on older open decision issues; `refresh --intake <doc.json|issue:#N>
+  [--allow-partial]` re-validates a completed doc against the live target
+  (schema, repo identity, base SHA, LF-normalized file/region fingerprints,
+  fresh reconcile) and emits the schema-valid `ApplySet` plus the two-layer
+  confirmation summary the M3 PR lane will consume. Evidence diffs are
+  redacted via `redact.mjs`; conflicts resolved as anything but defer require
+  a rationale; malformed or ambiguous issue JSON never executes. (#158)
+
 - The `refresh` subcommand (#157, M1): read-only single-repo ecosystem audit.
   `refresh --target <path> [--json]` reconciles ArchonVII-managed regions in
   the new distributor `audit` mode (write-safety gates don't apply — a repo
