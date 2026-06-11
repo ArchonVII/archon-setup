@@ -15,6 +15,24 @@ This log records agent-visible repository changes that should be easy to audit l
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-11 - Port archon-setup #197 lifecycle/doc-sweep fixes
+
+- **Issue/PR:** #66 / (pending)
+- **Branch:** agent/claude/66-port-197-fixes
+- **Changed paths:** .agent/startup-baseline.json, scripts/agent/lib.mjs, scripts/agent/status.mjs, scripts/agent/prune.mjs, scripts/doc-sweep/sweep.mjs, test/startup-baseline.test.mjs, test/agent/lib.test.mjs, .changelog/unreleased/66-port-197-fixes.md, docs/repo-update-log.md
+- **What changed:** Ported the five review fixes from archon-setup PR #197 that had been hand-applied to archon-setup's snapshot mirror of this repo: the startup baseline requires `scripts/agent/pr-body.mjs`; claims detection reads `.agent/coordination/claims/`; `agent:prune` uses a backslash-tolerant `primaryRootFromCommonDir` helper exported from `lib.mjs` (with unit tests); the doc-sweep `--apply` lock-held early return strips the internal `captured` field. Owner review of PR #67 then corrected the ported claims check to resolve against the current worktree (`--show-toplevel`) instead of the primary checkout (`--git-common-dir`), matching doc-sweep's per-worktree claims loader; status.mjs's primary-root derivation became unused and was removed. Restores provider-first flow so the next archon-setup snapshot refresh cannot clobber the fixes (ArchonVII/archon-setup#199).
+- **Verification:** `npm test` (node --test) passed 103/103 after each fix commit; merged-file deltas verified against archon-setup `main` snapshot bodies (byte-identical for `.agent/startup-baseline.json`, `scripts/doc-sweep/sweep.mjs`, `test/startup-baseline.test.mjs`; fix-only additive deltas on the three files #65 touched; `scripts/agent/status.mjs` intentionally diverges from the snapshot by the worktree-claims correction, which propagates back at the next refresh). Manual smoke: `npm run agent:status` from a linked worktree reports claims installed/not-installed correctly with/without a worktree-local `.agent/coordination/claims/`.
+- **Propagation:** pending archon-setup snapshot refresh (ArchonVII/archon-setup#199).
+
+## 2026-06-10 - Safe agent prune retirement
+
+- **Issue/PR:** #64 / (pending)
+- **Branch:** agent/codex/64-safe-agent-prune
+- **Changed paths:** AGENTS.md, scripts/agent/lib.mjs, scripts/agent/prune.mjs, test/agent/lib.test.mjs, .changelog/unreleased/64-safe-agent-prune.md, docs/repo-update-log.md
+- **What changed:** Changed `agent:prune` so clean agent worktrees are retired only with merged-PR head evidence, not from ancestry alone. Added regression coverage for fresh no-PR branches that are reachable from the default branch but still active.
+- **Verification:** `npm test -- test/agent/lib.test.mjs` passed (34/34); `npm test` passed (102/102).
+- **Propagation:** pending archon-setup snapshot refresh and consumer sync for ArchonVII/jma-history.
+
 ## 2026-06-09 - Drop scratch .pr-body.md; read committed PR template directly
 
 - **Issue/PR:** #58 / (pending)
