@@ -101,6 +101,12 @@ For repair-target routing during an incident, page-gm uses
    `AGENTS.md` blocks, with per-repo applied/skipped/failed results.
 6. **Respect coordination-isolation.** Do not teach a consumer repo to assume siblings
    exist.
+7. **`.archon/` tracking policy.** `.archon/region-ownership.json` is durable
+   evidence (keep-local decisions are unreconstructable from anywhere else) and
+   **must be committed** in consumer repos — the PR lane stages it alongside the
+   managed files it records decisions about. Local event/cache files under
+   `.archon/` (e.g. `events.jsonl`) are per-machine and **may be gitignored**;
+   never gitignore the directory wholesale.
 
 ## Skill quick-start (designing a new global skill)
 

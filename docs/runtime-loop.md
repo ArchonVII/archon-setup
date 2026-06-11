@@ -2,7 +2,10 @@
 
 The **dynamic** companion to [`docs/ecosystem-overview.md`](./ecosystem-overview.md) (which maps the
 repos statically). This walks the prlane/refresh/contracts loop hop by hop, from an audit finding
-through a merged-and-verified managed-region change, and back out through rollback.
+through a merged-and-verified managed-region change, and back out through rollback. For *who is
+authorized to make any of it happen* — the `gh` token as the sole trust anchor, and why the
+confirmation phrase is scope rather than authentication — see
+[`docs/authority-model.md`](./authority-model.md).
 
 > **Orientation only — verify before relying on it.** A local agent wrote this to save a reviewer
 > reconstruction time. Every material claim is tagged. Re-check anything tagged `[V]`/`[ASSUME]`
