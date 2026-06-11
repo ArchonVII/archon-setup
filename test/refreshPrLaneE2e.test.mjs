@@ -140,14 +140,31 @@ function completeDecisionDoc(doc) {
 }
 
 function fakeGh(calls) {
+  // Faithful enough to exercise the lane's real-evidence path (C1): the PR body and
+  // labels are captured at create/edit time and echoed back on `pr view`, and `pr checks`
+  // emits gh's real `bucket` shape rather than the synthetic `status:"passed"` (C10).
+  let createdBody = "";
+  const labels = [];
   return async (args, options = {}) => {
     calls.push({ args, options });
     if (args[0] === "pr" && args[1] === "create") {
+      createdBody = options.stdin ?? "";
       return { code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/163\n", stderr: "" };
     }
-    if (args[0] === "pr" && args[1] === "edit") return { code: 0, stdout: "", stderr: "" };
+    if (args[0] === "pr" && args[1] === "edit") {
+      const at = args.indexOf("--add-label");
+      if (at >= 0 && args[at + 1]) labels.push(args[at + 1]);
+      return { code: 0, stdout: "", stderr: "" };
+    }
+    if (args[0] === "pr" && args[1] === "view") {
+      return {
+        code: 0,
+        stdout: JSON.stringify({ labels: labels.map((name) => ({ name })), body: createdBody }),
+        stderr: "",
+      };
+    }
     if (args[0] === "pr" && args[1] === "checks") {
-      return { code: 0, stdout: JSON.stringify([{ name: "test", status: "passed" }]), stderr: "" };
+      return { code: 0, stdout: JSON.stringify([{ name: "test", state: "SUCCESS", bucket: "pass" }]), stderr: "" };
     }
     if (args[0] === "pr" && args[1] === "merge") return { code: 0, stdout: "", stderr: "" };
     throw new Error(`unexpected gh call: ${args.join(" ")}`);
@@ -272,4 +289,95 @@ test("M6 e2e: refresh decisions execute merge verify cleanup then second run is 
     assert.equal(secondIntake.ok, true);
     assert.equal(secondIntake.applySet, null);
   }
+});
+
+// Shared intake pipeline for the auto-path gate tests below (reuses the M6 fixture).
+async function applySetFor(repo, activeCatalog) {
+  const report = await audit(repo, activeCatalog);
+  const doc = await buildDecisionDoc({ report, runId: RUN_ID, owner: "ArchonVII", now: NOW });
+  const completed = completeDecisionDoc(doc);
+  const intake = await intakeDecisionDoc({
+    input: completed,
+    targetPath: repo.target,
+    refresh: async () => audit(repo, activeCatalog),
+    originRemote: async () => ({ originDetected: { owner: "ArchonVII", repo: "consumer-repo" } }),
+    sourceIssueNumber: 163,
+    now: NOW,
+  });
+  assert.equal(intake.ok, true);
+  return intake.applySet;
+}
+
+test("auto refuses (stops at checks_pending) when no required checks resolve from branch protection (C2)", async () => {
+  const repo = await makeRepo();
+  const activeCatalog = catalog();
+  const applySet = await applySetFor(repo, activeCatalog);
+  const ghCalls = [];
+  const recordPath = join(repo.root, "run-no-checks.jsonl");
+
+  const run = await runUpdate({
+    applySet,
+    targetPath: repo.target,
+    mode: "auto",
+    confirmationPhrase: confirmationPhraseForRun({ repoName: "consumer-repo", runId: RUN_ID }),
+    recordPath,
+    workRoot: join(repo.root, "worktrees-no-checks"),
+    catalog: activeCatalog,
+    // No explicit requiredChecks -> runUpdate resolves from the target; stub "no protection".
+    resolveRequiredChecks: async () => ({ checks: [], source: "branch-protection", status: "missing-protection" }),
+    runCommand,
+    runGh: fakeGh(ghCalls),
+    now: () => NOW,
+  });
+
+  assert.equal(run.state, "checks_pending");
+  assert.equal(run.requiredChecksStatus, "missing-protection");
+  assert.ok(run.autoMerge.reasons.includes("no-required-checks-configured"));
+  assert.equal(ghCalls.some((call) => call.args[0] === "pr" && call.args[1] === "merge"), false);
+  const ledger = await readFile(recordPath, "utf8");
+  assert.match(ledger, /"requiredChecksStatus":"missing-protection"/);
+});
+
+test("auto refuses (stops at checks_pending) when the fetched PR is missing its label (C1)", async () => {
+  const repo = await makeRepo();
+  const activeCatalog = catalog();
+  const applySet = await applySetFor(repo, activeCatalog);
+  const ghCalls = [];
+  const recordPath = join(repo.root, "run-missing-label.jsonl");
+
+  // gh `pr view` reports NO labels (e.g. the label was stripped between create and queue);
+  // the body still carries real decision-doc/issue evidence so only the label leg fails.
+  const ghNoLabel = async (args, options = {}) => {
+    ghCalls.push({ args, options });
+    if (args[0] === "pr" && args[1] === "create") {
+      return { code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/163\n", stderr: "" };
+    }
+    if (args[0] === "pr" && args[1] === "edit") return { code: 0, stdout: "", stderr: "" };
+    if (args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ labels: [], body: `#163\n${applySet.sourceDecisionDoc.fingerprint}` }), stderr: "" };
+    }
+    if (args[0] === "pr" && args[1] === "checks") {
+      return { code: 0, stdout: JSON.stringify([{ name: "test", bucket: "pass" }]), stderr: "" };
+    }
+    if (args[0] === "pr" && args[1] === "merge") return { code: 0, stdout: "", stderr: "" };
+    throw new Error(`unexpected gh call: ${args.join(" ")}`);
+  };
+
+  const run = await runUpdate({
+    applySet,
+    targetPath: repo.target,
+    mode: "auto",
+    confirmationPhrase: confirmationPhraseForRun({ repoName: "consumer-repo", runId: RUN_ID }),
+    recordPath,
+    workRoot: join(repo.root, "worktrees-missing-label"),
+    catalog: activeCatalog,
+    requiredChecks: ["test"],
+    runCommand,
+    runGh: ghNoLabel,
+    now: () => NOW,
+  });
+
+  assert.equal(run.state, "checks_pending");
+  assert.ok(run.autoMerge.reasons.includes("missing-pr-label:automated-distribution"));
+  assert.equal(ghCalls.some((call) => call.args[0] === "pr" && call.args[1] === "merge"), false);
 });

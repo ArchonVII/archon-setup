@@ -177,6 +177,44 @@ async function patchRequiredStatusChecks({ owner, repo, branch, checkName, paylo
   return { ok: false, status: "error", message: `could not update required status checks: ${commandText(res)}` };
 }
 
+// Read-only: resolve the required-status-check contexts currently enforced on the
+// target's protected branch. Used by the PR lane at execute time to decide whether
+// `auto` mode may queue an auto-merge. Fails CLOSED: a missing-protection / unreadable
+// (e.g. no admin scope) / unparseable response all yield an empty check set so the
+// caller refuses auto rather than delegating merge safety to unverified branch protection.
+export async function resolveRequiredChecks({
+  targetPath = process.cwd(),
+  owner = "",
+  repo = "",
+  branch = DEFAULT_BRANCH,
+  runCommand = defaultRunCommand,
+} = {}) {
+  const targetRoot = resolve(targetPath);
+  const { manifest } = await readManifest(targetRoot);
+  const identity = await resolveIdentity({ targetRoot, owner, repo, manifest });
+  const protectionResult = await getBranchProtection({ ...identity, branch, runCommand });
+  if (!protectionResult.ok) {
+    return {
+      checks: [],
+      source: "branch-protection",
+      status: protectionResult.status, // "missing-protection" | "error"
+      message: protectionResult.message,
+      owner: identity.owner,
+      repo: identity.repo,
+      branch,
+    };
+  }
+  const checks = [...requiredCheckContexts(protectionResult.protection.required_status_checks)];
+  return {
+    checks,
+    source: "branch-protection",
+    status: "ok",
+    owner: identity.owner,
+    repo: identity.repo,
+    branch,
+  };
+}
+
 export async function tightenRequiredGate({
   targetPath = process.cwd(),
   owner = "",

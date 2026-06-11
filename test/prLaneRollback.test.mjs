@@ -105,14 +105,24 @@ async function makeRepo(body = `# Agents\n\n${managedBlock("stale guidance")}`) 
   return { root, target, originalBody: body, baseSha: git(target, ["rev-parse", "HEAD"]) };
 }
 
-function fakeGh(calls, { checks = [{ name: "test", status: "passed" }] } = {}) {
+function fakeGh(calls, { checks = [{ name: "test", bucket: "pass" }] } = {}) {
   let nextPr = 457;
+  let createdBody = "";
+  const labels = [];
   return async (args, options = {}) => {
     calls.push({ args, options });
     if (args[0] === "pr" && args[1] === "create") {
+      createdBody = options.stdin ?? "";
       return { code: 0, stdout: `https://github.com/ArchonVII/consumer-repo/pull/${nextPr++}\n`, stderr: "" };
     }
-    if (args[0] === "pr" && args[1] === "edit") return { code: 0, stdout: "", stderr: "" };
+    if (args[0] === "pr" && args[1] === "edit") {
+      const at = args.indexOf("--add-label");
+      if (at >= 0 && args[at + 1]) labels.push(args[at + 1]);
+      return { code: 0, stdout: "", stderr: "" };
+    }
+    if (args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ labels: labels.map((name) => ({ name })), body: createdBody }), stderr: "" };
+    }
     if (args[0] === "pr" && args[1] === "checks") return { code: 0, stdout: JSON.stringify(checks), stderr: "" };
     if (args[0] === "pr" && args[1] === "merge") return { code: 0, stdout: "", stderr: "" };
     if (args[0] === "pr" && args[1] === "close") return { code: 0, stdout: "", stderr: "" };

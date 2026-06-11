@@ -123,7 +123,7 @@ Each row: the transition, what guards it, and how it fails. All line refs are
 | `committed` | `git add` only the ApplySet's changed paths, commit `feat(agents): apply refresh <runId>`; throw if nothing to commit `[V :365-373]` | catch → `failed` |
 | `pushed` | `git push -u origin <branch>` `[V :383]` | catch → `failed` |
 | `pr_created` | `createDraftPr` (draft unless `auto`) + label `automated-distribution` `[V :394-403]` | catch → `failed`. *(mode `pr-only` returns here `[V :414]`)* |
-| `checks_pending` | `listPrChecks`; then **`evaluateAutoMergeEligibility`** with real checks. **If not eligible, the run STOPS here and returns** `[V :416-433]` | not a failure — a deliberate hold |
+| `checks_pending` | `listPrChecks`; resolve the **required-check set** (an explicit set wins, else from the target's live branch protection via `resolveRequiredChecks`, recorded in the ledger as `requiredChecks*`); then **`evaluateAutoMergeEligibility`** against the PR's *actual* labels/body (`getPrView`) and the real post-apply audit, with `requireConfiguredChecks:true`. **If not eligible — including an empty resolved set (`no-required-checks-configured`) — the run STOPS here and returns** `[V :416-470]` | not a failure — a deliberate hold; the CLI exits 20 |
 | `merge_queued` | only if eligible → `queueAutoMerge` (`gh pr merge --auto`) `[V :435-443]` | catch → `failed` |
 
 `merged` / `verified_merged` / `cleaned_up` are **not** reached inside `runUpdate`; they are appended
@@ -146,15 +146,22 @@ is event-driven and worth tracing.
 - `conflictAutoResolved` true. `[V :86]`
 - PR missing the `automated-distribution` label. `[V :88-91]`
 - PR body missing the decision-doc fingerprint, or missing the issue link. `[V :93-99]`
-- any `requiredChecks` entry missing or not passing. `[V :101-106]`
-- `postApplyAudit.clean !== true`. `[V :108]`
+- with `requireConfiguredChecks` (set by `auto` mode), an **empty** required-check set →
+  `no-required-checks-configured` (auto refuses rather than delegate merge safety to unverified
+  branch protection). `[V autoMergeGate.mjs]`
+- any `requiredChecks` entry missing or not passing — `checkPassed` accepts only real terminal-success
+  shapes (`bucket:"pass"` / `conclusion:"success"`), **not** a bare `completed`/`ok`. `[V :35-41,~101-110]`
+- `postApplyAudit.clean !== true` — fed the **real** audit result by `runUpdate`. `[V autoMergeGate.mjs]`
 
-`[OPEN]` In `runUpdate`, the gate is *first* called at `[V :232-242]` with a **synthetic** `pr` and
-`postApplyAudit:{clean:true}`, and only the `confirmation-phrase-mismatch` reason is acted on there
-`[V :243-244]`; the **real** gate runs at `[V :425-432]` — but that call also hard-codes
-`postApplyAudit:{clean:true}` `[V :431]`. The genuine post-apply protection is the upstream *throw*
-at `[V :344]`, so the gate's own `post-apply-audit-not-clean` branch may be dead in this path. Worth
-confirming whether that gate branch is load-bearing anywhere (e.g. the M6 e2e test) or vestigial.
+**Resolved (#185).** The production gate in `runUpdate` now evaluates the PR's *actual* GitHub state —
+labels and body fetched via `getPrView` — together with the real post-apply audit result
+(`postApplyAudit:{clean}`) and the resolved required-check set, instead of synthetic inputs. The
+required set is resolved at execute time from the target's live branch protection
+(`resolveRequiredChecks`, fail-closed: missing/unreadable protection ⇒ empty set), recorded in the
+`checks_pending` ledger entry, and `auto` mode **refuses** (stops at `checks_pending`, CLI exit 20)
+when it is empty. The earlier preflight gate call survives only to surface
+`confirmation-phrase-mismatch` (PR-independent); the genuine post-apply protection remains the
+upstream *throw*, with the gate's audit leg now fed the real value rather than a literal.
 
 ---
 

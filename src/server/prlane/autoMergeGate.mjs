@@ -37,7 +37,10 @@ function checkStatus(check) {
 }
 
 function checkPassed(check) {
-  return ["pass", "passed", "success", "completed", "ok"].includes(checkStatus(check));
+  // Real gh shapes only: `gh pr checks --json ... bucket` emits bucket "pass"; a raw
+  // check-run conclusion is "success". Bare "completed"/"ok" are NOT terminal-success
+  // (a `{status:"completed"}` run with no conclusion is a real race shape) — excluded.
+  return ["pass", "passed", "success"].includes(checkStatus(check));
 }
 
 function bodyIncludesIssue(body, issueNumber) {
@@ -51,6 +54,7 @@ export function evaluateAutoMergeEligibility({
   conflictAutoResolved = false,
   pr = {},
   requiredChecks = [],
+  requireConfiguredChecks = false,
   checks = [],
   postApplyAudit = {},
   config = DEFAULT_AUTO_MERGE_CONFIG,
@@ -96,6 +100,10 @@ export function evaluateAutoMergeEligibility({
   }
   if (!bodyIncludesIssue(body, applySet.sourceDecisionDoc.issueNumber)) {
     reasons.push("missing-issue-link");
+  }
+
+  if (requireConfiguredChecks && requiredChecks.length === 0) {
+    reasons.push("no-required-checks-configured");
   }
 
   const checksByName = new Map(checks.map((check) => [check.name, check]));
