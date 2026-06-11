@@ -4,6 +4,21 @@
 
 ### Fixed
 
+- PR-lane evidence artifacts are now truthful and contract-valid (#187):
+  `RunReport.results` buckets derive from the ledger's reached state instead of
+  being synthesized from the plan (failed-preflight runs report `applied: []`;
+  keep-local ownership records report as skipped); generated forward and
+  rollback PR bodies pass the repo-template's own PR contract with fenced
+  `evidence` blocks carrying real run facts (runId, baseSha, decision-doc
+  fingerprint, item set, run ledger path), enforced by a unit test importing
+  `validatePrContract` from the snapshot; `runUpdate` recomputes
+  `expectedFileSha256`/`expectedRegionInnerSha256` per item inside the
+  execution worktree before any write (null-tolerant for create-file) and
+  refuses stale ApplySets with a per-item reason. New
+  `docs/authority-model.md` states the trust anchor (the `gh` token, not the
+  derivable confirmation phrase), and the `.archon/` tracking policy is
+  documented in `ecosystem-overview.md`.
+
 - PR-lane rollback and cleanup lifecycle gaps (#186): manual merges of runs
   held at `checks_pending`/`pr_created` are now legal transitions and
   post-merge verifiable (ledger-stamped `mergedBy:"manual"`); `verify-merged`
