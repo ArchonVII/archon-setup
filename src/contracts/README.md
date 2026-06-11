@@ -55,9 +55,11 @@ with no cross-file resolution. `[V validate.mjs:45-53]`
 - **`skill-selection` semantic invariants** — the zero-dep schema cannot express conditionals, so
   `validateSkillSelection` layers them on top, and every consumer (the builder and `runUpdate`) goes
   through that one chokepoint: `discovery.status` of `ok`/`repo-dirty` requires a pinned 40-hex
-  `source.commit` (`null` is legal only on failure statuses where no commit could be read), a usable
+  `source.commit` (`null` is legal only on failure statuses where no commit could be read); a usable
   record must either carry selections or set `noRelevantSkill: true` (an empty "ok" record claims
-  nothing), and `noRelevantSkill: true` cannot coexist with selections.
+  nothing); `noRelevantSkill: true` cannot coexist with selections; `status` and `dirtyPaths` must
+  agree (`ok` cannot carry dirty paths, `repo-dirty` must list them); and selection names must be
+  unique (duplicates would smuggle catalog ambiguity inside an accepted record).
 
 ## Skill-selection truth boundary
 

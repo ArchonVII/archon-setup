@@ -323,6 +323,79 @@ test("validateSkillSelection rejects empty successful records and lying noReleva
   assert.deepEqual(validateSkillSelection(failureEmpty).errors, []);
 });
 
+test("validateSkillSelection rejects status/dirtyPaths contradictions", async () => {
+  const repo = await makeSkillsRepo();
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    now: () => NOW,
+  });
+
+  const okWithDirt = {
+    ...record,
+    discovery: { ...record.discovery, status: "ok", dirtyPaths: ["shared/open/SKILL.md"] },
+  };
+  const checkedOk = validateSkillSelection(okWithDirt);
+  assert.equal(checkedOk.valid, false);
+  assert.ok(
+    checkedOk.errors.some((e) => e.path === "discovery.dirtyPaths" && /cannot carry dirty paths/.test(e.message)),
+    JSON.stringify(checkedOk.errors),
+  );
+
+  const dirtyWithoutPaths = {
+    ...record,
+    discovery: { status: "repo-dirty", fallback: "recorded-dirty-provenance", dirtyPaths: [], error: null },
+  };
+  const checkedDirty = validateSkillSelection(dirtyWithoutPaths);
+  assert.equal(checkedDirty.valid, false);
+  assert.ok(
+    checkedDirty.errors.some((e) => e.path === "discovery.dirtyPaths" && /must list the dirty paths/.test(e.message)),
+    JSON.stringify(checkedDirty.errors),
+  );
+});
+
+test("validateSkillSelection rejects duplicate selection names", async () => {
+  const repo = await makeSkillsRepo();
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    now: () => NOW,
+  });
+
+  const duplicated = {
+    ...record,
+    selections: [
+      record.selections[0],
+      { ...record.selections[0], relpath: "shared/open-alt/SKILL.md", skillSha256: "1".repeat(64) },
+    ],
+  };
+  const checked = validateSkillSelection(duplicated);
+  assert.equal(checked.valid, false);
+  assert.ok(
+    checked.errors.some((e) => e.path === "selections[1].name" && /duplicate selection name "open"/.test(e.message)),
+    JSON.stringify(checked.errors),
+  );
+});
+
+test("buildSkillSelectionRecord rejects the same skill selected twice", async () => {
+  const repo = await makeSkillsRepo();
+
+  await assert.rejects(
+    buildSkillSelectionRecord({
+      runId: "run-188",
+      skillsRoot: repo.root,
+      selectedSkills: [
+        { name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." },
+        { name: "open", whySelected: "Listed again by mistake." },
+      ],
+      now: () => NOW,
+    }),
+    /selected skill open is listed more than once/,
+  );
+});
+
 test("buildSkillSelectionRecord rejects selected skills absent from the catalog allowlist", async () => {
   const repo = await makeSkillsRepo();
 

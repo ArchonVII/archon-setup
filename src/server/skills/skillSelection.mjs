@@ -48,6 +48,38 @@ export function validateSkillSelection(record) {
       message: "noRelevantSkill records cannot also carry selections",
     });
   }
+  // Status and dirtyPaths must agree: "ok" claiming cleanliness cannot carry
+  // contrary evidence, and "repo-dirty" must justify itself with the paths.
+  const dirtyPaths = record?.discovery?.dirtyPaths;
+  if (status === "ok" && Array.isArray(dirtyPaths) && dirtyPaths.length > 0) {
+    errors.push({
+      path: "discovery.dirtyPaths",
+      message: 'an "ok" record cannot carry dirty paths; record repo-dirty instead',
+    });
+  }
+  if (status === "repo-dirty" && Array.isArray(dirtyPaths) && dirtyPaths.length === 0) {
+    errors.push({
+      path: "discovery.dirtyPaths",
+      message: 'a "repo-dirty" record must list the dirty paths that justify it',
+    });
+  }
+  // One selection per skill name: duplicates would let a record carry two
+  // different relpaths/hashes for the same name — catalog ambiguity smuggled
+  // inside an otherwise valid record.
+  if (Array.isArray(record?.selections)) {
+    const seen = new Set();
+    for (let i = 0; i < record.selections.length; i += 1) {
+      const name = record.selections[i]?.name;
+      if (typeof name !== "string") continue;
+      if (seen.has(name)) {
+        errors.push({
+          path: `selections[${i}].name`,
+          message: `duplicate selection name "${name}"; one selection per skill`,
+        });
+      }
+      seen.add(name);
+    }
+  }
   return { valid: errors.length === 0, errors };
 }
 
@@ -149,10 +181,15 @@ export async function buildSkillSelectionRecord({
     // caller must either select skills or explicitly claim none were relevant.
     throw new Error("either select at least one skill or set noRelevantSkill: true");
   }
+  const selectedNames = new Set();
   for (const selected of selectedSkills) {
     if (!selected.whySelected || !String(selected.whySelected).trim()) {
       throw new Error(`selected skill ${selected.name ?? "(unknown)"} is missing whySelected`);
     }
+    if (selectedNames.has(selected.name)) {
+      throw new Error(`selected skill ${selected.name} is listed more than once`);
+    }
+    selectedNames.add(selected.name);
   }
 
   const selectedAt = now();
