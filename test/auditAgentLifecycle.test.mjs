@@ -17,6 +17,7 @@ function lifecyclePlan(targetPath) {
     ordered: [{ featureId: "agent-lifecycle.baseline", taskId: "writeAgentLifecycle", options: {} }],
     files: [
       { path: "scripts/agent/lib.mjs", feature: "agent-lifecycle.baseline" },
+      { path: "scripts/agent/pr-body.mjs", feature: "agent-lifecycle.baseline" },
       { path: "package.json", feature: "agent-lifecycle.baseline" },
     ],
   };
@@ -29,6 +30,8 @@ test("audit: script missing -> exact/missing; package.json -> entries/missing", 
   const res = await auditPlan(lifecyclePlan(await makeTarget()));
   assert.equal(item(res, "scripts/agent/lib.mjs").status, "missing");
   assert.equal(item(res, "scripts/agent/lib.mjs").comparison, "exact");
+  assert.equal(item(res, "scripts/agent/pr-body.mjs").status, "missing");
+  assert.equal(item(res, "scripts/agent/pr-body.mjs").comparison, "exact");
   assert.equal(item(res, "package.json").status, "missing");
   assert.equal(item(res, "package.json").comparison, "entries");
 });
@@ -37,10 +40,15 @@ test("audit: matching script + all entries present -> present", async () => {
   const target = await makeTarget();
   await mkdir(join(target, "scripts", "agent"), { recursive: true });
   await writeFile(join(target, "scripts/agent/lib.mjs"), await readFile(join(SNAP, "scripts/agent/lib.mjs"), "utf8"));
+  await writeFile(
+    join(target, "scripts/agent/pr-body.mjs"),
+    await readFile(join(SNAP, "scripts/agent/pr-body.mjs"), "utf8")
+  );
   await writeFile(join(target, "package.json"), JSON.stringify({ name: "demo", scripts: { ...AGENT_SCRIPTS } }, null, 2));
 
   const res = await auditPlan(lifecyclePlan(target));
   assert.equal(item(res, "scripts/agent/lib.mjs").status, "present");
+  assert.equal(item(res, "scripts/agent/pr-body.mjs").status, "present");
   assert.equal(item(res, "package.json").status, "present");
   assert.equal(item(res, "package.json").comparison, "entries");
 });

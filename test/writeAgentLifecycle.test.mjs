@@ -13,6 +13,7 @@ const SCRIPT_FILES = [
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",
   "scripts/agent/prune.mjs",
+  "scripts/agent/pr-body.mjs",
 ];
 
 async function makeTarget() {
@@ -31,7 +32,7 @@ function snapshotBody(file) {
   return readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8").then(normalizeSnapshotText);
 }
 
-test("apply copies the four agent lifecycle scripts into the target", async () => {
+test("apply copies the managed agent lifecycle scripts into the target", async () => {
   const target = await makeTarget();
   await writeAgentLifecycle.apply(makeCtx(target));
   for (const file of SCRIPT_FILES) {
@@ -124,11 +125,12 @@ test("apply repairs a drifted managed script by overwriting it from the snapshot
   assert.equal(await writeAgentLifecycle.check(makeCtx(target)), "already-done");
 });
 
-test("AGENT_SCRIPTS exports exactly the three lifecycle entries", () => {
+test("AGENT_SCRIPTS exports the current lifecycle entries", () => {
   assert.deepEqual(AGENT_SCRIPTS, {
     "agent:status": "node scripts/agent/status.mjs",
     "agent:prune": "node scripts/agent/prune.mjs",
     "agent:start-task": "node scripts/agent/start-task.mjs",
+    "agent:pr-body": "node scripts/agent/pr-body.mjs",
   });
 });
 

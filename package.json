@@ -17,7 +17,11 @@
     "snapshot": "node bin/ecosystem-snapshot.mjs",
     "lint:markers": "node scripts/lint-managed-regions.mjs",
     "test": "node --test \"test/*.test.mjs\"",
-    "prepublishOnly": "node scripts/prepublish-check.mjs"
+    "prepublishOnly": "node scripts/prepublish-check.mjs",
+    "agent:status": "node scripts/agent/status.mjs",
+    "agent:prune": "node scripts/agent/prune.mjs",
+    "agent:start-task": "node scripts/agent/start-task.mjs",
+    "agent:pr-body": "node scripts/agent/pr-body.mjs"
   },
   "engines": {
     "node": ">=20"
