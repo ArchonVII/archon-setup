@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill-selection",
+  "runId": "run-188",
+  "selectedAt": "2026-06-11T12:00:00.000Z",
+  "source": {
+    "repo": "ArchonVII/jma-skill-review",
+    "root": "shared/",
+    "catalogRelpath": "docs/skill-catalog.md",
+    "commit": null
+  },
+  "discovery": {
+    "status": "repo-missing",
+    "fallback": "proceeded-without-skills",
+    "dirtyPaths": [],
+    "error": "not a git repository"
+  },
+  "noRelevantSkill": false,
+  "selections": []
+}

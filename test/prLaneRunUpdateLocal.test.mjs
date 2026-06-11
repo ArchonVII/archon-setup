@@ -202,6 +202,51 @@ test("runUpdate local-only applies in a temp worktree, records states, and never
   );
 });
 
+test("runUpdate records optional skillSelection provenance only on the planned entry", async () => {
+  const repo = await makeRepo();
+  const recordPath = join(repo.root, "run-skill-selection.jsonl");
+  const skillSelection = {
+    schemaVersion: 1,
+    kind: "skill-selection",
+    runId: "run-2026-06-09-0001",
+    selectedAt: "2026-06-10T12:00:00.000Z",
+    source: {
+      repo: "ArchonVII/jma-skill-review",
+      root: "shared/",
+      catalogRelpath: "docs/skill-catalog.md",
+      commit: "a".repeat(40),
+    },
+    discovery: { status: "ok", fallback: null, dirtyPaths: [], error: null },
+    noRelevantSkill: false,
+    selections: [
+      {
+        name: "test-driven-development",
+        relpath: "shared/test-driven-development/SKILL.md",
+        skillSha256: "0".repeat(64),
+        whySelected: "This lane changes behavior and needs a regression test before implementation.",
+      },
+    ],
+  };
+
+  await runUpdate({
+    applySet: applySet(repo.baseSha),
+    targetPath: repo.target,
+    mode: "local-only",
+    confirmationPhrase: PHRASE,
+    recordPath,
+    workRoot: join(repo.root, "worktrees-skill-selection"),
+    catalog: catalog(),
+    skillSelection,
+    runCommand,
+    now: () => "2026-06-10T12:00:00.000Z",
+  });
+
+  const record = await readRunRecord(recordPath);
+  assert.deepEqual(record.entries[0].skillSelection, skillSelection);
+  assert.equal(record.entries[0].state, "planned");
+  assert.equal(record.entries[1].skillSelection, undefined);
+});
+
 test("runUpdate local-only rejects disallowed paths before creating a worktree", async () => {
   const repo = await makeRepo();
   const recordPath = join(repo.root, "run-disallowed.jsonl");

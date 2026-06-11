@@ -1,9 +1,10 @@
 # Contracts — the seams of the Agent OS v0.1 loop
 
-These six JSON-Schema files are the typed seams between the loop's stages (audit → decide → execute
-→ verify). They are validated by a **zero-dependency, fail-closed** validator, and pinned to closed
-vocabularies so the JSON files cannot drift silently. See [`../../docs/runtime-loop.md`](../../docs/runtime-loop.md)
-for how they connect at runtime.
+These seven JSON-Schema files are the typed seams between the loop's stages (audit → decide → execute
+→ verify) and the read-only skill-selection provenance record. They are validated by a
+**zero-dependency, fail-closed** validator, and pinned to closed vocabularies so the JSON files cannot
+drift silently. See [`../../docs/runtime-loop.md`](../../docs/runtime-loop.md) for how they connect at
+runtime.
 
 > **Orientation only — verify before relying on it.** Tags below: `[V file:line]` = verified against
 > source on 2026-06-11 (HEAD `e6adb60`); `[INTENT]` = a *proposed* reading (e.g. stability tier) for
@@ -29,6 +30,7 @@ with no cross-file resolution. `[V validate.mjs:45-53]`
 | `decision-doc.schema.json` | canonical-JSON audit + per-item resolution | `decisionDoc.mjs` (M2) `[ASSUME]` | intake → ApplySet `[ASSUME]` | `[ASSUME]` decisionDoc reuses `validate.mjs` |
 | `repo-refresh-report.schema.json` | one repo's per-category audit (Operation projections) | `refreshRepo` `[V refreshRepo.mjs:162-219]` | decision flow; `postApplyAuditClean` `[V runUpdate.mjs:124-134]` | `refreshRepo` validates before return `[V :214-218]` |
 | `operation-mapping.schema.json` | shape of the `operation-mapping.json` golden table | hand-authored golden | `operationMapping.mjs` → `refreshRepo` | `test/operationMapping.test.mjs` `[V title]` |
+| `skill-selection.schema.json` | read-only evidence for which active skills the operating agent selected | `buildSkillSelectionRecord` / operator-provided records | optional `runUpdate(..., skillSelection)` planned-ledger field | `validateSkillSelection`; fixture sweep in `test/contractSchemas.test.mjs` |
 
 ### Key invariant fields (read the schema files for the full shape)
 
@@ -44,6 +46,19 @@ with no cross-file resolution. `[V validate.mjs:45-53]`
   {passed,failed,pending,skipped}. `[V run-report.schema.json:88-96,134-142]`
 - **`decision-doc` `recommendationReason`** — closed enum incl. the verbatim
   `blocked-conflict-requires-human-resolution`. `[V decision-doc.schema.json:143-153]`
+- **`skill-selection` `selections[]`** — records `name`, catalog-derived relative `SKILL.md` path,
+  LF-normalized `skillSha256`, and an authored `whySelected`; discovery failures such as
+  `repo-missing`, `catalog-unreadable`, and `repo-dirty` are represented in-band instead of blocking
+  the mechanical PR lane.
+
+## Skill-selection truth boundary
+
+The `skill-selection` contract is **provenance, not proof of compliance**. CI can validate the record
+shape, fixture coverage, LF-normalized hashing behavior in local unit tests, and that `runUpdate`
+attaches a supplied record only to the initial `planned` ledger entry. CI cannot truthfully prove that
+an operator read the skill, followed it, or that the skill causally improved the work. The record pins
+the skills-repo commit and `SKILL.md` hash so later review can detect what guidance was selected and
+whether the consulted file changed.
 
 ## Closed vocabularies (`vocab.mjs`)
 

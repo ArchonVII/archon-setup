@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "kind": "skill-selection",
+  "runId": "run-188",
+  "selectedAt": "2026-06-11T12:00:00.000Z",
+  "source": {
+    "repo": "ArchonVII/jma-skill-review",
+    "root": "shared/",
+    "catalogRelpath": "docs/skill-catalog.md",
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "discovery": {
+    "status": "ok",
+    "fallback": null,
+    "dirtyPaths": [],
+    "error": null
+  },
+  "noRelevantSkill": false,
+  "selections": [
+    {
+      "name": "open",
+      "relpath": "shared/open/SKILL.md",
+      "skillSha256": "not-a-sha",
+      "whySelected": "The lane starts from an issue and needs the standard repo-opening workflow."
+    }
+  ]
+}

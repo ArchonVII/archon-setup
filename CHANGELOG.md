@@ -38,6 +38,13 @@
 
 ### Added
 
+- Added a read-only `skill-selection` provenance contract (#188) with schema
+  fixtures, a zero-dependency validator path, LF-normalized `SKILL.md` hashing,
+  first-class `noRelevantSkill` / `repo-dirty` / `catalog-unreadable` /
+  `repo-missing` outcomes, and an optional `runUpdate` planned-ledger field.
+  The contract records evidence only; it does not install, promote, or mutate
+  skills.
+
 - Global update record `2026-06-10-plan-status-closeout`, so existing repos can
   receive a confirmation-gated AGENTS.md block requiring agents to close,
   narrow, or supersede lane-created or lane-used plan/status artifacts before
