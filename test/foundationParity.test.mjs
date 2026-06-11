@@ -155,6 +155,21 @@ test("writeGithooks copies scrubbed repo-template hooks", async () => {
     ".githooks/scripts/test-checkout-role.sh",
   ]);
 
+  if (process.platform !== "win32") {
+    for (const file of [
+      ".githooks/commit-msg",
+      ".githooks/pre-commit",
+      ".githooks/scripts/install-githooks.sh",
+      ".githooks/scripts/owner-maintenance.sh",
+      ".githooks/scripts/test-owner-maintenance.sh",
+      ".githooks/scripts/checkout-role.sh",
+      ".githooks/scripts/checkout-doctor.sh",
+      ".githooks/scripts/test-checkout-role.sh",
+    ]) {
+      assert.equal((await stat(join(root, file))).mode & 0o777, 0o755, `${file} should be executable`);
+    }
+  }
+
   const hookFiles = await readdir(join(root, ".githooks"), { recursive: true });
   for (const file of hookFiles.filter((name) => typeof name === "string")) {
     if (!(await stat(join(root, ".githooks", file))).isFile()) continue;
