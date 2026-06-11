@@ -6,9 +6,9 @@ These seven JSON-Schema files are the typed seams between the loop's stages (aud
 drift silently. See [`../../docs/runtime-loop.md`](../../docs/runtime-loop.md) for how they connect at
 runtime.
 
-> **Orientation only — verify before relying on it.** Tags below: `[V file:line]` = verified against
-> source on 2026-06-11 (HEAD `e6adb60`); `[INTENT]` = a *proposed* reading (e.g. stability tier) for
-> a reviewer to confirm or reject, **not** an authoritative classification.
+> **Orientation only — verify before relying on it.** Tags below are evidence aids from the
+> 2026-06-11 audit and follow-up hardening work. `[V file:line]` means the claim was verified against
+> the cited source when written; `[ASSUME]` marks inferred flow that should be re-checked before use.
 
 ## The validator
 
@@ -90,21 +90,27 @@ The single source the schemas, the operation-mapping golden, and the M1–M3 run
   `[V autoMergeGate.mjs:11-14]`; hooks/callers/baseline/skills are later milestones per the vocab
   comments)*
 
-## Proposed stability tiers `[INTENT — Deliverable E must confirm/revise against code + fixtures]`
+## Stability tiers
 
-This is a **starting hypothesis, not a ruling.** Tiers: (1) freeze now · (2) stable core,
+Post-Fable hardening established the current v0.1 tiers. Tiers: (1) freeze · (2) stable core with
 replaceable adapter fields · (3) provisional · (4) out of v0.1 scope.
 
-| Schema | Proposed tier | Why (verify) |
+| Schema | Tier | Compatibility rule |
 | --- | --- | --- |
-| `run-state-machine` / `run-states.json` | **1 freeze** | `runRecord.mjs` enforces it; the 21 states + transitions are load-bearing for ledger integrity. |
-| `apply-set` | **1 freeze** | The execution + security contract; `guards` gate auto-merge and path safety. |
-| `operation-mapping` | **1 freeze** | The deterministic golden table; reconcile-by-audit depends on its stability. |
-| `repo-refresh-report` | **2 stable core** | Core audit shape is load-bearing; `operationProjection.diff` and skip `reason` are adapter-ish. |
-| `decision-doc` | **2 stable core** | Rich; the `resolution`/`evidence` blocks may gain fields as the decision UI evolves. |
-| `run-report` | **2 stable core** | `copyable`, `repoState` are presentation adapters; `state`/`verification`/`rollbackCommand` are core. |
+| `run-state-machine` / `run-states.json` | **1 freeze** | Additive transitions only; never remove a state; `requires` may only grow optional context. The manual-merge and revert-PR gaps found by the audit were closed in #186. |
+| `apply-set` | **1 freeze** | The `guards` trio is immutable. New fields must be optional; `expectedFileSha256` and `expectedRegionInnerSha256` are required item fields and are re-checked in the execution worktree before writes. |
+| `operation-mapping` | **1 freeze** | Rows may be added only for new raw statuses; all enums stay pinned to `vocab.mjs`. |
+| `repo-refresh-report` | **2 stable core** | `raw`, `operation`, and recommendation fields are stable; repo metadata and presentation fields may gain optional fields. |
+| `decision-doc` | **2 stable core** | `items[].fingerprints` and `items[].resolution` are stable; evidence/provenance blocks may gain optional adapter fields as the decision UI evolves. |
+| `run-report` | **2 stable core** | `state`, `results`, `verification`, and `rollbackCommand` are core. `repoState` and `copyable` remain optional presentation adapters; #187 fixed the result-bucket semantics before this tier was accepted. |
+| `skill-selection` | **2 stable core** | The record is provenance, not compliance proof. Additive discovery statuses and optional evidence fields are allowed; selected-skill identity must remain pinned by source commit, relative path, and content hash. |
 
-**Contracts that do NOT yet exist** (Deliverable C/E should decide whether v0.1 needs them):
-a first-class **file-claim** schema (claims are a markdown coordination board today, not JSON), a
-**role-authority** declaration, a **model/API-usage** note, and a **skill promotion/install event**
-(Skills Hub, future). `[INTENT]`
+## Future or non-schema contracts
+
+- **File claims** remain a markdown coordination convention, not a v0.1 JSON contract.
+- **Role authority** is documented in [`../../docs/authority-model.md`](../../docs/authority-model.md);
+  the `gh` token and branch protection are the trust anchors, not a schema.
+- **Model/API usage** is not part of the runtime loop today. If a future loop step calls a model, it
+  needs its own cost, retention, and fallback note.
+- **Skill promotion/install events** belong to future Skills Hub work; v0.1 only records read-only
+  skill-selection provenance.
