@@ -12,6 +12,14 @@
   snapshot (the #197 failure mode) now surfaces loudly instead of being
   silently clobbered. (#200)
 
+- `npm run agent:self-apply` installs/repairs archon-setup's own root agent
+  baseline (`scripts/agent/*`, `scripts/doc-sweep/*`,
+  `.agent/startup-baseline.json`, the `agent:*` package scripts) from the
+  repo-template snapshot through the same installer code paths consumers get —
+  the hand-copy step #197 relied on is gone. `--check` reports drift read-only;
+  the update flow is provider PR → `refresh-snapshots` → `agent:self-apply` →
+  commit, audited by the root↔snapshot parity test. (#201)
+
 ### Fixed
 
 - The repo-template snapshot is reconverged with its manifest pin: the five

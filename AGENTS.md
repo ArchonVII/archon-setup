@@ -155,6 +155,26 @@ If the same approach fails twice, stop. Switch tactics, ask the user, or documen
 
 If you find yourself editing a workflow `.yml` inside `src/snapshots/`, **stop** — fix it in `github-workflows` upstream and re-run `npm run refresh-snapshots`.
 
+### Root baseline = snapshot, mechanically
+
+This repo's own root copies of the agent baseline (`scripts/agent/*`,
+`scripts/doc-sweep/*`, `.agent/startup-baseline.json`, the `agent:*` package
+scripts) are **derived from the repo-template snapshot, never hand-edited**.
+The update flow, end to end:
+
+1. Fix the provider: PR to `ArchonVII/repo-template`.
+2. `npm run refresh-snapshots` — machine-writes `src/snapshots/` (the integrity
+   gate refuses if the existing snapshot doesn't match its manifest pin).
+3. `npm run agent:self-apply` — repairs the root copies from the snapshot via
+   the same installer code paths consumers get (`--check` for a read-only
+   drift report).
+4. Commit. `test/agentLifecycleScripts.test.mjs` audits the result: root must
+   equal snapshot byte-for-byte.
+
+Never hand-edit `src/snapshots/**` or the root copies — not even to apply a
+review fix in lockstep. Route the fix upstream first (see #197/#199 for how
+that went wrong).
+
 ## Security non-negotiables
 
 - The local server must not bind to `0.0.0.0`.

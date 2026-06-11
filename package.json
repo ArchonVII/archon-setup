@@ -19,6 +19,7 @@
     "lint:markers": "node scripts/lint-managed-regions.mjs",
     "test": "node --test \"test/*.test.mjs\"",
     "prepublishOnly": "node scripts/prepublish-check.mjs",
+    "agent:self-apply": "node scripts/agent-self-apply.mjs",
     "agent:status": "node scripts/agent/status.mjs",
     "agent:prune": "node scripts/agent/prune.mjs",
     "agent:start-task": "node scripts/agent/start-task.mjs",
