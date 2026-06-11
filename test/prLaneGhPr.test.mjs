@@ -1,7 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { addPrLabel, createDraftPr, getPrView, listPrChecks, queueAutoMerge } from "../src/server/prlane/ghPr.mjs";
+import {
+  addPrLabel,
+  createDraftPr,
+  defaultGhRunner,
+  getPrMergeState,
+  getPrView,
+  listPrChecks,
+  queueAutoMerge,
+} from "../src/server/prlane/ghPr.mjs";
 
 function fakeGh(responses) {
   const calls = [];
@@ -132,6 +140,42 @@ test("ghPr reports gh failures and malformed JSON with actionable errors", async
     }),
     /gh pr checks returned unparseable JSON/,
   );
+});
+
+test("ghPr exports its real runner for lifecycle-command defaults", () => {
+  assert.equal(typeof defaultGhRunner, "function");
+});
+
+test("ghPr resolves the PR merge state without throwing", async () => {
+  const { calls, runGh } = fakeGh([
+    { code: 0, stdout: JSON.stringify({ state: "MERGED", mergeCommit: { oid: "a".repeat(40) } }), stderr: "" },
+  ]);
+
+  const merged = await getPrMergeState({ repoSlug: "ArchonVII/consumer-repo", prNumber: 457, runGh });
+
+  assert.deepEqual(calls[0].args, ["pr", "view", "457", "--repo", "ArchonVII/consumer-repo", "--json", "state,mergeCommit"]);
+  assert.deepEqual(merged, { ok: true, state: "MERGED", mergeSha: "a".repeat(40) });
+
+  const open = await getPrMergeState({
+    repoSlug: "ArchonVII/consumer-repo",
+    prNumber: 457,
+    runGh: async () => ({ code: 0, stdout: JSON.stringify({ state: "OPEN", mergeCommit: null }), stderr: "" }),
+  });
+  assert.deepEqual(open, { ok: true, state: "OPEN", mergeSha: null });
+
+  const failed = await getPrMergeState({
+    repoSlug: "ArchonVII/consumer-repo",
+    prNumber: 457,
+    runGh: async () => ({ code: 1, stdout: "", stderr: "no pr" }),
+  });
+  assert.deepEqual(failed, { ok: false, state: null, mergeSha: null });
+
+  const unparseable = await getPrMergeState({
+    repoSlug: "ArchonVII/consumer-repo",
+    prNumber: 457,
+    runGh: async () => ({ code: 0, stdout: "not-json", stderr: "" }),
+  });
+  assert.deepEqual(unparseable, { ok: false, state: null, mergeSha: null });
 });
 
 test("ghPr fetches the PR's actual labels and body and surfaces gh failures", async () => {

@@ -4,6 +4,10 @@ async function ghRunner(args, { stdin = null } = {}) {
   return runCommand("gh", args, { stdin, timeoutMs: 60_000 });
 }
 
+// The module's real gh runner, exported so lifecycle commands (verify/cleanup/
+// rollback) can default to it — the CLI omits runGh entirely (#186, C3).
+export const defaultGhRunner = ghRunner;
+
 function errorText(res) {
   return res.stderr?.trim() || res.stdout?.trim() || `exit ${res.code}`;
 }
@@ -67,6 +71,19 @@ export async function queueAutoMerge({ repoSlug, prNumber, method = "squash", ru
     "--delete-branch",
   ]);
   if (res.code !== 0) throw new Error(`gh pr merge --auto failed: ${errorText(res)}`);
+}
+
+// Structured no-throw result (mirrors getBranchProtection's style): callers fall
+// back visibly instead of dying when gh is unavailable or the PR is gone (#186, C5/C12).
+export async function getPrMergeState({ repoSlug, prNumber, runGh = ghRunner }) {
+  const res = await runGh(["pr", "view", String(prNumber), "--repo", repoSlug, "--json", "state,mergeCommit"]);
+  if (res.code !== 0) return { ok: false, state: null, mergeSha: null };
+  try {
+    const parsed = JSON.parse(res.stdout);
+    return { ok: true, state: parsed.state ?? null, mergeSha: parsed.mergeCommit?.oid ?? null };
+  } catch {
+    return { ok: false, state: null, mergeSha: null };
+  }
 }
 
 export async function getPrView({ repoSlug, prNumber, runGh = ghRunner }) {
