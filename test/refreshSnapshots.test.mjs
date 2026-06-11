@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
@@ -277,4 +277,25 @@ test("a manifest pin missing from provider history is unverifiable and blocks re
 
   const reports = await verifySnapshots({ sources, snapshotRoot });
   assert.equal(reports[0].status, "unverifiable");
+});
+
+test("a snapshot file deleted by hand is divergence (missing) and blocks refresh", async () => {
+  const root = await initRepo();
+  await commitFile(root, "examples/repo-required-gate.yml", "gate v1\n", "first");
+  await commitFile(root, "examples/second.yml", "second v1\n", "second");
+  gitQuiet(root, ["tag", "v1"]);
+  const snapshotRoot = await tempDir("archon-refresh-snap-");
+  const sources = [workflowSource(root)];
+  await refreshSnapshots({ sources, snapshotRoot });
+
+  await rm(join(snapshotRoot, "github-workflows", "second.yml"));
+
+  const reports = await verifySnapshots({ sources, snapshotRoot });
+  assert.equal(reports[0].status, "divergent");
+  assert.deepEqual(reports[0].mismatches, [{ path: "second.yml", kind: "missing" }]);
+
+  await assert.rejects(refreshSnapshots({ sources, snapshotRoot }), /missing: second\.yml/);
+
+  await refreshSnapshots({ sources, snapshotRoot, acceptSnapshotDivergence: true });
+  assert.equal(await readFile(join(snapshotRoot, "github-workflows", "second.yml"), "utf8"), "second v1\n");
 });

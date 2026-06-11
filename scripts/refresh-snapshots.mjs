@@ -132,14 +132,48 @@ export async function listSnapshotFiles(dir) {
     .sort();
 }
 
+function gitListTree(path, pin, prefix) {
+  const out = gitOutput(path, ["ls-tree", "-r", "--name-only", pin, "--", prefix]);
+  return out ? out.split(/\r?\n/) : [];
+}
+
+function existsAtPin(path, pin, file) {
+  try {
+    gitOutput(path, ["cat-file", "-e", `${pin}:${file}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// The snapshot's contractual file set: what refresh would copy from the
+// provider at the pin, per the current source config. copyFiles entries
+// absent at the pin are excluded (the config can be newer than the capture).
+export function expectedSnapshotFiles(source, pin) {
+  const files = new Set();
+  if (source.copyFrom) {
+    for (const p of gitListTree(source.localPath, pin, source.copyFrom)) {
+      files.add(p.slice(source.copyFrom.length + 1));
+    }
+  }
+  for (const f of source.copyFiles || []) {
+    if (existsAtPin(source.localPath, pin, f)) files.add(f);
+  }
+  for (const d of source.copyDirs || []) {
+    for (const p of gitListTree(source.localPath, pin, d)) files.add(p);
+  }
+  return files;
+}
+
 // Verifies that the existing snapshot directory is what its manifest entry
 // claims: the provider's content at the recorded sha. Every return path is an
 // in-band status record; callers decide what blocks.
 //   fresh        — no snapshot dir or no manifest entry; nothing to verify
 //   unverifiable — the pinned sha is not present in the provider checkout
-//   ok           — every snapshot file matches the pin (EOL-tolerant)
-//   divergent    — per-file mismatches: "modified" (body differs from the pin)
-//                  or "extra" (file absent from the provider at the pin)
+//   ok           — the snapshot file set and bodies match the pin (EOL-tolerant)
+//   divergent    — per-file mismatches: "modified" (body differs from the pin),
+//                  "extra" (file not expected at the pin), or "missing"
+//                  (expected at the pin but deleted from the snapshot)
 export async function verifySnapshotAgainstPin({ source, snapshotRoot, manifestEntry }) {
   const dest = join(snapshotRoot, source.snapshotDir);
   if (!manifestEntry || !existsSync(dest)) return { key: source.key, status: "fresh" };
@@ -157,23 +191,27 @@ export async function verifySnapshotAgainstPin({ source, snapshotRoot, manifestE
   }
 
   const mismatches = [];
-  const files = await listSnapshotFiles(dest);
-  for (const rel of files) {
-    let pinnedBody;
-    try {
-      pinnedBody = gitOutputRaw(source.localPath, ["show", `${pin}:${providerPathFor(source, rel)}`]);
-    } catch {
+  const present = await listSnapshotFiles(dest);
+  const presentSet = new Set(present);
+  const expected = expectedSnapshotFiles(source, pin);
+
+  for (const rel of present) {
+    if (!expected.has(rel)) {
       mismatches.push({ path: rel, kind: "extra" });
       continue;
     }
+    const pinnedBody = gitOutputRaw(source.localPath, ["show", `${pin}:${providerPathFor(source, rel)}`]);
     const snapshotBody = await readFile(join(dest, rel), "utf8");
     if (normalizeEol(snapshotBody) !== normalizeEol(pinnedBody)) {
       mismatches.push({ path: rel, kind: "modified" });
     }
   }
+  for (const rel of [...expected].sort()) {
+    if (!presentSet.has(rel)) mismatches.push({ path: rel, kind: "missing" });
+  }
 
   if (mismatches.length) return { key: source.key, status: "divergent", pin, mismatches };
-  return { key: source.key, status: "ok", pin, checkedFiles: files.length };
+  return { key: source.key, status: "ok", pin, checkedFiles: present.length };
 }
 
 export async function verifySnapshots({ sources = SOURCES, snapshotRoot = SNAP } = {}) {
