@@ -176,7 +176,7 @@ test("buildSkillSelectionRecord treats a repo with no readable HEAD as repo-miss
   assert.deepEqual(validateSkillSelection(record).errors, []);
 });
 
-test("validateSkillSelection rejects a null commit for usable discovery statuses", async () => {
+test("validateSkillSelection rejects missing commits except for repo-missing discovery", async () => {
   const repo = await makeSkillsRepo();
   const record = await buildSkillSelectionRecord({
     runId: "run-188",
@@ -199,12 +199,32 @@ test("validateSkillSelection rejects a null commit for usable discovery statuses
   };
   assert.equal(validateSkillSelection(tamperedDirty).valid, false);
 
+  const catalogUnreadable = {
+    ...tamperedOk,
+    discovery: { status: "catalog-unreadable", fallback: "proceeded-without-skills", dirtyPaths: [], error: "ENOENT" },
+    selections: [],
+  };
+  const checkedFailure = validateSkillSelection(catalogUnreadable);
+  assert.equal(checkedFailure.valid, false);
+  assert.ok(
+    checkedFailure.errors.some((e) => e.path === "source.commit" && /catalog-unreadable/.test(e.message)),
+    JSON.stringify(checkedFailure.errors),
+  );
+
   const repoMissing = {
     ...tamperedOk,
     discovery: { status: "repo-missing", fallback: "proceeded-without-skills", dirtyPaths: [], error: "not a git repo" },
     selections: [],
   };
   assert.deepEqual(validateSkillSelection(repoMissing).errors, []);
+
+  const repoMissingWithCommit = { ...repoMissing, source: { ...repoMissing.source, commit: repo.commit } };
+  const checkedRepoMissing = validateSkillSelection(repoMissingWithCommit);
+  assert.equal(checkedRepoMissing.valid, false);
+  assert.ok(
+    checkedRepoMissing.errors.some((e) => e.path === "source.commit" && /must be null/.test(e.message)),
+    JSON.stringify(checkedRepoMissing.errors),
+  );
 });
 
 test("buildSkillSelectionRecord fails in-band when the worktree status cannot be read", async () => {
@@ -352,6 +372,68 @@ test("validateSkillSelection rejects status/dirtyPaths contradictions", async ()
   assert.ok(
     checkedDirty.errors.some((e) => e.path === "discovery.dirtyPaths" && /must list the dirty paths/.test(e.message)),
     JSON.stringify(checkedDirty.errors),
+  );
+});
+
+test("validateSkillSelection enforces fallback semantics by discovery status", async () => {
+  const repo = await makeSkillsRepo();
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    now: () => NOW,
+  });
+
+  const okWithFallback = { ...record, discovery: { ...record.discovery, fallback: "proceeded-without-skills" } };
+  const checkedOk = validateSkillSelection(okWithFallback);
+  assert.equal(checkedOk.valid, false);
+  assert.ok(
+    checkedOk.errors.some((e) => e.path === "discovery.fallback" && /must be null/.test(e.message)),
+    JSON.stringify(checkedOk.errors),
+  );
+
+  const dirtyWithoutFallback = {
+    ...record,
+    discovery: { status: "repo-dirty", fallback: null, dirtyPaths: ["shared/open/SKILL.md"], error: null },
+  };
+  const checkedDirty = validateSkillSelection(dirtyWithoutFallback);
+  assert.equal(checkedDirty.valid, false);
+  assert.ok(
+    checkedDirty.errors.some((e) => e.path === "discovery.fallback" && /recorded-dirty-provenance/.test(e.message)),
+    JSON.stringify(checkedDirty.errors),
+  );
+
+  const failureWithoutFallback = {
+    ...record,
+    discovery: { status: "skill-unreadable", fallback: null, dirtyPaths: [], error: "ENOENT" },
+    selections: [],
+  };
+  const checkedFailure = validateSkillSelection(failureWithoutFallback);
+  assert.equal(checkedFailure.valid, false);
+  assert.ok(
+    checkedFailure.errors.some((e) => e.path === "discovery.fallback" && /proceeded-without-skills/.test(e.message)),
+    JSON.stringify(checkedFailure.errors),
+  );
+});
+
+test("validateSkillSelection rejects blank whySelected rationales", async () => {
+  const repo = await makeSkillsRepo();
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    now: () => NOW,
+  });
+
+  const blankRationale = {
+    ...record,
+    selections: [{ ...record.selections[0], whySelected: "   " }],
+  };
+  const checked = validateSkillSelection(blankRationale);
+  assert.equal(checked.valid, false);
+  assert.ok(
+    checked.errors.some((e) => e.path === "selections[0].whySelected" && /pattern/.test(e.message)),
+    JSON.stringify(checked.errors),
   );
 });
 

@@ -42,8 +42,9 @@
   fixtures, a zero-dependency validator path, LF-normalized `SKILL.md` hashing,
   first-class `noRelevantSkill` / `repo-dirty` / `catalog-unreadable` /
   `repo-missing` outcomes, and an optional `runUpdate` planned-ledger field.
-  The contract records evidence only; it does not install, promote, or mutate
-  skills.
+  Runtime validation rejects missing commits for non-`repo-missing` discoveries,
+  mismatched failure fallbacks, and blank `whySelected` rationales. The contract
+  records evidence only; it does not install, promote, or mutate skills.
 
 - Global update record `2026-06-10-plan-status-closeout`, so existing repos can
   receive a confirmation-gated AGENTS.md block requiring agents to close,

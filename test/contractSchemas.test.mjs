@@ -162,6 +162,7 @@ const CONTRACTS = [
     invalid: {
       "invalid-bad-hash.json": "selections[0].skillSha256",
       "invalid-bad-discovery-status.json": "discovery.status",
+      "invalid-blank-rationale.json": "selections[0].whySelected",
       "invalid-missing-rationale.json": 'missing required property "whySelected"',
     },
   },

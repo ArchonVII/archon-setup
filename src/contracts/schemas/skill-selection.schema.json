@@ -30,7 +30,7 @@
         "commit": {
           "type": ["string", "null"],
           "pattern": "^[0-9a-f]{40}$",
-          "description": "Pinned skills-repo HEAD. validateSkillSelection enforces (beyond this schema) that null is legal only for failure statuses where no commit could be read; discovery.status ok/repo-dirty requires a real sha."
+          "description": "Pinned skills-repo HEAD. validateSkillSelection enforces (beyond this schema) that null is legal only for repo-missing, where no commit could be read."
         }
       }
     },
@@ -66,7 +66,7 @@
           "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\.\\.).+/SKILL\\.md$"
         },
         "skillSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "whySelected": { "type": "string", "minLength": 1 }
+        "whySelected": { "type": "string", "minLength": 1, "pattern": "\\S" }
       }
     }
   }

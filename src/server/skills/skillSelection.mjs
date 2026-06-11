@@ -17,20 +17,47 @@ assertSchemaSupported(SKILL_SELECTION_SCHEMA);
 const DEFAULT_SOURCE_REPO = "ArchonVII/jma-skill-review";
 const DEFAULT_SOURCE_ROOT = "shared/";
 const DEFAULT_CATALOG_RELPATH = "docs/skill-catalog.md";
+const FAILURE_STATUSES = ["status-unreadable", "catalog-unreadable", "catalog-ambiguous", "skill-unreadable", "repo-missing"];
 
 export function validateSkillSelection(record) {
   const checked = validate(SKILL_SELECTION_SCHEMA, record);
   const errors = [...checked.errors];
-  // Truthfulness invariant (#195 review): a record claiming usable discovery
-  // ("ok"/"repo-dirty") must pin the skills-repo commit, or the recorded
-  // SKILL.md hashes are unauditable. A null commit is legal only on failure
-  // statuses where no commit could be read.
+  // Truthfulness invariant (#195 review): every discovery status except
+  // repo-missing must pin the skills-repo commit, or the recorded SKILL.md
+  // hashes and discovery failure are unauditable. repo-missing is the only
+  // status where the builder cannot read a commit.
   const status = record?.discovery?.status;
   const usable = ["ok", "repo-dirty"].includes(status);
-  if (usable && record?.source?.commit === null) {
+  const sourceCommit = record?.source?.commit;
+  if (status && status !== "repo-missing" && sourceCommit === null) {
     errors.push({
       path: "source.commit",
       message: `commit must be a pinned 40-hex sha when discovery.status is "${status}"`,
+    });
+  }
+  if (status === "repo-missing" && sourceCommit !== null && sourceCommit !== undefined) {
+    errors.push({
+      path: "source.commit",
+      message: 'commit must be null when discovery.status is "repo-missing"',
+    });
+  }
+  const fallback = record?.discovery?.fallback;
+  if (status === "ok" && fallback !== null && fallback !== undefined) {
+    errors.push({
+      path: "discovery.fallback",
+      message: 'fallback must be null when discovery.status is "ok"',
+    });
+  }
+  if (status === "repo-dirty" && fallback !== "recorded-dirty-provenance") {
+    errors.push({
+      path: "discovery.fallback",
+      message: 'fallback must be "recorded-dirty-provenance" when discovery.status is "repo-dirty"',
+    });
+  }
+  if (FAILURE_STATUSES.includes(status) && fallback !== "proceeded-without-skills") {
+    errors.push({
+      path: "discovery.fallback",
+      message: `fallback must be "proceeded-without-skills" when discovery.status is "${status}"`,
     });
   }
   // A "successful" record must say something (#195 review): on usable statuses

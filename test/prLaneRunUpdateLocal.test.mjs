@@ -289,6 +289,79 @@ test("runUpdate rejects a skillSelection claiming usable discovery without a pin
   );
 });
 
+test("runUpdate rejects operator skillSelection records that lie about failure provenance", async () => {
+  const repo = await makeRepo();
+  const baseSkillSelection = {
+    schemaVersion: 1,
+    kind: "skill-selection",
+    runId: "run-2026-06-09-0001",
+    selectedAt: "2026-06-10T12:00:00.000Z",
+    source: {
+      repo: "ArchonVII/jma-skill-review",
+      root: "shared/",
+      catalogRelpath: "docs/skill-catalog.md",
+      commit: "a".repeat(40),
+    },
+    discovery: { status: "ok", fallback: null, dirtyPaths: [], error: null },
+    noRelevantSkill: false,
+    selections: [
+      {
+        name: "test-driven-development",
+        relpath: "shared/test-driven-development/SKILL.md",
+        skillSha256: "0".repeat(64),
+        whySelected: "This lane changes behavior and needs a regression test before implementation.",
+      },
+    ],
+  };
+  const cases = [
+    {
+      name: "non-missing failure without commit",
+      record: {
+        ...baseSkillSelection,
+        source: { ...baseSkillSelection.source, commit: null },
+        discovery: { status: "catalog-unreadable", fallback: "proceeded-without-skills", dirtyPaths: [], error: "ENOENT" },
+        selections: [],
+      },
+      message: /source\.commit: commit must be a pinned 40-hex sha/,
+    },
+    {
+      name: "failure without fallback",
+      record: {
+        ...baseSkillSelection,
+        discovery: { status: "skill-unreadable", fallback: null, dirtyPaths: [], error: "ENOENT" },
+        selections: [],
+      },
+      message: /discovery\.fallback: fallback must be "proceeded-without-skills"/,
+    },
+    {
+      name: "blank rationale",
+      record: {
+        ...baseSkillSelection,
+        selections: [{ ...baseSkillSelection.selections[0], whySelected: "   " }],
+      },
+      message: /selections\[0\]\.whySelected: string does not match pattern/,
+    },
+  ];
+
+  for (const item of cases) {
+    await assert.rejects(
+      runUpdate({
+        applySet: applySet(repo.baseSha),
+        targetPath: repo.target,
+        mode: "local-only",
+        confirmationPhrase: PHRASE,
+        recordPath: join(repo.root, `run-skill-selection-${item.name.replaceAll(" ", "-")}.jsonl`),
+        workRoot: join(repo.root, `worktrees-skill-selection-${item.name.replaceAll(" ", "-")}`),
+        catalog: catalog(),
+        skillSelection: item.record,
+        runCommand,
+        now: () => "2026-06-10T12:00:00.000Z",
+      }),
+      item.message,
+    );
+  }
+});
+
 test("runUpdate local-only rejects disallowed paths before creating a worktree", async () => {
   const repo = await makeRepo();
   const recordPath = join(repo.root, "run-disallowed.jsonl");
