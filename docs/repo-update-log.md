@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-11 - Self-applied root baseline via the installer
+
+- **Issue/PR:** #201 / pending
+- **Branch:** agent/claude/201-self-apply-baseline
+- **Changed paths:** scripts/agent-self-apply.mjs, package.json, test/agentSelfApply.test.mjs, test/agentLifecycleScripts.test.mjs, AGENTS.md, CHANGELOG.md, docs/repo-update-log.md
+- **What changed:** New `npm run agent:self-apply` (CLI `--check` for a read-only drift report, exit 1 on drift) repairs the root agent baseline from the repo-template snapshot via the existing installer task modules — `writeAgentLifecycle` (five lifecycle scripts + `agent:*` package-script merge), `writeDocSweep` (three doc-sweep scripts + spec), and the startup baseline via the shared `writeSnapshotFile`/`checkAllMatch` primitives. AGENTS.md now documents the end-to-end flow (provider PR → `refresh-snapshots` → `agent:self-apply` → commit) and prohibits hand-edits to `src/snapshots/**` and the root copies; the parity test's guidance message points at the mechanism instead of "fix both in lockstep".
+- **Verification:** `node --test test/agentSelfApply.test.mjs test/agentLifecycleScripts.test.mjs` passed 9/9 (fresh install matches snapshot bodies; second run already-done with byte-identical files; drifted copies repaired; `--check` reports without writing); real-root `npm run agent:self-apply -- --check` and apply both report already-done ×3 with a clean tree (the idempotent no-op acceptance proof); full `node --test "test/*.test.mjs"` green.
+- **Propagation:** none (repo-local mechanism); unblocks onboarding lanes #202 / repo-template#68 / github-workflows#38 to use the same installer paths.
+
 ## 2026-06-11 - Snapshot integrity gate at the refresh seam
 
 - **Issue/PR:** #200 / pending
