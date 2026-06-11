@@ -65,6 +65,8 @@
     { "from": "pr_created", "to": "checks_pending" },
     { "from": "checks_pending", "to": "merge_queued" },
     { "from": "merge_queued", "to": "merged" },
+    { "from": "checks_pending", "to": "merged" },
+    { "from": "pr_created", "to": "merged" },
     { "from": "merged", "to": "verified_merged" },
     { "from": "verified_merged", "to": "cleaned_up" },
     { "from": "merged", "to": "rollback_requested" },

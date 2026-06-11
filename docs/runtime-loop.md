@@ -127,10 +127,12 @@ Each row: the transition, what guards it, and how it fails. All line refs are
 | `merge_queued` | only if eligible → `queueAutoMerge` (`gh pr merge --auto`) `[V :435-443]` | catch → `failed` |
 
 `merged` / `verified_merged` / `cleaned_up` are **not** reached inside `runUpdate`; they are appended
-later by the M4 commands once GitHub actually merges the PR. `[V rollback.mjs:296-369,426-441]` `[OPEN]`
-who/what advances `merge_queued → merged` after `gh --auto` completes — `verifyMergedRun` will append
-`merged` if it isn't already present `[V rollback.mjs:296-314]`, but the auto-merge→`merged` handoff
-is event-driven and worth tracing.
+later by the M4 commands once GitHub actually merges the PR. **Resolved (#186, C6):** `verifyMergedRun`
+appends `merged` if it isn't already present, and the transition is legal from `merge_queued`,
+`checks_pending`, **and** `pr_created` `[V run-states.json]` — a human merging a held (gate-ineligible
+or pr-only) run is stamped `mergedBy:"manual"` in the ledger and is post-merge verifiable like any
+auto-merge. The auto-merge→`merged` handoff stays pull-based: nothing watches GitHub; the next
+`verify-merged` invocation records it.
 
 ### The eligibility gate (`autoMergeGate.mjs`)
 
@@ -167,20 +169,32 @@ upstream *throw*, with the gate's audit leg now fed the real value rather than a
 
 ## The two ways out (`rollback.mjs`, M4)
 
-- **`verifyMergedRun`** — fetch `origin/default`, resolve `mergeSha`, append `merged` if needed, then
+- **`verifyMergedRun`** — fetch `origin/default`, resolve `mergeSha` **from the PR itself**
+  (`getPrMergeState` → `gh pr view --json state,mergeCommit`); when the PR cannot supply a merge
+  commit, fall back to the head of `origin/default` **and record
+  `mergeShaSource:"assumed-origin-head"` in the ledger** — the fallback is never silent (#186, C5).
+  Append `merged` if needed (manual merges of held runs stamped `mergedBy:"manual"` — C6), then
   re-audit the **merge commit** inside a *detached* throwaway worktree (`refreshAtCommit` →
   `withDetachedWorktree`). If `postApplyAuditClean` holds → `verified_merged`; else → `failed`
-  (`PostMergeVerificationError`, `safeNextAction: run rollback`). Idempotent. `[V :275-370]`
-- **`cleanupRun`** — remove worktree + local branch + remote branch; close the PR if there was no
-  merge; append `cleaned_up` (from `verified_merged`) or `aborted` (pre-merge). `[V :404-458]`
+  (`PostMergeVerificationError`, `safeNextAction: run rollback`). Idempotent. `[V :275-393]`
+- **`cleanupRun`** — **refuses from `merge_queued`/`merged`** before any delete (`refused:true` +
+  `safeNextAction`: verify-merged first, or rollback — #186, C7). Otherwise remove worktree + local
+  branch + remote branch, sweep local rollback artifacts when the ledger records them (C11), and
+  close the PR if there was no merge — `runGh` now defaults to the real gh runner, so the CLI path
+  actually closes PRs (C3). Append `cleaned_up` (from `verified_merged`) or `aborted` (pre-merge).
+  `[V :427-499]`
 - **`rollbackRun`** — if no `mergeSha` → delegates to cleanup. Else append `rollback_requested`,
   fetch default; **if affected paths already match the recorded base** → `rollback_verified`
-  (`alreadyReverted`, no duplicate PR) `[V :586-611]`; otherwise create a rollback worktree/branch
+  (`alreadyReverted`, no duplicate PR) `[V :700-744]`; otherwise create a rollback worktree/branch
   from `origin/default`, `git revert` (with `-m 1` for merge commits), verify the reverted tree
-  matches base for affected paths (`RollbackTreeMismatch` → `failed` if not), push, open a **draft
-  revert PR** + label, append `rollback_pr_created`. Conflicts → `failed` (`RollbackConflict`,
-  manual review). **`main` is never mutated directly — rollback always goes through a PR.**
-  `[V :540-691]`
+  matches base for affected paths, push, open a revert PR + label, append `rollback_pr_created`.
+  Conflict or tree-mismatch before the push → `failed` (`RollbackConflict`/`RollbackTreeMismatch`)
+  with the unpushed rollback worktree + local branch removed and recorded on the failure entry
+  (#186, C11). **Re-entry at `rollback_pr_created` closes the loop (C12):** query the revert PR via
+  `getPrMergeState`; merged → append `rollback_merged`, re-verify affected paths against fresh
+  `origin/default` → `rollback_verified` (mismatch → `failed`/`RollbackTreeMismatch`); not merged →
+  idempotent hold with guidance. `[V :603-676]` **The lane never auto-merges its own revert PR, and
+  `main` is never mutated directly — rollback always goes through a PR.** `[V :678-838]`
 
 ---
 
