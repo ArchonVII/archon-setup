@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-11 - Snapshot integrity gate at the refresh seam
+
+- **Issue/PR:** #200 / pending
+- **Branch:** agent/claude/200-snapshot-integrity-gate
+- **Changed paths:** scripts/refresh-snapshots.mjs, package.json, test/refreshSnapshots.test.mjs, CHANGELOG.md, docs/repo-update-log.md
+- **What changed:** `refreshSnapshots` now verifies each existing snapshot directory against the provider at the manifest-recorded SHA before any delete/copy, with in-band status records (`fresh` / `ok` / `divergent` / `unverifiable`). Divergence or an unresolvable pin refuses with a per-file report unless `--accept-snapshot-divergence` is passed, which instead warns with the exact list of discarded content. New read-only `npm run snapshots:verify` (CLI `--verify`) runs the same comparison without writes; the comparison is EOL-tolerant per this repo's recorded CRLF gotcha but otherwise byte-exact.
+- **Verification:** `node --test test/refreshSnapshots.test.mjs` passed 13/13 (six new integrity tests: ok + CRLF tolerance, fresh, refusal naming the file with no destructive write, override recapture, extra-file divergence, unverifiable pin); `node --test "test/*.test.mjs"` passed — 494 tests / 492 pass / 0 fail / 2 skipped; real-data `npm run snapshots:verify` reported ok for all three snapshots (githubWorkflows @ af0ac6e, 18 files; repoTemplate @ d74d23c, 79 files; orgDefaults @ 1962f27, 1 file).
+- **Propagation:** none (repo-local tooling); #201 (self-apply) sequences next and assumes this gate.
+
 ## 2026-06-11 - Snapshot reconvergence with provider pin
 
 - **Issue/PR:** #199 / pending
