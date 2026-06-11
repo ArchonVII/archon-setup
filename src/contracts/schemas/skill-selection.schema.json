@@ -39,7 +39,7 @@
       "required": ["status", "fallback", "dirtyPaths", "error"],
       "additionalProperties": false,
       "properties": {
-        "status": { "enum": ["ok", "repo-dirty", "catalog-unreadable", "skill-unreadable", "repo-missing"] },
+        "status": { "enum": ["ok", "repo-dirty", "catalog-unreadable", "catalog-ambiguous", "skill-unreadable", "repo-missing"] },
         "fallback": { "enum": ["proceeded-without-skills", "recorded-dirty-provenance", null] },
         "dirtyPaths": {
           "type": "array",

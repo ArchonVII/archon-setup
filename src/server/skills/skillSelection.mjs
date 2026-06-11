@@ -26,10 +26,26 @@ export function validateSkillSelection(record) {
   // SKILL.md hashes are unauditable. A null commit is legal only on failure
   // statuses where no commit could be read.
   const status = record?.discovery?.status;
-  if (["ok", "repo-dirty"].includes(status) && record?.source?.commit === null) {
+  const usable = ["ok", "repo-dirty"].includes(status);
+  if (usable && record?.source?.commit === null) {
     errors.push({
       path: "source.commit",
       message: `commit must be a pinned 40-hex sha when discovery.status is "${status}"`,
+    });
+  }
+  // A "successful" record must say something (#195 review): on usable statuses
+  // it either records selected guidance or explicitly claims no relevant skill
+  // existed — an empty ok record defeats the audit purpose of the field.
+  if (usable && record?.noRelevantSkill === false && Array.isArray(record?.selections) && record.selections.length === 0) {
+    errors.push({
+      path: "selections",
+      message: "usable discovery must either record selected skills or set noRelevantSkill: true",
+    });
+  }
+  if (record?.noRelevantSkill === true && Array.isArray(record?.selections) && record.selections.length > 0) {
+    errors.push({
+      path: "selections",
+      message: "noRelevantSkill records cannot also carry selections",
     });
   }
   return { valid: errors.length === 0, errors };
@@ -83,6 +99,8 @@ function relpathInside(root, absolutePath) {
 
 function parseCatalog(catalogBody, { skillsRoot, catalogRelpath }) {
   const catalogDir = dirname(catalogRelpath);
+  // name -> array of DISTINCT relpaths; >1 entry means the catalog is
+  // ambiguous for that name (same-name same-path repetition is harmless).
   const entries = new Map();
   const linkPattern = /-\s+\[`([^`]+)`\]\(([^)]+)\)/g;
   for (const match of catalogBody.matchAll(linkPattern)) {
@@ -91,7 +109,9 @@ function parseCatalog(catalogBody, { skillsRoot, catalogRelpath }) {
     const absoluteSkillPath = resolve(skillsRoot, catalogDir, link);
     const relpath = relpathInside(skillsRoot, absoluteSkillPath);
     if (!relpath || !relpath.endsWith("/SKILL.md")) continue;
-    if (!entries.has(name)) entries.set(name, relpath);
+    const paths = entries.get(name) ?? [];
+    if (!paths.includes(relpath)) paths.push(relpath);
+    entries.set(name, paths);
   }
   return entries;
 }
@@ -123,6 +143,11 @@ export async function buildSkillSelectionRecord({
   if (!skillsRoot) throw new Error("skillsRoot is required");
   if (noRelevantSkill && selectedSkills.length > 0) {
     throw new Error("noRelevantSkill records cannot also carry selected skills");
+  }
+  if (!noRelevantSkill && selectedSkills.length === 0) {
+    // An empty "successful" record would claim nothing (#195 review): the
+    // caller must either select skills or explicitly claim none were relevant.
+    throw new Error("either select at least one skill or set noRelevantSkill: true");
   }
   for (const selected of selectedSkills) {
     if (!selected.whySelected || !String(selected.whySelected).trim()) {
@@ -197,8 +222,32 @@ export async function buildSkillSelectionRecord({
   const catalogEntries = parseCatalog(catalog, { skillsRoot, catalogRelpath });
   const selections = [];
   for (const selected of selectedSkills) {
-    const relpath = catalogEntries.get(selected.name);
-    if (!relpath) throw new Error(`selected skill ${selected.name} is not listed in the catalog`);
+    const paths = catalogEntries.get(selected.name);
+    if (!paths) throw new Error(`selected skill ${selected.name} is not listed in the catalog`);
+    if (paths.length > 1) {
+      // A selected name cataloged at multiple distinct paths is ambiguous
+      // provenance — the record could pin a different SKILL.md than the one
+      // the operator meant. Fail discovery in-band (#195 review; skills-policy
+      // treats same-name different-content as a hard failure).
+      const record = baseRecord({
+        runId,
+        selectedAt,
+        sourceRepo,
+        sourceRoot,
+        catalogRelpath,
+        commit,
+        discoveryInfo: discovery("catalog-ambiguous", {
+          fallback: "proceeded-without-skills",
+          dirtyPaths,
+          error: `selected skill ${selected.name} is cataloged at multiple paths: ${paths.join(", ")}`,
+        }),
+        noRelevantSkill: false,
+        selections: [],
+      });
+      assertValidRecord(record);
+      return record;
+    }
+    const relpath = paths[0];
     let skillBody;
     try {
       skillBody = await readFile(safeJoin(skillsRoot, relpath), "utf8");

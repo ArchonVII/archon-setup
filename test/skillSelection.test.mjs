@@ -206,6 +206,96 @@ test("validateSkillSelection rejects a null commit for usable discovery statuses
   assert.deepEqual(validateSkillSelection(repoMissing).errors, []);
 });
 
+test("buildSkillSelectionRecord fails in-band when a selected skill is cataloged at multiple paths", async () => {
+  const repo = await makeSkillsRepo({
+    extraCatalogLines: ["- [`open`](../shared/open-alt/SKILL.md) - Same name, different path."],
+  });
+
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    now: () => NOW,
+  });
+
+  assert.equal(record.discovery.status, "catalog-ambiguous");
+  assert.equal(record.discovery.fallback, "proceeded-without-skills");
+  assert.match(record.discovery.error, /open is cataloged at multiple paths/);
+  assert.match(record.discovery.error, /shared\/open\/SKILL\.md/);
+  assert.match(record.discovery.error, /shared\/open-alt\/SKILL\.md/);
+  assert.deepEqual(record.selections, []);
+  assert.deepEqual(validateSkillSelection(record).errors, []);
+});
+
+test("buildSkillSelectionRecord tolerates harmless duplicate catalog lines and unselected ambiguity", async () => {
+  const repo = await makeSkillsRepo({
+    extraCatalogLines: [
+      "- [`open`](../shared/open/SKILL.md) - Repeated line, identical path.",
+      "- [`ghost`](../shared/ghost-a/SKILL.md) - Ambiguous but never selected.",
+      "- [`ghost`](../shared/ghost-b/SKILL.md) - Ambiguous but never selected.",
+    ],
+  });
+
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    now: () => NOW,
+  });
+
+  assert.equal(record.discovery.status, "ok");
+  assert.equal(record.selections.length, 1);
+  assert.equal(record.selections[0].relpath, "shared/open/SKILL.md");
+  assert.deepEqual(validateSkillSelection(record).errors, []);
+});
+
+test("buildSkillSelectionRecord rejects a call with neither selections nor a noRelevantSkill claim", async () => {
+  const repo = await makeSkillsRepo();
+
+  await assert.rejects(
+    buildSkillSelectionRecord({
+      runId: "run-188",
+      skillsRoot: repo.root,
+      selectedSkills: [],
+      now: () => NOW,
+    }),
+    /either select at least one skill or set noRelevantSkill: true/,
+  );
+});
+
+test("validateSkillSelection rejects empty successful records and lying noRelevantSkill claims", async () => {
+  const repo = await makeSkillsRepo();
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    now: () => NOW,
+  });
+
+  const emptyOk = { ...record, selections: [] };
+  const checkedEmpty = validateSkillSelection(emptyOk);
+  assert.equal(checkedEmpty.valid, false);
+  assert.ok(
+    checkedEmpty.errors.some((e) => e.path === "selections" && /noRelevantSkill: true/.test(e.message)),
+    JSON.stringify(checkedEmpty.errors),
+  );
+
+  const lyingClaim = { ...record, noRelevantSkill: true };
+  const checkedLying = validateSkillSelection(lyingClaim);
+  assert.equal(checkedLying.valid, false);
+  assert.ok(
+    checkedLying.errors.some((e) => e.path === "selections" && /cannot also carry selections/.test(e.message)),
+    JSON.stringify(checkedLying.errors),
+  );
+
+  const failureEmpty = {
+    ...record,
+    selections: [],
+    discovery: { status: "catalog-unreadable", fallback: "proceeded-without-skills", dirtyPaths: [], error: "ENOENT" },
+  };
+  assert.deepEqual(validateSkillSelection(failureEmpty).errors, []);
+});
+
 test("buildSkillSelectionRecord rejects selected skills absent from the catalog allowlist", async () => {
   const repo = await makeSkillsRepo();
 
