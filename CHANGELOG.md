@@ -4,6 +4,18 @@
 
 ### Fixed
 
+- PR-lane rollback and cleanup lifecycle gaps (#186): manual merges of runs
+  held at `checks_pending`/`pr_created` are now legal transitions and
+  post-merge verifiable (ledger-stamped `mergedBy:"manual"`); `verify-merged`
+  resolves the merge SHA from the PR's merge commit and records an explicit
+  `mergeShaSource:"assumed-origin-head"` fallback instead of silently trusting
+  the origin head; `cleanup` refuses from `merge_queued`/`merged` before
+  deleting anything and closes unmerged PRs through the default gh runner (the
+  CLI previously skipped PR closure entirely); rollback re-entry verifies a
+  merged revert PR through `rollback_merged` → `rollback_verified`, and
+  rollback conflict/tree-mismatch failures remove and record the unpushed
+  rollback worktree and branch.
+
 - The `ecosystem-overview.md` sync gate no longer false-fails on a Windows
   checkout (autocrlf → CRLF): `extractEcosystemMapBlock` is CRLF-aware and the
   comparison strips every `\r` rather than only `\r\n` pairs. Regression test
