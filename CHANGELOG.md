@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Added
+
+- `refresh-snapshots` now proves each existing snapshot still matches its
+  provider at the manifest-pinned SHA before overwriting anything
+  (EOL-tolerant, otherwise byte-exact). On mismatch it refuses with a per-file
+  report and proceeds only with an explicit `--accept-snapshot-divergence`;
+  `npm run snapshots:verify` runs the same check read-only. A hand-edited
+  snapshot (the #197 failure mode) now surfaces loudly instead of being
+  silently clobbered. (#200)
+
 ### Fixed
 
 - The repo-template snapshot is reconverged with its manifest pin: the five
