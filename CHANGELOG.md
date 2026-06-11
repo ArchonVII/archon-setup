@@ -14,6 +14,17 @@
   template, lifecycle scripts, doc-sweep runner, root `agent:*` npm scripts, and
   a repo-specific update log. (#196)
 
+- Lifecycle/doc-sweep script review fixes, applied to the root copies and the
+  repo-template snapshot in lockstep (#196): the startup baseline now requires
+  `scripts/agent/pr-body.mjs` so a missing pr-body tool fails the readiness
+  audit; `agent:status` detects claims at `.agent/coordination/claims/` per the
+  coordination contract (not a nonexistent `.agent/claims.json`); the
+  `--git-common-dir` root derivation in `agent:status`/`agent:prune` tolerates
+  Windows backslash paths via a shared `primaryRootFromCommonDir` helper; and
+  the doc-sweep lock-held early return strips internal TOCTOU metadata so its
+  item shape matches the normal path. A regression test also pins the root
+  scripts byte-identical to their snapshot twins.
+
 - `cleanupRun` now refuses from rollback-chain states before any destructive
   work, so `rollback_requested`, `rollback_pr_created`, `rollback_merged`, and
   `rollback_verified` can no longer delete worktrees or branches and then fail
