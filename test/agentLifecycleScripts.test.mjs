@@ -11,7 +11,10 @@ import { acquireLock } from "../scripts/doc-sweep/git.mjs";
 
 // #197 review regressions: the root lifecycle scripts and their repo-template
 // snapshot twins must stay byte-identical (the onboard audit compares exactly),
-// and the specific failure shapes the review caught must stay fixed.
+// and the specific failure shapes the review caught must stay fixed. This
+// parity is the audit of the #201 mechanism: after a snapshot refresh, run
+// `npm run agent:self-apply` to bring the root copies current — never
+// hand-copy or hand-edit either side.
 
 const ROOT = process.cwd();
 const SNAP = join(ROOT, "src", "snapshots", "repo-template");
@@ -51,7 +54,7 @@ test("root lifecycle scripts stay byte-identical to their repo-template snapshot
   for (const rel of pairs) {
     const rootBody = normalized(await readFile(join(ROOT, rel), "utf8"));
     const snapBody = normalized(await readFile(join(SNAP, rel), "utf8"));
-    assert.equal(rootBody, snapBody, `${rel} must match the snapshot (fix both in lockstep)`);
+    assert.equal(rootBody, snapBody, `${rel} must match the snapshot (run npm run agent:self-apply after a refresh; never hand-edit either side)`);
   }
 });
 
