@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { addPrLabel, createDraftPr, listPrChecks, queueAutoMerge } from "../src/server/prlane/ghPr.mjs";
+import { addPrLabel, createDraftPr, getPrView, listPrChecks, queueAutoMerge } from "../src/server/prlane/ghPr.mjs";
 
 function fakeGh(responses) {
   const calls = [];
@@ -131,5 +131,21 @@ test("ghPr reports gh failures and malformed JSON with actionable errors", async
       runGh: async () => ({ code: 0, stdout: "not-json", stderr: "" }),
     }),
     /gh pr checks returned unparseable JSON/,
+  );
+});
+
+test("ghPr fetches the PR's actual labels and body and surfaces gh failures", async () => {
+  const { calls, runGh } = fakeGh([
+    { code: 0, stdout: JSON.stringify({ labels: [{ name: "automated-distribution" }], body: "Closes #163" }), stderr: "" },
+  ]);
+
+  const view = await getPrView({ repoSlug: "ArchonVII/consumer-repo", prNumber: 163, runGh });
+
+  assert.deepEqual(calls[0].args, ["pr", "view", "163", "--repo", "ArchonVII/consumer-repo", "--json", "labels,body"]);
+  assert.deepEqual(view, { labels: [{ name: "automated-distribution" }], body: "Closes #163" });
+
+  await assert.rejects(
+    getPrView({ repoSlug: "ArchonVII/consumer-repo", prNumber: 163, runGh: async () => ({ code: 1, stdout: "", stderr: "no pr" }) }),
+    /gh pr view failed: no pr/,
   );
 });

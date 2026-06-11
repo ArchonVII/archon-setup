@@ -356,6 +356,22 @@ if (argv[0] === "refresh") {
         });
         if (flags.has("--json")) console.log(JSON.stringify(result, null, 2));
         else console.log(`${result.state}: ${result.branch ?? intake.applySet.runId}`);
+        if (result.state === "checks_pending") {
+          // Auto-merge was NOT queued: the gate held the PR for a human decision. The
+          // common production cause is no required checks resolved on the target branch,
+          // where `auto` refuses rather than delegate merge safety to unverified protection.
+          const reasons = result.autoMerge?.reasons ?? [];
+          if (!flags.has("--json")) {
+            console.error(`auto-merge not queued (${result.requiredChecksStatus ?? "ineligible"}): ${reasons.join(", ") || "gate ineligible"}`);
+            if (reasons.includes("no-required-checks-configured")) {
+              console.error(
+                "no required status checks are configured on the target branch; run " +
+                  "`archon-setup tighten-required-gate` to require the gate, or re-run with --pr-only.",
+              );
+            }
+          }
+          process.exit(20); // a human decision remains
+        }
         process.exit(0);
       } catch (err) {
         console.error(`refresh: ${err.message}`);

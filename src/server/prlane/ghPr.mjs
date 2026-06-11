@@ -68,3 +68,13 @@ export async function queueAutoMerge({ repoSlug, prNumber, method = "squash", ru
   ]);
   if (res.code !== 0) throw new Error(`gh pr merge --auto failed: ${errorText(res)}`);
 }
+
+export async function getPrView({ repoSlug, prNumber, runGh = ghRunner }) {
+  const res = await runGh(["pr", "view", String(prNumber), "--repo", repoSlug, "--json", "labels,body"]);
+  if (res.code !== 0) throw new Error(`gh pr view failed: ${errorText(res)}`);
+  try {
+    return res.stdout.trim() ? JSON.parse(res.stdout) : { labels: [], body: "" };
+  } catch (err) {
+    throw new Error(`gh pr view returned unparseable JSON: ${err.message}`);
+  }
+}

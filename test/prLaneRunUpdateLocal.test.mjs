@@ -343,14 +343,24 @@ test("runUpdate pr-only commits, pushes, creates a labeled draft PR, and does no
 test("runUpdate auto mode queues auto-merge when the gate is eligible", async () => {
   const repo = await makeRepo();
   const ghCalls = [];
+  let createdBody = "";
+  const labels = [];
   const runGh = async (args, options = {}) => {
     ghCalls.push({ args, options });
     if (args[0] === "pr" && args[1] === "create") {
+      createdBody = options.stdin ?? "";
       return { code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/457\n", stderr: "" };
     }
-    if (args[0] === "pr" && args[1] === "edit") return { code: 0, stdout: "", stderr: "" };
+    if (args[0] === "pr" && args[1] === "edit") {
+      const at = args.indexOf("--add-label");
+      if (at >= 0 && args[at + 1]) labels.push(args[at + 1]);
+      return { code: 0, stdout: "", stderr: "" };
+    }
+    if (args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ labels: labels.map((name) => ({ name })), body: createdBody }), stderr: "" };
+    }
     if (args[0] === "pr" && args[1] === "checks") {
-      return { code: 0, stdout: JSON.stringify([{ name: "test", status: "passed" }]), stderr: "" };
+      return { code: 0, stdout: JSON.stringify([{ name: "test", bucket: "pass" }]), stderr: "" };
     }
     if (args[0] === "pr" && args[1] === "merge") return { code: 0, stdout: "", stderr: "" };
     throw new Error(`unexpected gh call: ${args.join(" ")}`);
@@ -379,14 +389,24 @@ test("runUpdate auto mode queues auto-merge when the gate is eligible", async ()
 test("runUpdate auto mode leaves the PR open when required checks are pending", async () => {
   const repo = await makeRepo();
   const ghCalls = [];
+  let createdBody = "";
+  const labels = [];
   const runGh = async (args, options = {}) => {
     ghCalls.push({ args, options });
     if (args[0] === "pr" && args[1] === "create") {
+      createdBody = options.stdin ?? "";
       return { code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/458\n", stderr: "" };
     }
-    if (args[0] === "pr" && args[1] === "edit") return { code: 0, stdout: "", stderr: "" };
+    if (args[0] === "pr" && args[1] === "edit") {
+      const at = args.indexOf("--add-label");
+      if (at >= 0 && args[at + 1]) labels.push(args[at + 1]);
+      return { code: 0, stdout: "", stderr: "" };
+    }
+    if (args[0] === "pr" && args[1] === "view") {
+      return { code: 0, stdout: JSON.stringify({ labels: labels.map((name) => ({ name })), body: createdBody }), stderr: "" };
+    }
     if (args[0] === "pr" && args[1] === "checks") {
-      return { code: 0, stdout: JSON.stringify([{ name: "test", status: "pending" }]), stderr: "" };
+      return { code: 0, stdout: JSON.stringify([{ name: "test", bucket: "pending" }]), stderr: "" };
     }
     throw new Error(`unexpected gh call: ${args.join(" ")}`);
   };

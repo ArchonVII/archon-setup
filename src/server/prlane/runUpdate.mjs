@@ -8,8 +8,9 @@ import { refreshRepo } from "../refresh/refreshRepo.mjs";
 import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { evaluateAutoMergeEligibility } from "./autoMergeGate.mjs";
-import { addPrLabel, createDraftPr, listPrChecks, queueAutoMerge } from "./ghPr.mjs";
+import { addPrLabel, createDraftPr, getPrView, listPrChecks, queueAutoMerge } from "./ghPr.mjs";
 import { appendRunState, readRunRecord } from "./runRecord.mjs";
+import { resolveRequiredChecks as defaultResolveRequiredChecks } from "../branchProtection/tightenRequiredGate.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const APPLY_SET_SCHEMA = JSON.parse(
@@ -201,6 +202,7 @@ export async function runUpdate({
   workRoot,
   catalog = null,
   requiredChecks = [],
+  resolveRequiredChecks = defaultResolveRequiredChecks,
   runCommand = defaultRunCommand,
   runGh,
   now = () => new Date().toISOString(),
@@ -414,23 +416,66 @@ export async function runUpdate({
     if (mode === "pr-only") return prResult;
 
     const checks = await listPrChecks({ repoSlug, prNumber: pr.number, runGh });
+
+    // Resolve the required-check set at execute time. An explicit non-empty set wins
+    // (used by tests / deliberate overrides); otherwise resolve from the target's live
+    // branch protection. resolveRequiredChecks fails closed -> empty set -> auto refuses.
+    let resolvedChecks = requiredChecks;
+    let requiredChecksSource = "explicit";
+    let requiredChecksStatus = "explicit";
+    if (resolvedChecks.length === 0) {
+      const resolution = await resolveRequiredChecks({
+        owner: applySet.repo.owner,
+        repo: applySet.repo.name,
+        branch: applySet.repo.defaultBranch,
+        targetPath: absoluteTarget,
+        runCommand,
+      });
+      resolvedChecks = resolution.checks;
+      requiredChecksSource = resolution.source;
+      requiredChecksStatus = resolution.status;
+    }
+
     failedStage = "checks_pending";
     await appendRunState({
       recordPath,
       state: "checks_pending",
-      entry: { ...base, branch: branchName, headSha, prNumber: pr.number },
+      entry: {
+        ...base,
+        branch: branchName,
+        headSha,
+        prNumber: pr.number,
+        requiredChecks: resolvedChecks,
+        requiredChecksSource,
+        requiredChecksStatus,
+      },
       now: now(),
     });
 
+    // C1: evaluate the gate against the PR's ACTUAL GitHub state (labels/body fetched
+    // back from gh), the resolved required-check set, and the real post-apply audit
+    // result — never the lane's own locally constructed inputs.
+    const prView = await getPrView({ repoSlug, prNumber: pr.number, runGh });
     const autoMerge = evaluateAutoMergeEligibility({
       applySet,
       confirmationPhrase,
-      pr: { labels: ["automated-distribution"], body: prBody },
-      requiredChecks,
+      pr: { labels: prView.labels, body: prView.body },
+      requiredChecks: resolvedChecks,
+      requireConfiguredChecks: true,
       checks,
-      postApplyAudit: { clean: true },
+      postApplyAudit: { clean },
     });
-    if (!autoMerge.eligible) return { ...prResult, state: "checks_pending", checks, autoMerge };
+    if (!autoMerge.eligible) {
+      return {
+        ...prResult,
+        state: "checks_pending",
+        checks,
+        autoMerge,
+        requiredChecks: resolvedChecks,
+        requiredChecksSource,
+        requiredChecksStatus,
+      };
+    }
 
     await queueAutoMerge({ repoSlug, prNumber: pr.number, runGh });
     failedStage = "merge_queued";

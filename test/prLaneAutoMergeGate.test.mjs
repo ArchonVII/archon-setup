@@ -47,7 +47,7 @@ function gateInput(overrides = {}) {
       ...(prOverrides ?? {}),
     },
     requiredChecks: ["test"],
-    checks: [{ name: "test", status: "passed" }],
+    checks: [{ name: "test", bucket: "pass" }],
     postApplyAudit: { clean: true },
     ...rest,
   };
@@ -105,7 +105,7 @@ test("autoMergeGate requires PR evidence, passing checks, and a clean post-apply
     "missing-decision-doc-link",
   ]);
 
-  assert.deepEqual(evaluateAutoMergeEligibility(gateInput({ checks: [{ name: "test", status: "pending" }] })).reasons, [
+  assert.deepEqual(evaluateAutoMergeEligibility(gateInput({ checks: [{ name: "test", bucket: "pending" }] })).reasons, [
     "required-check-not-passing:test",
   ]);
 
@@ -116,4 +116,33 @@ test("autoMergeGate requires PR evidence, passing checks, and a clean post-apply
   assert.deepEqual(evaluateAutoMergeEligibility(gateInput({ postApplyAudit: { clean: false } })).reasons, [
     "post-apply-audit-not-clean",
   ]);
+});
+
+test("autoMergeGate (C10) treats a bare completed check-run as not passing", () => {
+  // {status:"completed"} with no conclusion is a real GitHub race shape, not success.
+  assert.deepEqual(
+    evaluateAutoMergeEligibility(gateInput({ checks: [{ name: "test", status: "completed" }] })).reasons,
+    ["required-check-not-passing:test"],
+  );
+  assert.deepEqual(
+    evaluateAutoMergeEligibility(gateInput({ checks: [{ name: "test", status: "completed", conclusion: "failure" }] })).reasons,
+    ["required-check-not-passing:test"],
+  );
+  // A real successful conclusion (raw API check-run shape) still passes.
+  assert.deepEqual(
+    evaluateAutoMergeEligibility(gateInput({ checks: [{ name: "test", conclusion: "success" }] })).reasons,
+    [],
+  );
+});
+
+test("autoMergeGate (C2) refuses auto when required checks are required but none resolved", () => {
+  assert.deepEqual(
+    evaluateAutoMergeEligibility(gateInput({ requireConfiguredChecks: true, requiredChecks: [], checks: [] })).reasons,
+    ["no-required-checks-configured"],
+  );
+  // local/pr modes (requireConfiguredChecks off) tolerate an empty required-check set.
+  assert.deepEqual(
+    evaluateAutoMergeEligibility(gateInput({ requiredChecks: [], checks: [] })).reasons,
+    [],
+  );
 });
