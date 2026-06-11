@@ -8,7 +8,7 @@ import { assertSchemaSupported, validate } from "../../contracts/validate.mjs";
 import { loadDefaultCatalog } from "../../distributor/distribute.mjs";
 import { refreshRepo } from "../refresh/refreshRepo.mjs";
 import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
-import { addPrLabel, createDraftPr } from "./ghPr.mjs";
+import { addPrLabel, createDraftPr, defaultGhRunner, getPrMergeState } from "./ghPr.mjs";
 import { appendRunState, readRunRecord } from "./runRecord.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -277,6 +277,7 @@ export async function verifyMergedRun({
   targetPath = null,
   catalog = null,
   runCommand = defaultRunCommand,
+  runGh = defaultGhRunner,
   now = () => new Date().toISOString(),
 }) {
   let record = await readRunRecord(recordPath);
@@ -287,11 +288,28 @@ export async function verifyMergedRun({
   }
 
   await git({ runCommand, cwd: context.targetPath, args: ["fetch", "origin", context.applySet.repo.defaultBranch] });
-  const mergeSha = context.mergeSha ?? (await git({
-    runCommand,
-    cwd: context.targetPath,
-    args: ["rev-parse", `origin/${context.applySet.repo.defaultBranch}`],
-  }));
+  // Resolve the merge commit from the PR itself; an unrelated commit landing on
+  // origin/<default> after the squash must never be recorded as this run's merge
+  // (#186, C5). The origin-head fallback stays available but is stamped
+  // mergeShaSource:"assumed-origin-head" in the ledger so it is never silent.
+  let mergeSha = context.mergeSha;
+  let mergeShaSource = null;
+  if (!mergeSha) {
+    const prMerge = context.prNumber
+      ? await getPrMergeState({ repoSlug: context.repoSlug, prNumber: context.prNumber, runGh })
+      : { ok: false, state: null, mergeSha: null };
+    if (prMerge.ok && prMerge.mergeSha) {
+      mergeSha = prMerge.mergeSha;
+      mergeShaSource = "pr-merge-commit";
+    } else {
+      mergeSha = await git({
+        runCommand,
+        cwd: context.targetPath,
+        args: ["rev-parse", `origin/${context.applySet.repo.defaultBranch}`],
+      });
+      mergeShaSource = "assumed-origin-head";
+    }
+  }
 
   if (record.current?.state !== "merged") {
     await appendRunState({
@@ -306,6 +324,10 @@ export async function verifyMergedRun({
         applySet: context.applySet,
         branch: context.branch,
         prUrl: context.prUrl,
+        ...(mergeShaSource ? { mergeShaSource } : {}),
+        // Held runs (checks_pending / pr_created) only reach merged through a
+        // human merging the PR (#186, C6).
+        ...(record.current?.state !== "merge_queued" ? { mergedBy: "manual" } : {}),
       },
       now: timestamp,
     });
@@ -353,6 +375,7 @@ export async function verifyMergedRun({
       applySet: context.applySet,
       branch: context.branch,
       prUrl: context.prUrl,
+      ...(mergeShaSource ? { mergeShaSource } : {}),
     },
     now: timestamp,
   });
@@ -405,7 +428,7 @@ export async function cleanupRun({
   recordPath,
   targetPath = null,
   runCommand = defaultRunCommand,
-  runGh = null,
+  runGh = defaultGhRunner,
   now = () => new Date().toISOString(),
 }) {
   let record = await readRunRecord(recordPath);
@@ -415,6 +438,19 @@ export async function cleanupRun({
     return { state: record.current.state, report: buildRunReport({ record, context, now: timestamp }) };
   }
 
+  // Refuse before any destructive work (#186, C7): a queued or merged run must be
+  // post-merge verified (or rolled back) first — deleting branches here would strand
+  // a merge that GitHub may already have completed, and the aborted append from
+  // merged is illegal anyway.
+  if (["merge_queued", "merged"].includes(record.current?.state)) {
+    return {
+      state: record.current.state,
+      refused: true,
+      safeNextAction: "run verify-merged to audit the merge commit and then cleanup, or run rollback",
+      report: buildRunReport({ record, context, now: timestamp }),
+    };
+  }
+
   if (!context.mergeSha) {
     await closePrIfOpen({ context, runGh });
   }
@@ -422,6 +458,11 @@ export async function cleanupRun({
   await removeWorktreeIfPresent({ targetPath: context.targetPath, worktreePath: context.worktreePath, runCommand });
   await deleteLocalBranchIfPresent({ targetPath: context.targetPath, branch: context.branch, runCommand });
   await deleteRemoteBranchIfPresent({ targetPath: context.targetPath, branch: context.branch, runCommand });
+  // Sweep local rollback artifacts recorded by a failed or completed rollback
+  // (#186, C11). Local-only: a pushed rollback branch backs an open revert PR and
+  // is never deleted from the remote here.
+  await removeWorktreeIfPresent({ targetPath: context.targetPath, worktreePath: context.rollbackWorktreePath, runCommand });
+  await deleteLocalBranchIfPresent({ targetPath: context.targetPath, branch: context.rollbackBranch, runCommand });
 
   if (record.current?.state === "verified_merged") {
     await appendRunState({
@@ -518,11 +559,29 @@ async function refAffectedPathsMatchBase({ context, ref, runCommand }) {
   return res.code === 0;
 }
 
-async function appendRollbackFailure({ recordPath, context, mergeSha, failedStage, errorClass, safeNextAction, now }) {
+async function appendRollbackFailure({
+  recordPath,
+  context,
+  mergeSha,
+  failedStage,
+  errorClass,
+  safeNextAction,
+  rollbackBranch = null,
+  rollbackWorktreePath = null,
+  now,
+}) {
   await appendRunState({
     recordPath,
     state: "failed",
-    entry: { runId: context.applySet.runId, failedStage, errorClass, safeNextAction, mergeSha },
+    entry: {
+      runId: context.applySet.runId,
+      failedStage,
+      errorClass,
+      safeNextAction,
+      mergeSha,
+      ...(rollbackBranch ? { rollbackBranch } : {}),
+      ...(rollbackWorktreePath ? { rollbackWorktreePath } : {}),
+    },
     now,
   });
   const record = await readRunRecord(recordPath);
@@ -537,24 +596,98 @@ async function appendRollbackFailure({ recordPath, context, mergeSha, failedStag
   return { state: "failed", report };
 }
 
+// Re-entry at rollback_pr_created (#186, C12): query whether the revert PR merged.
+// Merged -> rollback_merged, then verify affected paths against fresh origin/<default>
+// before claiming rollback_verified. Not merged -> idempotent hold with guidance; the
+// lane never auto-merges its own revert PR.
+async function resumeRollbackPrCreated({ recordPath, targetPath, record, context, runCommand, runGh, timestamp }) {
+  await git({ runCommand, cwd: context.targetPath, args: ["fetch", "origin", context.applySet.repo.defaultBranch] });
+  const prMerge = await getPrMergeState({ repoSlug: context.repoSlug, prNumber: context.rollbackPrNumber, runGh });
+  if (!prMerge.ok || prMerge.state !== "MERGED") {
+    return {
+      state: "rollback_pr_created",
+      rollbackBranch: context.rollbackBranch,
+      rollbackWorktreePath: context.rollbackWorktreePath,
+      rollbackPrNumber: context.rollbackPrNumber,
+      safeNextAction: "review and merge the rollback PR, then re-run rollback to verify the revert",
+      report: buildRunReport({ record, context, now: timestamp }),
+    };
+  }
+
+  const defaultRef = `origin/${context.applySet.repo.defaultBranch}`;
+  const defaultHead = await git({ runCommand, cwd: context.targetPath, args: ["rev-parse", defaultRef] });
+  const rollbackMergeSha = prMerge.mergeSha ?? defaultHead;
+  await appendRunState({
+    recordPath,
+    state: "rollback_merged",
+    entry: {
+      runId: context.applySet.runId,
+      mergeSha: context.mergeSha,
+      rollbackPrNumber: context.rollbackPrNumber,
+      rollbackMergeSha,
+      rollbackBranch: context.rollbackBranch,
+      rollbackWorktreePath: context.rollbackWorktreePath,
+      targetPath: context.targetPath,
+      applySet: context.applySet,
+      branch: context.branch,
+      prNumber: context.prNumber,
+      prUrl: context.prUrl,
+    },
+    now: timestamp,
+  });
+  record = await readRunRecord(recordPath);
+  context = contextFromRecord(record, { targetPath });
+
+  if (!(await refAffectedPathsMatchBase({ context, ref: defaultRef, runCommand }))) {
+    return appendRollbackFailure({
+      recordPath,
+      context,
+      mergeSha: context.mergeSha,
+      failedStage: "rollback_merged",
+      errorClass: "RollbackTreeMismatch",
+      safeNextAction: "manual review required; the rollback PR merged but affected paths still differ from the recorded base",
+      now: timestamp,
+    });
+  }
+
+  await appendRunState({
+    recordPath,
+    state: "rollback_verified",
+    entry: {
+      runId: context.applySet.runId,
+      mergeSha: context.mergeSha,
+      rollbackPrNumber: context.rollbackPrNumber,
+      rollbackMergeSha,
+      targetPath: context.targetPath,
+      applySet: context.applySet,
+      branch: context.branch,
+      prNumber: context.prNumber,
+      prUrl: context.prUrl,
+    },
+    now: timestamp,
+  });
+  record = await readRunRecord(recordPath);
+  context = contextFromRecord(record, { targetPath });
+  return {
+    state: "rollback_verified",
+    rollbackMergeSha,
+    report: buildRunReport({ record, context, state: "rollback_verified", now: timestamp }),
+  };
+}
+
 export async function rollbackRun({
   recordPath,
   targetPath = null,
   catalog = null,
   runCommand = defaultRunCommand,
-  runGh,
+  runGh = defaultGhRunner,
   now = () => new Date().toISOString(),
 }) {
   let record = await readRunRecord(recordPath);
   let context = contextFromRecord(record, { targetPath });
   const timestamp = now();
   if (record.current?.state === "rollback_pr_created") {
-    return {
-      state: "rollback_pr_created",
-      rollbackBranch: context.rollbackBranch,
-      rollbackWorktreePath: context.rollbackWorktreePath,
-      report: buildRunReport({ record, context, now: timestamp }),
-    };
+    return resumeRollbackPrCreated({ recordPath, targetPath, record, context, runCommand, runGh, timestamp });
   }
 
   if (!context.mergeSha) {
@@ -623,9 +756,18 @@ export async function rollbackRun({
   const revertArgs = (await mergeCommitNeedsMainline({ context, mergeSha: context.mergeSha, runCommand }))
     ? ["revert", "-m", "1", "--no-edit", context.mergeSha]
     : ["revert", "--no-edit", context.mergeSha];
+  // On pre-push failures the rollback worktree/branch hold nothing that was
+  // published — remove them and record them on the failure entry so no artifact
+  // is left behind unaccounted for (#186, C11).
+  const discardRollbackArtifacts = async () => {
+    await removeWorktreeIfPresent({ targetPath: context.targetPath, worktreePath: rollbackWorktreePath, runCommand });
+    await deleteLocalBranchIfPresent({ targetPath: context.targetPath, branch: rollbackBranch, runCommand });
+  };
+
   const revert = await gitResult({ runCommand, cwd: rollbackWorktreePath, args: revertArgs });
   if (revert.code !== 0) {
     await gitResult({ runCommand, cwd: rollbackWorktreePath, args: ["revert", "--abort"] });
+    await discardRollbackArtifacts();
     return appendRollbackFailure({
       recordPath,
       context,
@@ -633,11 +775,14 @@ export async function rollbackRun({
       failedStage: "rollback_requested",
       errorClass: "RollbackConflict",
       safeNextAction: "manual review required; rollback revert conflicted and no PR was created",
+      rollbackBranch,
+      rollbackWorktreePath,
       now: timestamp,
     });
   }
 
   if (!(await affectedPathsMatchBase({ context, worktreePath: rollbackWorktreePath, runCommand }))) {
+    await discardRollbackArtifacts();
     return appendRollbackFailure({
       recordPath,
       context,
@@ -645,6 +790,8 @@ export async function rollbackRun({
       failedStage: "rollback_requested",
       errorClass: "RollbackTreeMismatch",
       safeNextAction: "manual review required; rollback branch does not match the recorded base for affected paths",
+      rollbackBranch,
+      rollbackWorktreePath,
       now: timestamp,
     });
   }

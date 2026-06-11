@@ -157,6 +157,12 @@ function fakeGh(calls) {
       return { code: 0, stdout: "", stderr: "" };
     }
     if (args[0] === "pr" && args[1] === "view") {
+      if (args.includes("state,mergeCommit")) {
+        // verifyMergedRun's PR merge-state probe (#186, C5): OPEN/null sends it
+        // down the recorded assumed-origin-head fallback, matching this fixture
+        // where the "merge" happens directly on the bare remote.
+        return { code: 0, stdout: JSON.stringify({ state: "OPEN", mergeCommit: null }), stderr: "" };
+      }
       return {
         code: 0,
         stdout: JSON.stringify({ labels: labels.map((name) => ({ name })), body: createdBody }),
@@ -245,6 +251,7 @@ test("M6 e2e: refresh decisions execute merge verify cleanup then second run is 
     targetPath: repo.target,
     catalog: activeCatalog,
     runCommand,
+    runGh: fakeGh([]),
     now: () => NOW,
   });
   assert.equal(verified.state, "verified_merged");
