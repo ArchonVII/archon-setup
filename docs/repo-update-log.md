@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-11 - Foundation self-onboard
+
+- **Issue/PR:** #202 / pending
+- **Branch:** agent/codex/202-chore-onboard-complete-archon-setup-s
+- **Changed paths:** .githooks/**, .github/workflows/actionlint.yml, .github/CODEOWNERS, .github/dependabot.yml, .github/archon-setup.json, .changelog/unreleased/README.md, .gitignore, CHANGELOG.md, docs/repo-update-log.md, src/server/tasks/writeGithooks.mjs, test/foundationParity.test.mjs, src/snapshots/manifest.json, src/snapshots/repo-template/.github/CODEOWNERS, src/snapshots/repo-template/docs/repo-update-log.md
+- **What changed:** Ran `node bin/onboard.mjs C:\GitHub\archon-setup-202-chore-onboard-complete-archon-setup-s --owner ArchonVII --repo archon-setup` from the issue worktree to install the remaining foundation surface through the repo's own installer path: githooks, the actionlint caller, CODEOWNERS, Dependabot, and the changelog-fragment README. After repo-template#69 merged, refreshed snapshots so the repoTemplate pin advanced to `1a729fd3dc0ffb00fea464291d2038a56817d4cc`; githubWorkflows remains pinned to declared tag `v1` at `af0ac6e99683c107d5a420607642ff341e92713e` until an intentional workflow release/tag movement. Addressed PR review feedback by committing root `.githooks/**` files as executable and teaching `writeGithooks` to chmod installed hooks/scripts to `0755` for generated repos. Remaining audit drift is intentional: README.md is product documentation; AGENTS.md is the repo-specific agent contract; docs/repo-update-log.md is the operational ledger; .gitattributes keeps the Windows PowerShell EOL rule; CHANGELOG.md is accumulated release history; .github/PULL_REQUEST_TEMPLATE.md carries archon-setup's evidence-block contract; .agent/check-map.yml records this repo's node gate; and `docs/superpowers/plans/` remains a history-only legacy archive.
+- **Verification:** `npm test` passed 499 tests (497 pass, 2 skipped). `npm run snapshots:verify` passed for githubWorkflows @ af0ac6e, repoTemplate @ 1a729fd, and orgDefaults @ 1962f27. `npm run agent:self-apply -- --check` reported already-done for agent lifecycle, doc-sweep, and startup baseline. `node bin\onboard.mjs C:\GitHub\archon-setup-202-chore-onboard-complete-archon-setup-s --audit --json` reported 29 present / 0 missing / 7 drifted, with the remaining drift adjudicated above. `C:\Program Files\Git\bin\bash.exe .githooks/scripts/install-githooks.sh`, `test-owner-maintenance.sh`, `test-checkout-role.sh`, and `bash -n .githooks/commit-msg .githooks/pre-commit .githooks/scripts/*.sh` passed. `C:\Users\josep\go\bin\actionlint.exe .github/workflows/actionlint.yml` and `git diff --check` passed.
+- **Propagation:** repo-template#69 merged and snapshotted; github-workflows#67 merged, with snapshot propagation pending an intentional `v1` tag update/release.
+
 ## 2026-06-11 - Self-applied root baseline via the installer
 
 - **Issue/PR:** #201 / pending

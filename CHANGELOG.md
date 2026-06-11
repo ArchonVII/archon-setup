@@ -4,6 +4,16 @@
 
 ### Added
 
+- `archon-setup` now dogfoods the remaining foundation baseline it installs for
+  consumers: managed `.githooks`, the actionlint caller, CODEOWNERS,
+  Dependabot, and `.changelog/unreleased/README.md`, all written through
+  `bin/onboard.mjs` rather than hand-copied files. The PR also advances the
+  repo-template snapshot to the merged onboarding residual cleanup from
+  repo-template#69; github-workflows remains pinned to its declared `v1` tag.
+  Installed hook files are now committed and generated with executable mode so
+  Git runs them on Unix-like clones after `core.hooksPath=.githooks`.
+  (#202)
+
 - `refresh-snapshots` now proves each existing snapshot still matches its
   provider at the manifest-pinned SHA before overwriting anything
   (EOL-tolerant, otherwise byte-exact). On mismatch it refuses with a per-file

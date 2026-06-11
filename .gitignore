@@ -5,3 +5,7 @@ node_modules/
 dist/
 .env
 .env.local
+
+# agent/onboarding runtime metadata
+.agent/current-task.json
+.archon/events.jsonl

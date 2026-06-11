@@ -1,4 +1,6 @@
+import { chmod, stat } from "node:fs/promises";
 import { checkAllExist, verifyAllExist, writeSnapshotFile } from "./repoTemplateSnapshot.mjs";
+import { safeJoin } from "../lib/paths.mjs";
 
 const FILES = [
   ".githooks/commit-msg",
@@ -31,21 +33,42 @@ export function scrubHookBody(body) {
 }
 
 export async function check(ctx) {
-  return checkAllExist(ctx, FILES);
+  const exists = await checkAllExist(ctx, FILES);
+  if (exists !== "already-done") return exists;
+  if (!(await allExecutable(ctx))) return "needs-apply";
+  return "already-done";
 }
 
 export async function apply(ctx) {
   const results = [];
   for (const file of FILES) {
     results.push(await writeSnapshotFile(ctx, file, { transform: scrubHookBody }));
+    await chmod(safeJoin(ctx.targetPath, file), 0o755);
   }
   return results;
 }
 
 export async function verify(ctx) {
-  return verifyAllExist(ctx, FILES);
+  const exists = await verifyAllExist(ctx, FILES);
+  if (!exists.ok) return exists;
+  const nonExecutable = await firstNonExecutable(ctx);
+  if (nonExecutable) return { ok: false, error: `${nonExecutable} is not executable` };
+  return { ok: true };
 }
 
 export function rollbackHint(ctx) {
   return `Delete ${ctx.targetPath}/.githooks to retry.`;
+}
+
+async function allExecutable(ctx) {
+  return !(await firstNonExecutable(ctx));
+}
+
+async function firstNonExecutable(ctx) {
+  if (process.platform === "win32") return null;
+  for (const file of FILES) {
+    const mode = (await stat(safeJoin(ctx.targetPath, file))).mode;
+    if ((mode & 0o111) === 0) return file;
+  }
+  return null;
 }
