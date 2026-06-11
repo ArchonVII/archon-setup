@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-11 - Snapshot reconvergence with provider pin
+
+- **Issue/PR:** #199 / pending
+- **Branch:** agent/claude/199-reconverge-snapshot
+- **Changed paths:** src/snapshots/manifest.json, src/snapshots/repo-template/**, scripts/agent/lib.mjs, scripts/agent/status.mjs, scripts/agent/prune.mjs, docs/ecosystem-overview.md, CHANGELOG.md, docs/repo-update-log.md
+- **What changed:** Ran `node scripts/refresh-snapshots.mjs` after repo-template#67 landed the upstream port of the #197 review fixes; the repoTemplate pin advanced `292dada` → `d74d23c`. Reconvergence proof: zero body changes for `.agent/startup-baseline.json`, `scripts/doc-sweep/sweep.mjs`, `test/startup-baseline.test.mjs`; `scripts/agent/{lib,prune}.mjs` and `test/agent/lib.test.mjs` legitimately carry repo-template#65 (merged-PR-proof prune retirement), and `scripts/agent/status.mjs` carries the owner-review worktree-claims fix from repo-template#67. Root lifecycle copies synced snapshot→root for the three changed files (the parity-pinned lockstep, in the sanctioned direction); `docs/ecosystem-overview.md` regenerated from the manifest.
+- **Verification:** `node --test "test/*.test.mjs"` passed — 488 tests / 486 pass / 0 fail / 2 skipped, matching the pre-refresh `origin/main` baseline at `7a4aa97`; the refresh preflight validated all three provider checkouts clean and at their declared refs (repo-template `main`@`d74d23c`, github-workflows `v1`@`af0ac6e`, .github `main`@`1962f27`); `git diff --check` clean.
+- **Propagation:** root copies synced in this PR; consumer distribution intentionally sequenced behind #200 (refresh integrity gate) and #201 (self-apply), then onboarding lanes #202, repo-template#68, github-workflows#38.
+
 ## 2026-06-11 - Root startup baseline repair
 
 - **Issue/PR:** #196 / pending
