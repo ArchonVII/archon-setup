@@ -156,6 +156,16 @@ const CONTRACTS = [
       "invalid-missing-rollback-command.json": 'missing required property "rollbackCommand"',
     },
   },
+  {
+    schema: "skill-selection.schema.json",
+    dir: "skill-selection",
+    invalid: {
+      "invalid-bad-hash.json": "selections[0].skillSha256",
+      "invalid-bad-discovery-status.json": "discovery.status",
+      "invalid-blank-rationale.json": "selections[0].whySelected",
+      "invalid-missing-rationale.json": 'missing required property "whySelected"',
+    },
+  },
 ];
 
 for (const contract of CONTRACTS) {

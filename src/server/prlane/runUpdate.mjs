@@ -9,6 +9,7 @@ import { refreshRepo } from "../refresh/refreshRepo.mjs";
 import { contentFingerprint } from "../decisions/decisionDoc.mjs";
 import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { validateSkillSelection } from "../skills/skillSelection.mjs";
 import { evaluateAutoMergeEligibility } from "./autoMergeGate.mjs";
 import { addPrLabel, createDraftPr, getPrView, listPrChecks, queueAutoMerge } from "./ghPr.mjs";
 import { appendRunState, readRunRecord } from "./runRecord.mjs";
@@ -247,6 +248,7 @@ export async function runUpdate({
   catalog = null,
   requiredChecks = [],
   resolveRequiredChecks = defaultResolveRequiredChecks,
+  skillSelection = null,
   runCommand = defaultRunCommand,
   runGh,
   now = () => new Date().toISOString(),
@@ -259,6 +261,16 @@ export async function runUpdate({
   if (!["local-only", "pr-only", "auto"].includes(mode)) {
     throw new Error(`runUpdate mode ${mode} is not implemented yet`);
   }
+  if (skillSelection !== null) {
+    const skillSelectionCheck = validateSkillSelection(skillSelection);
+    if (!skillSelectionCheck.valid) {
+      const detail = skillSelectionCheck.errors.map((e) => `${e.path}: ${e.message}`).join("; ");
+      throw new Error(`SkillSelection schema invalid: ${detail}`);
+    }
+    if (skillSelection.runId !== applySet.runId) {
+      throw new Error(`SkillSelection runId ${skillSelection.runId} does not match ApplySet runId ${applySet.runId}`);
+    }
+  }
 
   const absoluteTarget = resolve(targetPath);
   const base = {
@@ -270,7 +282,12 @@ export async function runUpdate({
   const activeCatalog = augmentKnownIdsForOwnership(catalog ?? (await loadDefaultCatalog()), applySet);
   let failedStage = "planned";
 
-  await appendRunState({ recordPath, state: "planned", entry: base, now: now() });
+  await appendRunState({
+    recordPath,
+    state: "planned",
+    entry: skillSelection === null ? base : { ...base, skillSelection },
+    now: now(),
+  });
   try {
     failedStage = "preflight_started";
     await appendRunState({ recordPath, state: "preflight_started", entry: base, now: now() });

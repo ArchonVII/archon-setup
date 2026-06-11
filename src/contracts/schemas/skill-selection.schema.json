@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archon-setup/contracts/skill-selection",
+  "title": "SkillSelection (Agent OS with skills): read-only provenance for active skill guidance selected by an operating agent",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "kind",
+    "runId",
+    "selectedAt",
+    "source",
+    "discovery",
+    "noRelevantSkill",
+    "selections"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "kind": { "const": "skill-selection" },
+    "runId": { "type": "string", "minLength": 1 },
+    "selectedAt": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T" },
+    "source": {
+      "type": "object",
+      "required": ["repo", "root", "catalogRelpath", "commit"],
+      "additionalProperties": false,
+      "properties": {
+        "repo": { "type": "string", "minLength": 1 },
+        "root": { "type": "string", "minLength": 1 },
+        "catalogRelpath": { "type": "string", "minLength": 1 },
+        "commit": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Pinned skills-repo HEAD. validateSkillSelection enforces (beyond this schema) that null is legal only for repo-missing, where no commit could be read."
+        }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "required": ["status", "fallback", "dirtyPaths", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "enum": ["ok", "repo-dirty", "status-unreadable", "catalog-unreadable", "catalog-ambiguous", "skill-unreadable", "repo-missing"] },
+        "fallback": { "enum": ["proceeded-without-skills", "recorded-dirty-provenance", null] },
+        "dirtyPaths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "error": { "type": ["string", "null"] }
+      }
+    },
+    "noRelevantSkill": { "type": "boolean" },
+    "selections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/selection" }
+    }
+  },
+  "$defs": {
+    "selection": {
+      "type": "object",
+      "required": ["name", "relpath", "skillSha256", "whySelected"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "relpath": {
+          "type": "string",
+          "pattern": "^(?![A-Za-z]:)(?!/)(?!.*\\.\\.).+/SKILL\\.md$"
+        },
+        "skillSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "whySelected": { "type": "string", "minLength": 1, "pattern": "\\S" }
+      }
+    }
+  }
+}
