@@ -416,6 +416,15 @@ async function closePrIfOpen({ context, runGh }) {
   if (res.code !== 0) throw new Error(`gh pr close failed: ${res.stderr?.trim() || res.stdout?.trim() || `exit ${res.code}`}`);
 }
 
+const CLEANUP_REFUSAL_SAFE_NEXT_ACTIONS = new Map([
+  ["merge_queued", "run verify-merged to audit the merge commit and then cleanup, or run rollback"],
+  ["merged", "run verify-merged to audit the merge commit and then cleanup, or run rollback"],
+  ["rollback_requested", "run rollback to continue the revert flow; cleanup cannot abort an active rollback"],
+  ["rollback_pr_created", "review and merge the rollback PR, then run rollback to verify the revert"],
+  ["rollback_merged", "run rollback to verify the merged rollback PR before taking any cleanup action"],
+  ["rollback_verified", "rollback is already verified; inspect the run record instead of cleanup"],
+]);
+
 export async function cleanupRun({
   recordPath,
   targetPath = null,
@@ -430,15 +439,15 @@ export async function cleanupRun({
     return { state: record.current.state, report: buildRunReport({ record, context, now: timestamp }) };
   }
 
-  // Refuse before any destructive work (#186, C7): a queued or merged run must be
-  // post-merge verified (or rolled back) first — deleting branches here would strand
-  // a merge that GitHub may already have completed, and the aborted append from
-  // merged is illegal anyway.
-  if (["merge_queued", "merged"].includes(record.current?.state)) {
+  // Refuse before any destructive work (#186/#193, C7-family): states that
+  // cannot legally append aborted must guide the operator back to verify or
+  // rollback instead of deleting first and failing ledger advancement after.
+  const cleanupRefusalSafeNextAction = CLEANUP_REFUSAL_SAFE_NEXT_ACTIONS.get(record.current?.state);
+  if (cleanupRefusalSafeNextAction) {
     return {
       state: record.current.state,
       refused: true,
-      safeNextAction: "run verify-merged to audit the merge commit and then cleanup, or run rollback",
+      safeNextAction: cleanupRefusalSafeNextAction,
       report: buildRunReport({ record, context, now: timestamp }),
     };
   }

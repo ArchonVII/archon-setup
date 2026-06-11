@@ -635,6 +635,95 @@ test("cleanupRun refuses to delete anything from merge_queued or merged", async 
   assert.equal(record.entries.some((entry) => ["cleaned_up", "aborted"].includes(entry.state)), false);
 });
 
+test("cleanupRun refuses to delete anything from rollback-chain states", async () => {
+  const rollbackStates = ["rollback_requested", "rollback_pr_created", "rollback_merged", "rollback_verified"];
+
+  for (const rollbackState of rollbackStates) {
+    const repo = await makeRepo();
+    const run = await executeAutoRun(repo);
+    const mergeSha = mergeRefreshBranch(repo, run.branch, { mode: "squash" });
+    await appendRunState({
+      recordPath: run.recordPath,
+      state: "merged",
+      entry: {
+        runId: "run-2026-06-09-0001",
+        baseSha: repo.baseSha,
+        prNumber: 457,
+        mergeSha,
+        targetPath: repo.target,
+        applySet: applySet(repo.baseSha),
+        branch: run.branch,
+      },
+      now: NOW,
+    });
+    await appendRunState({
+      recordPath: run.recordPath,
+      state: "rollback_requested",
+      entry: { runId: "run-2026-06-09-0001", mergeSha, targetPath: repo.target, applySet: applySet(repo.baseSha), branch: run.branch },
+      now: NOW,
+    });
+    if (["rollback_pr_created", "rollback_merged", "rollback_verified"].includes(rollbackState)) {
+      await appendRunState({
+        recordPath: run.recordPath,
+        state: "rollback_pr_created",
+        entry: { runId: "run-2026-06-09-0001", mergeSha, rollbackPrNumber: 458, targetPath: repo.target, applySet: applySet(repo.baseSha), branch: run.branch },
+        now: NOW,
+      });
+    }
+    if (["rollback_merged", "rollback_verified"].includes(rollbackState)) {
+      await appendRunState({
+        recordPath: run.recordPath,
+        state: "rollback_merged",
+        entry: {
+          runId: "run-2026-06-09-0001",
+          mergeSha,
+          rollbackPrNumber: 458,
+          rollbackMergeSha: "f".repeat(40),
+          targetPath: repo.target,
+          applySet: applySet(repo.baseSha),
+          branch: run.branch,
+        },
+        now: NOW,
+      });
+    }
+    if (rollbackState === "rollback_verified") {
+      await appendRunState({
+        recordPath: run.recordPath,
+        state: "rollback_verified",
+        entry: {
+          runId: "run-2026-06-09-0001",
+          mergeSha,
+          rollbackPrNumber: 458,
+          rollbackMergeSha: "f".repeat(40),
+          targetPath: repo.target,
+          applySet: applySet(repo.baseSha),
+          branch: run.branch,
+        },
+        now: NOW,
+      });
+    }
+
+    const ghCalls = [];
+    const refusal = await cleanupRun({
+      recordPath: run.recordPath,
+      targetPath: repo.target,
+      runCommand,
+      runGh: fakeGh(ghCalls),
+      now: () => NOW,
+    });
+
+    assert.equal(refusal.state, rollbackState);
+    assert.equal(refusal.refused, true);
+    assert.match(refusal.safeNextAction, /rollback/);
+    assert.equal(ghCalls.length, 0, "refusal must precede any PR close");
+    assert.equal(await pathExists(run.worktreePath), true);
+    assert.notEqual(git(repo.target, ["branch", "--list", run.branch]), "");
+
+    const record = await readRunRecord(run.recordPath);
+    assert.equal(record.entries.some((entry) => ["cleaned_up", "aborted"].includes(entry.state)), false);
+  }
+});
+
 test("rollbackRun re-entry verifies a merged revert PR", async () => {
   const repo = await makeRepo();
   const run = await executeAutoRun(repo);

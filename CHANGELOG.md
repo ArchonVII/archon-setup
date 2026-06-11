@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- `cleanupRun` now refuses from rollback-chain states before any destructive
+  work, so `rollback_requested`, `rollback_pr_created`, `rollback_merged`, and
+  `rollback_verified` can no longer delete worktrees or branches and then fail
+  on an illegal `aborted` ledger append. (#193)
+
 - PR-lane evidence artifacts are now truthful and contract-valid (#187):
   `RunReport.results` buckets derive from the ledger's reached state instead of
   being synthesized from the plan (failed-preflight runs report `applied: []`;
