@@ -4,11 +4,11 @@
 // v0.1: expects the sibling repos to be checked out locally. Future versions
 // will clone-shallow from github.com directly.
 
-import { writeFile, cp, rm, mkdir } from "node:fs/promises";
+import { writeFile, cp, rm, mkdir, readFile, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
 const MODULE_PATH = fileURLToPath(import.meta.url);
 const __dirname = dirname(MODULE_PATH);
@@ -98,6 +98,121 @@ export function sha(path) {
   return gitOutput(path, ["rev-parse", "HEAD"]);
 }
 
+// Like gitOutput but without trim(): snapshot integrity compares exact file
+// bodies, so trailing newlines must survive.
+export function gitOutputRaw(path, args) {
+  try {
+    return execFileSync("git", ["-C", path, ...args], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch (err) {
+    const stderr = err.stderr?.toString().trim();
+    throw new Error(`git -C ${path} ${args.join(" ")} failed${stderr ? `: ${stderr}` : ""}`);
+  }
+}
+
+export function normalizeEol(text) {
+  // The comparison is EOL-tolerant (Windows checkouts hold CRLF working
+  // copies of LF-committed provider content) but otherwise byte-exact.
+  return String(text).replace(/\r\n/g, "\n");
+}
+
+export function providerPathFor(source, snapshotRelPath) {
+  return source.copyFrom ? `${source.copyFrom}/${snapshotRelPath}` : snapshotRelPath;
+}
+
+export async function listSnapshotFiles(dir) {
+  const entries = await readdir(dir, { recursive: true, withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isFile())
+    // parentPath landed in node 20.12; fall back to the deprecated .path
+    // spelling so the package.json engines floor (>=20) keeps working.
+    .map((entry) => relative(dir, join(entry.parentPath ?? entry.path, entry.name)).split(sep).join("/"))
+    .sort();
+}
+
+// Verifies that the existing snapshot directory is what its manifest entry
+// claims: the provider's content at the recorded sha. Every return path is an
+// in-band status record; callers decide what blocks.
+//   fresh        — no snapshot dir or no manifest entry; nothing to verify
+//   unverifiable — the pinned sha is not present in the provider checkout
+//   ok           — every snapshot file matches the pin (EOL-tolerant)
+//   divergent    — per-file mismatches: "modified" (body differs from the pin)
+//                  or "extra" (file absent from the provider at the pin)
+export async function verifySnapshotAgainstPin({ source, snapshotRoot, manifestEntry }) {
+  const dest = join(snapshotRoot, source.snapshotDir);
+  if (!manifestEntry || !existsSync(dest)) return { key: source.key, status: "fresh" };
+
+  const pin = manifestEntry.sha;
+  try {
+    gitOutput(source.localPath, ["rev-parse", "--verify", `${pin}^{commit}`]);
+  } catch {
+    return {
+      key: source.key,
+      status: "unverifiable",
+      pin,
+      reason: `pinned sha ${pin} is not available in ${source.localPath} (fetch the provider history before refreshing)`,
+    };
+  }
+
+  const mismatches = [];
+  const files = await listSnapshotFiles(dest);
+  for (const rel of files) {
+    let pinnedBody;
+    try {
+      pinnedBody = gitOutputRaw(source.localPath, ["show", `${pin}:${providerPathFor(source, rel)}`]);
+    } catch {
+      mismatches.push({ path: rel, kind: "extra" });
+      continue;
+    }
+    const snapshotBody = await readFile(join(dest, rel), "utf8");
+    if (normalizeEol(snapshotBody) !== normalizeEol(pinnedBody)) {
+      mismatches.push({ path: rel, kind: "modified" });
+    }
+  }
+
+  if (mismatches.length) return { key: source.key, status: "divergent", pin, mismatches };
+  return { key: source.key, status: "ok", pin, checkedFiles: files.length };
+}
+
+export async function verifySnapshots({ sources = SOURCES, snapshotRoot = SNAP } = {}) {
+  const manifestPath = join(snapshotRoot, "manifest.json");
+  const manifest = existsSync(manifestPath)
+    ? JSON.parse(await readFile(manifestPath, "utf8"))
+    : { snapshots: {} };
+
+  const reports = [];
+  for (const source of sources) {
+    if (!existsSync(source.localPath)) {
+      reports.push({ key: source.key, status: "skipped", reason: `${source.localPath} not found` });
+      continue;
+    }
+    reports.push(
+      await verifySnapshotAgainstPin({
+        source,
+        snapshotRoot,
+        manifestEntry: manifest.snapshots?.[source.key],
+      })
+    );
+  }
+  return reports;
+}
+
+export function formatDivergenceReport(reports) {
+  const lines = [];
+  for (const report of reports) {
+    if (report.status === "divergent") {
+      // 7-char short sha: git's default abbreviated display length.
+      lines.push(`${report.key}: snapshot does not match its manifest pin ${report.pin.slice(0, 7)}:`);
+      for (const mismatch of report.mismatches) lines.push(`  ${mismatch.kind}: ${mismatch.path}`);
+    } else if (report.status === "unverifiable") {
+      lines.push(`${report.key}: ${report.reason}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 export function expectedRef(source) {
   if (source.ref === "main") return "refs/remotes/origin/main";
   if (/^v\d+(?:[.-].*)?$/.test(source.ref)) return `refs/tags/${source.ref}`;
@@ -155,8 +270,35 @@ export async function refreshSnapshots({
   sources = SOURCES,
   snapshotRoot = SNAP,
   now = () => new Date(),
+  acceptSnapshotDivergence = false,
 } = {}) {
   const planned = validateSourceCheckouts(sources);
+
+  // Integrity gate (#200): before deleting/overwriting anything, prove the
+  // existing snapshot still matches the provider at the recorded pin. A
+  // mismatch means a hand-edit (or a broken pin) — surface and reconcile it
+  // rather than silently clobbering it.
+  const reports = await verifySnapshots({ sources: planned.map((p) => p.source), snapshotRoot });
+  const blocking = reports.filter((r) => r.status === "divergent" || r.status === "unverifiable");
+  if (blocking.length && !acceptSnapshotDivergence) {
+    throw new Error(
+      "Cannot refresh: existing snapshot content does not match its manifest pin.\n" +
+        `${formatDivergenceReport(blocking)}\n` +
+        "A snapshot must be a machine-written mirror of its provider at the recorded sha. " +
+        "Reconcile the divergence (fix the provider, then refresh), or re-run with " +
+        "--accept-snapshot-divergence to knowingly discard the listed content."
+    );
+  }
+  if (blocking.length) {
+    console.warn(
+      "WARNING: --accept-snapshot-divergence is discarding snapshot content that does not match its pin:\n" +
+        formatDivergenceReport(blocking)
+    );
+  }
+  for (const report of reports) {
+    if (report.status === "ok") console.log(`verified ${report.key} @ ${report.pin.slice(0, 7)} (${report.checkedFiles} files match the pin)`);
+  }
+
   const manifest = { snapshots: {} };
 
   for (const { source: s, checkout } of planned) {
@@ -190,8 +332,41 @@ export async function refreshSnapshots({
 }
 
 if (resolve(process.argv[1] || "") === MODULE_PATH) {
-  refreshSnapshots().catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+  const argv = process.argv.slice(2);
+  const known = ["--verify", "--accept-snapshot-divergence"];
+  const unknown = argv.filter((arg) => !known.includes(arg));
+  if (unknown.length) {
+    console.error(`unknown option(s): ${unknown.join(" ")}`);
+    process.exit(2);
+  }
+
+  if (argv.includes("--verify")) {
+    // Read-only integrity check (npm run snapshots:verify): same comparison
+    // the refresh gate runs, with no writes and a non-zero exit on divergence.
+    verifySnapshots()
+      .then((reports) => {
+        for (const report of reports) {
+          if (report.status === "ok") console.log(`ok ${report.key} @ ${report.pin.slice(0, 7)} (${report.checkedFiles} files)`);
+          else if (report.status === "fresh") console.log(`fresh ${report.key} (no pinned snapshot to verify)`);
+          else if (report.status === "skipped") console.warn(`skip ${report.key}: ${report.reason}`);
+        }
+        const blocking = reports.filter((r) => r.status === "divergent" || r.status === "unverifiable");
+        if (blocking.length) {
+          console.error(formatDivergenceReport(blocking));
+          process.exit(1);
+        }
+        if (reports.every((r) => r.status === "skipped")) {
+          console.warn("nothing verifiable: no provider checkouts found (verification was skipped, not passed).");
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        process.exit(1);
+      });
+  } else {
+    refreshSnapshots({ acceptSnapshotDivergence: argv.includes("--accept-snapshot-divergence") }).catch((err) => {
+      console.error(err);
+      process.exit(1);
+    });
+  }
 }

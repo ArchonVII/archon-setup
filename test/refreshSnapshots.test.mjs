@@ -8,8 +8,10 @@ import assert from "node:assert/strict";
 
 import {
   expectedRef,
+  formatDivergenceReport,
   refreshSnapshots,
   validateSourceCheckout,
+  verifySnapshots,
 } from "../scripts/refresh-snapshots.mjs";
 
 function git(cwd, args) {
@@ -187,4 +189,92 @@ test("refreshSnapshots writes copied files and a manifest after a clean prefligh
       },
     },
   });
+});
+
+async function capturedSnapshot() {
+  const root = await initRepo();
+  await commitFile(root, "examples/repo-required-gate.yml", "gate v1\n", "first");
+  gitQuiet(root, ["tag", "v1"]);
+  const snapshotRoot = await tempDir("archon-refresh-snap-");
+  const sources = [workflowSource(root)];
+  await refreshSnapshots({ sources, snapshotRoot });
+  return { root, snapshotRoot, sources };
+}
+
+test("verifySnapshots reports ok for a captured snapshot and tolerates CRLF working copies", async () => {
+  const { snapshotRoot, sources } = await capturedSnapshot();
+
+  let reports = await verifySnapshots({ sources, snapshotRoot });
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0].key, "githubWorkflows");
+  assert.equal(reports[0].status, "ok");
+  assert.equal(reports[0].checkedFiles, 1);
+
+  // A CRLF working copy of LF-committed provider content is not divergence.
+  await writeFile(join(snapshotRoot, "github-workflows", "repo-required-gate.yml"), "gate v1\r\n", "utf8");
+  reports = await verifySnapshots({ sources, snapshotRoot });
+  assert.equal(reports[0].status, "ok");
+});
+
+test("verifySnapshots reports fresh when there is no pinned snapshot to verify", async () => {
+  const root = await initRepo();
+  await commitFile(root, "examples/repo-required-gate.yml", "gate v1\n", "first");
+  gitQuiet(root, ["tag", "v1"]);
+  const snapshotRoot = await tempDir("archon-refresh-snap-");
+
+  const reports = await verifySnapshots({ sources: [workflowSource(root)], snapshotRoot });
+  assert.equal(reports[0].status, "fresh");
+});
+
+test("refreshSnapshots refuses to overwrite a hand-edited snapshot and names the file", async () => {
+  const { snapshotRoot, sources } = await capturedSnapshot();
+  const manifestBefore = await readFile(join(snapshotRoot, "manifest.json"), "utf8");
+  const snapFile = join(snapshotRoot, "github-workflows", "repo-required-gate.yml");
+  await writeFile(snapFile, "hand edit\n", "utf8");
+
+  await assert.rejects(refreshSnapshots({ sources, snapshotRoot }), (err) => {
+    assert.match(err.message, /does not match its manifest pin/);
+    assert.match(err.message, /modified: repo-required-gate\.yml/);
+    assert.match(err.message, /--accept-snapshot-divergence/);
+    return true;
+  });
+
+  // The refusal must precede any destructive write.
+  assert.equal(await readFile(snapFile, "utf8"), "hand edit\n");
+  assert.equal(await readFile(join(snapshotRoot, "manifest.json"), "utf8"), manifestBefore);
+});
+
+test("acceptSnapshotDivergence discards the hand-edit and recaptures provider content", async () => {
+  const { snapshotRoot, sources } = await capturedSnapshot();
+  const snapFile = join(snapshotRoot, "github-workflows", "repo-required-gate.yml");
+  await writeFile(snapFile, "hand edit\n", "utf8");
+
+  await refreshSnapshots({ sources, snapshotRoot, acceptSnapshotDivergence: true });
+
+  assert.equal(await readFile(snapFile, "utf8"), "gate v1\n");
+  const reports = await verifySnapshots({ sources, snapshotRoot });
+  assert.equal(reports[0].status, "ok");
+});
+
+test("a snapshot file absent from the provider at the pin is divergence (extra)", async () => {
+  const { snapshotRoot, sources } = await capturedSnapshot();
+  await writeFile(join(snapshotRoot, "github-workflows", "rogue.yml"), "rogue\n", "utf8");
+
+  const reports = await verifySnapshots({ sources, snapshotRoot });
+  assert.equal(reports[0].status, "divergent");
+  assert.deepEqual(reports[0].mismatches, [{ path: "rogue.yml", kind: "extra" }]);
+  assert.match(formatDivergenceReport(reports), /extra: rogue\.yml/);
+});
+
+test("a manifest pin missing from provider history is unverifiable and blocks refresh", async () => {
+  const { snapshotRoot, sources } = await capturedSnapshot();
+  const manifestPath = join(snapshotRoot, "manifest.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.snapshots.githubWorkflows.sha = "a".repeat(40);
+  await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n", "utf8");
+
+  await assert.rejects(refreshSnapshots({ sources, snapshotRoot }), /is not available in/);
+
+  const reports = await verifySnapshots({ sources, snapshotRoot });
+  assert.equal(reports[0].status, "unverifiable");
 });
