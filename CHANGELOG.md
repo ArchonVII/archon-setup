@@ -4,6 +4,11 @@
 
 ### Added
 
+- `archon-setup` now dogfoods the remaining foundation baseline it installs for
+  consumers: managed `.githooks`, the actionlint caller, CODEOWNERS,
+  Dependabot, and `.changelog/unreleased/README.md`, all written through
+  `bin/onboard.mjs` rather than hand-copied files. (#202)
+
 - `refresh-snapshots` now proves each existing snapshot still matches its
   provider at the manifest-pinned SHA before overwriting anything
   (EOL-tolerant, otherwise byte-exact). On mismatch it refuses with a per-file
