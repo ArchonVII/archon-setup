@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { contentFingerprint } from "../src/server/decisions/decisionDoc.mjs";
+import { runCommand } from "../src/server/lib/commandRunner.mjs";
 import { buildSkillSelectionRecord, validateSkillSelection } from "../src/server/skills/skillSelection.mjs";
 
 const NOW = "2026-06-11T12:00:00.000Z";
@@ -204,6 +205,32 @@ test("validateSkillSelection rejects a null commit for usable discovery statuses
     selections: [],
   };
   assert.deepEqual(validateSkillSelection(repoMissing).errors, []);
+});
+
+test("buildSkillSelectionRecord fails in-band when the worktree status cannot be read", async () => {
+  const repo = await makeSkillsRepo();
+  const failingStatus = async (cmd, args, options = {}) => {
+    if (cmd === "git" && args[0] === "status") {
+      return { code: 128, stdout: "", stderr: "fatal: index file corrupt" };
+    }
+    return runCommand(cmd, args, options);
+  };
+
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    runCommand: failingStatus,
+    now: () => NOW,
+  });
+
+  assert.equal(record.discovery.status, "status-unreadable");
+  assert.equal(record.discovery.fallback, "proceeded-without-skills");
+  assert.match(record.discovery.error, /index file corrupt/);
+  assert.equal(record.source.commit, repo.commit);
+  assert.deepEqual(record.discovery.dirtyPaths, []);
+  assert.deepEqual(record.selections, []);
+  assert.deepEqual(validateSkillSelection(record).errors, []);
 });
 
 test("buildSkillSelectionRecord fails in-band when a selected skill is cataloged at multiple paths", async () => {

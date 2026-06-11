@@ -194,7 +194,28 @@ export async function buildSkillSelectionRecord({
   }
   const commit = commitResult.stdout;
   const statusResult = await git({ skillsRoot, args: ["status", "--porcelain"], runCommand });
-  const dirtyPaths = statusResult.ok ? dirtyPathsFromPorcelain(statusResult.stdout) : [];
+  if (!statusResult.ok) {
+    // A status read failure (corrupt or inaccessible index) means cleanliness
+    // was never established — record it as an in-band discovery failure rather
+    // than falling through to an "ok" record claiming a clean repo (#195 review).
+    const record = baseRecord({
+      runId,
+      selectedAt,
+      sourceRepo,
+      sourceRoot,
+      catalogRelpath,
+      commit,
+      discoveryInfo: discovery("status-unreadable", {
+        fallback: "proceeded-without-skills",
+        error: statusResult.error,
+      }),
+      noRelevantSkill: false,
+      selections: [],
+    });
+    assertValidRecord(record);
+    return record;
+  }
+  const dirtyPaths = dirtyPathsFromPorcelain(statusResult.stdout);
 
   let catalog;
   try {

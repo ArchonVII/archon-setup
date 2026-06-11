@@ -48,9 +48,10 @@ with no cross-file resolution. `[V validate.mjs:45-53]`
   `blocked-conflict-requires-human-resolution`. `[V decision-doc.schema.json:143-153]`
 - **`skill-selection` `selections[]`** — records `name`, catalog-derived relative `SKILL.md` path,
   LF-normalized `skillSha256`, and an authored `whySelected`; discovery failures such as
-  `repo-missing`, `catalog-unreadable`, `catalog-ambiguous` (a selected name cataloged at multiple
-  distinct paths), `skill-unreadable` (cataloged file missing/unreadable), and `repo-dirty` are
-  represented in-band instead of blocking the mechanical PR lane.
+  `repo-missing`, `status-unreadable` (cleanliness could not be established — corrupt or
+  inaccessible index), `catalog-unreadable`, `catalog-ambiguous` (a selected name cataloged at
+  multiple distinct paths), `skill-unreadable` (cataloged file missing/unreadable), and `repo-dirty`
+  are represented in-band instead of blocking the mechanical PR lane.
 - **`skill-selection` semantic invariants** — the zero-dep schema cannot express conditionals, so
   `validateSkillSelection` layers them on top, and every consumer (the builder and `runUpdate`) goes
   through that one chokepoint: `discovery.status` of `ok`/`repo-dirty` requires a pinned 40-hex
