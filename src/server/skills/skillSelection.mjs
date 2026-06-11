@@ -19,7 +19,20 @@ const DEFAULT_SOURCE_ROOT = "shared/";
 const DEFAULT_CATALOG_RELPATH = "docs/skill-catalog.md";
 
 export function validateSkillSelection(record) {
-  return validate(SKILL_SELECTION_SCHEMA, record);
+  const checked = validate(SKILL_SELECTION_SCHEMA, record);
+  const errors = [...checked.errors];
+  // Truthfulness invariant (#195 review): a record claiming usable discovery
+  // ("ok"/"repo-dirty") must pin the skills-repo commit, or the recorded
+  // SKILL.md hashes are unauditable. A null commit is legal only on failure
+  // statuses where no commit could be read.
+  const status = record?.discovery?.status;
+  if (["ok", "repo-dirty"].includes(status) && record?.source?.commit === null) {
+    errors.push({
+      path: "source.commit",
+      message: `commit must be a pinned 40-hex sha when discovery.status is "${status}"`,
+    });
+  }
+  return { valid: errors.length === 0, errors };
 }
 
 function discovery(status, { fallback = null, dirtyPaths = [], error = null } = {}) {
@@ -136,7 +149,25 @@ export async function buildSkillSelectionRecord({
   }
 
   const commitResult = await git({ skillsRoot, args: ["rev-parse", "HEAD"], runCommand });
-  const commit = commitResult.ok ? commitResult.stdout : null;
+  if (!commitResult.ok) {
+    // A worktree with no readable HEAD (unborn branch, corrupt repo) cannot pin
+    // provenance; record it as repo-missing rather than emitting an "ok" record
+    // with a null commit (#195 review).
+    const record = baseRecord({
+      runId,
+      selectedAt,
+      sourceRepo,
+      sourceRoot,
+      catalogRelpath,
+      commit: null,
+      discoveryInfo: discovery("repo-missing", { fallback: "proceeded-without-skills", error: commitResult.error }),
+      noRelevantSkill: false,
+      selections: [],
+    });
+    assertValidRecord(record);
+    return record;
+  }
+  const commit = commitResult.stdout;
   const statusResult = await git({ skillsRoot, args: ["status", "--porcelain"], runCommand });
   const dirtyPaths = statusResult.ok ? dirtyPathsFromPorcelain(statusResult.stdout) : [];
 
@@ -168,7 +199,31 @@ export async function buildSkillSelectionRecord({
   for (const selected of selectedSkills) {
     const relpath = catalogEntries.get(selected.name);
     if (!relpath) throw new Error(`selected skill ${selected.name} is not listed in the catalog`);
-    const skillBody = await readFile(safeJoin(skillsRoot, relpath), "utf8");
+    let skillBody;
+    try {
+      skillBody = await readFile(safeJoin(skillsRoot, relpath), "utf8");
+    } catch (err) {
+      // A cataloged-but-unreadable SKILL.md (stale catalog, permissions) is a
+      // discovery failure, recorded in-band like catalog-unreadable instead of
+      // letting the advisory skill layer block the mechanical lane (#195 review).
+      const record = baseRecord({
+        runId,
+        selectedAt,
+        sourceRepo,
+        sourceRoot,
+        catalogRelpath,
+        commit,
+        discoveryInfo: discovery("skill-unreadable", {
+          fallback: "proceeded-without-skills",
+          dirtyPaths,
+          error: `selected skill ${selected.name} at ${relpath}: ${err.message}`,
+        }),
+        noRelevantSkill: false,
+        selections: [],
+      });
+      assertValidRecord(record);
+      return record;
+    }
     selections.push({
       name: selected.name,
       relpath,

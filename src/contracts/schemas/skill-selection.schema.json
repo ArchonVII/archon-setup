@@ -27,7 +27,11 @@
         "repo": { "type": "string", "minLength": 1 },
         "root": { "type": "string", "minLength": 1 },
         "catalogRelpath": { "type": "string", "minLength": 1 },
-        "commit": { "type": ["string", "null"], "pattern": "^[0-9a-f]{40}$" }
+        "commit": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Pinned skills-repo HEAD. validateSkillSelection enforces (beyond this schema) that null is legal only for failure statuses where no commit could be read; discovery.status ok/repo-dirty requires a real sha."
+        }
       }
     },
     "discovery": {
@@ -35,7 +39,7 @@
       "required": ["status", "fallback", "dirtyPaths", "error"],
       "additionalProperties": false,
       "properties": {
-        "status": { "enum": ["ok", "repo-dirty", "catalog-unreadable", "repo-missing"] },
+        "status": { "enum": ["ok", "repo-dirty", "catalog-unreadable", "skill-unreadable", "repo-missing"] },
         "fallback": { "enum": ["proceeded-without-skills", "recorded-dirty-provenance", null] },
         "dirtyPaths": {
           "type": "array",

@@ -14,7 +14,7 @@ function git(cwd, args) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 }
 
-async function makeSkillsRepo({ catalog = true } = {}) {
+async function makeSkillsRepo({ catalog = true, extraCatalogLines = [] } = {}) {
   const root = await mkdtemp(join(tmpdir(), "archon-skill-selection-"));
   await mkdir(join(root, "docs"), { recursive: true });
   await mkdir(join(root, "shared", "open"), { recursive: true });
@@ -33,6 +33,7 @@ async function makeSkillsRepo({ catalog = true } = {}) {
         "",
         "- [`open`](../shared/open/SKILL.md) - Starts a work session.",
         "- [`test-driven-development`](../shared/test-driven-development/SKILL.md) - Requires tests before code.",
+        ...extraCatalogLines,
         "",
       ].join("\n"),
       "utf8",
@@ -133,6 +134,76 @@ test("buildSkillSelectionRecord falls back when the skills repo is missing", asy
   assert.equal(record.discovery.fallback, "proceeded-without-skills");
   assert.deepEqual(record.selections, []);
   assert.deepEqual(validateSkillSelection(record).errors, []);
+});
+
+test("buildSkillSelectionRecord falls back in-band when a cataloged SKILL.md is unreadable", async () => {
+  const repo = await makeSkillsRepo({
+    extraCatalogLines: ["- [`ghost`](../shared/ghost/SKILL.md) - Catalog points at a file that no longer exists."],
+  });
+
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "ghost", whySelected: "The stale catalog entry still names this skill as relevant." }],
+    now: () => NOW,
+  });
+
+  assert.equal(record.discovery.status, "skill-unreadable");
+  assert.equal(record.discovery.fallback, "proceeded-without-skills");
+  assert.match(record.discovery.error, /selected skill ghost at shared\/ghost\/SKILL\.md/);
+  assert.match(record.discovery.error, /ENOENT/);
+  assert.equal(record.source.commit, repo.commit);
+  assert.deepEqual(record.selections, []);
+  assert.deepEqual(validateSkillSelection(record).errors, []);
+});
+
+test("buildSkillSelectionRecord treats a repo with no readable HEAD as repo-missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "archon-skill-selection-unborn-"));
+  git(root, ["init", "-b", "main"]);
+
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    now: () => NOW,
+  });
+
+  assert.equal(record.discovery.status, "repo-missing");
+  assert.equal(record.source.commit, null);
+  assert.equal(record.discovery.fallback, "proceeded-without-skills");
+  assert.deepEqual(record.selections, []);
+  assert.deepEqual(validateSkillSelection(record).errors, []);
+});
+
+test("validateSkillSelection rejects a null commit for usable discovery statuses", async () => {
+  const repo = await makeSkillsRepo();
+  const record = await buildSkillSelectionRecord({
+    runId: "run-188",
+    skillsRoot: repo.root,
+    selectedSkills: [{ name: "open", whySelected: "The lane starts from an issue and needs the standard repo-opening workflow." }],
+    now: () => NOW,
+  });
+
+  const tamperedOk = { ...record, source: { ...record.source, commit: null } };
+  const checkedOk = validateSkillSelection(tamperedOk);
+  assert.equal(checkedOk.valid, false);
+  assert.ok(
+    checkedOk.errors.some((e) => e.path === "source.commit" && /pinned 40-hex sha/.test(e.message)),
+    JSON.stringify(checkedOk.errors),
+  );
+
+  const tamperedDirty = {
+    ...tamperedOk,
+    discovery: { status: "repo-dirty", fallback: "recorded-dirty-provenance", dirtyPaths: ["shared/open/SKILL.md"], error: null },
+  };
+  assert.equal(validateSkillSelection(tamperedDirty).valid, false);
+
+  const repoMissing = {
+    ...tamperedOk,
+    discovery: { status: "repo-missing", fallback: "proceeded-without-skills", dirtyPaths: [], error: "not a git repo" },
+    selections: [],
+  };
+  assert.deepEqual(validateSkillSelection(repoMissing).errors, []);
 });
 
 test("buildSkillSelectionRecord rejects selected skills absent from the catalog allowlist", async () => {
