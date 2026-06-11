@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- The repo-template snapshot is reconverged with its manifest pin: the five
+  #197 review fixes now come from the provider (repo-template#67) instead of
+  the hand-edits #199 flagged, and the pin advanced `292dada` → `d74d23c` with
+  a null body diff for the three files the provider had not otherwise touched
+  (the reconvergence proof). The refreshed snapshot — and the root lifecycle
+  copies synced from it — also inherit repo-template#65's merged-PR-proof
+  `agent:prune` retirement and the `agent:status` claims check now resolving
+  against the current worktree instead of the primary checkout. (#199)
+
 - The `agent-lifecycle.baseline` installer/audit path now includes
   `scripts/agent/pr-body.mjs` and the `agent:pr-body` package script, matching
   the current repo-template lifecycle command surface instead of silently

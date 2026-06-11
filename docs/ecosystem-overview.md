@@ -57,11 +57,11 @@ The meta layer is **providers → integrator → consumers**, with a separate
 | --- | --- | --- | --- | --- |
 | [ArchonVII/.github](https://github.com/ArchonVII/.github) | `C:/GitHub/.github` | org-defaults-provider | issue templates; pull request templates; SECURITY.md; release.yml; STARTER.md doc-policy guide | snapshot main@1962f27 |
 | [ArchonVII/github-workflows](https://github.com/ArchonVII/github-workflows) | `C:/GitHub/github-workflows` | workflow-provider | reusable workflow bodies (examples/*.yml); scripts/setup-repo.mjs (labels + branch protection) | consumed @v1; snapshot v1@af0ac6e |
-| [ArchonVII/repo-template](https://github.com/ArchonVII/repo-template) | `C:/GitHub/repo-template` | baseline-provider | AGENTS.md (canonical per-repo contract); .agent/ startup + check-map baseline; scripts/agent/ lifecycle helpers; scripts/doc-sweep/ | snapshot main@292dada |
+| [ArchonVII/repo-template](https://github.com/ArchonVII/repo-template) | `C:/GitHub/repo-template` | baseline-provider | AGENTS.md (canonical per-repo contract); .agent/ startup + check-map baseline; scripts/agent/ lifecycle helpers; scripts/doc-sweep/ | snapshot main@d74d23c |
 | [ArchonVII/archon-setup](https://github.com/ArchonVII/archon-setup) | `C:/GitHub/archon-setup` | ecosystem-health-hub | src/snapshots/ (SHA-pinned provider snapshots); src/registry/features.json (feature registry); src/server/globalUpdates.mjs (distributable AGENTS.md fixes); ecosystem-state.json health surface; config/ecosystem-map.json + docs/ecosystem-overview.md (this map) | not snapshotted (integrator/source) |
 | [ArchonVII/jma-skill-review](https://github.com/ArchonVII/jma-skill-review) | `C:/Users/josep/skills` | skill-source | shared/ (active shared skills); shared/agents/ (cross-tool personas, e.g. gamemaster); docs/skills-policy.md (canonical skills policy); docs/skill-catalog.md (skills index) | not snapshotted (integrator/source) |
 
-_Provider snapshots captured 2026-06-10T21:06:08.470Z … 2026-06-10T21:06:08.576Z (source: `src/snapshots/manifest.json`)._
+_Provider snapshots captured 2026-06-11T20:29:04.914Z … 2026-06-11T20:29:05.012Z (source: `src/snapshots/manifest.json`)._
 <!-- END GENERATED: ecosystem-map -->
 
 ## Change routing — "to change X, edit Y first"
