@@ -16,15 +16,17 @@ const SCRIPT_FILES = [
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",
   "scripts/agent/prune.mjs",
+  "scripts/agent/pr-body.mjs",
 ];
 
-// The 3 npm script entries this task idempotently merges into the target's
+// The npm script entries this task idempotently merges into the target's
 // package.json. Exported so the audit path can report them present/missing/
 // drifted (the "entries" comparison) without re-deriving them.
 export const AGENT_SCRIPTS = {
   "agent:status": "node scripts/agent/status.mjs",
   "agent:prune": "node scripts/agent/prune.mjs",
   "agent:start-task": "node scripts/agent/start-task.mjs",
+  "agent:pr-body": "node scripts/agent/pr-body.mjs",
 };
 
 async function readTargetPackageJson(targetPath) {
@@ -55,7 +57,7 @@ export async function apply(ctx) {
     results.push(await writeSnapshotFile(ctx, file, { overwrite: true }));
   }
 
-  // Merge only the 3 agent:* entries into the target package.json, creating a
+  // Merge only the managed agent:* entries into the target package.json, creating a
   // minimal one if absent (DECISION A1: minimal { name, type, scripts } only),
   // and preserving every other key/script. Re-assigning the same values keeps
   // this idempotent — a re-run produces byte-identical output.

@@ -4,6 +4,16 @@
 
 ### Fixed
 
+- The `agent-lifecycle.baseline` installer/audit path now includes
+  `scripts/agent/pr-body.mjs` and the `agent:pr-body` package script, matching
+  the current repo-template lifecycle command surface instead of silently
+  installing only the older `start-task`/`status`/`prune` set. (#196)
+
+- The `archon-setup` root checkout now carries the startup/process baseline it
+  tells consumers to use: managed AGENTS start map, `.agent` startup files, PR
+  template, lifecycle scripts, doc-sweep runner, root `agent:*` npm scripts, and
+  a repo-specific update log. (#196)
+
 - `cleanupRun` now refuses from rollback-chain states before any destructive
   work, so `rollback_requested`, `rollback_pr_created`, `rollback_merged`, and
   `rollback_verified` can no longer delete worktrees or branches and then fail

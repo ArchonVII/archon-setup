@@ -1,0 +1,57 @@
+version: 1
+
+required_gate:
+  check_name: ci-success
+  workflow: .github/workflows/node-ci.yml
+
+defaults:
+  stack: node
+  runner: github-hosted
+  optimize_for: lower-spend
+
+paths:
+  code:
+    requires:
+      - language-ci
+    patterns:
+      - src/**
+      - bin/**
+      - scripts/**
+      - test/**
+      - "**/*.js"
+      - "**/*.mjs"
+      - "**/*.json"
+  workflows:
+    requires:
+      - workflow-validation
+    patterns:
+      - .github/workflows/**
+  policy:
+    requires:
+      - policy-validation
+    patterns:
+      - AGENTS.md
+      - CLAUDE.md
+      - GEMINI.md
+      - .agent/**
+      - .github/**
+  dependencies:
+    requires:
+      - language-ci
+    patterns:
+      - package.json
+      - package-lock.json
+      - pnpm-lock.yaml
+      - yarn.lock
+  release:
+    requires:
+      - policy-validation
+    patterns:
+      - CHANGELOG.md
+      - .changelog/**
+  docs:
+    requires: []
+    patterns:
+      - docs/**
+      - README.md
+      - "**/*.md"

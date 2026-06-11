@@ -466,11 +466,12 @@
       "scripts/agent/start-task.mjs",
       "scripts/agent/status.mjs",
       "scripts/agent/prune.mjs",
+      "scripts/agent/pr-body.mjs",
       "package.json"
     ],
     "tasks": ["writeAgentLifecycle"],
-    "beginnerDescription": "Installs the agent worktree-lifecycle scripts (agent:start-task / status / prune) and wires their npm script entries.",
-    "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune}.mjs from the repo-template snapshot and idempotently MERGES the 3 agent:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison."
+    "beginnerDescription": "Installs the agent worktree-lifecycle scripts (agent:start-task / status / prune / pr-body) and wires their npm script entries.",
+    "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune,pr-body}.mjs from the repo-template snapshot and idempotently MERGES the managed agent:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison."
   },
   {
     "id": "agent-workflow.doc-sweep",

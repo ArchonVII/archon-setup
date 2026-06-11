@@ -81,8 +81,8 @@ async function expectedBodyFor({ path, unit, context }) {
     case "installWorkflow":
       return workflowBody(unit);
     case "writeAgentLifecycle":
-      // The 4 agent scripts compare exact against the snapshot; package.json is
-      // a merge, so it gets the "entries" comparison (the 3 agent:* scripts).
+      // The managed agent scripts compare exact against the snapshot; package.json is
+      // a merge, so it gets the "entries" comparison (the managed agent:* scripts).
       if (path === "package.json") return { comparison: "entries", entries: AGENT_SCRIPTS };
       return repoTemplateBody(path);
     case "writeDocSweep":

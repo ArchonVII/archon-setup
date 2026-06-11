@@ -1,0 +1,108 @@
+{
+  "tool": "archon-setup",
+  "toolVersion": "0.1.0-pre",
+  "createdAt": "2026-06-11T17:58:35.530Z",
+  "owner": "ArchonVII",
+  "repo": "archon-setup",
+  "visibility": "private",
+  "sourceSnapshots": {
+    "githubWorkflows": {
+      "source": "ArchonVII/github-workflows",
+      "ref": "v1",
+      "sha": "af0ac6e99683c107d5a420607642ff341e92713e",
+      "capturedAt": "2026-06-10T21:06:08.470Z",
+      "path": "src/snapshots/github-workflows/"
+    },
+    "repoTemplate": {
+      "source": "ArchonVII/repo-template",
+      "ref": "main",
+      "sha": "292dada85c2fe24eeaffaa9b61d4eac9e566b988",
+      "capturedAt": "2026-06-10T21:06:08.573Z",
+      "path": "src/snapshots/repo-template/"
+    },
+    "orgDefaults": {
+      "source": "ArchonVII/.github",
+      "ref": "main",
+      "sha": "1962f27c6ef13c07c755706144e8bb12a6f5203e",
+      "capturedAt": "2026-06-10T21:06:08.576Z",
+      "path": "src/snapshots/org-defaults/"
+    }
+  },
+  "selectedFeatures": [
+    "foundation.agents",
+    "foundation.coordination",
+    "foundation.pr-template",
+    "agent-workflow.check-map",
+    "agent-lifecycle.baseline",
+    "agent-workflow.doc-sweep"
+  ],
+  "createdFiles": [
+    {
+      "path": "docs/repo-update-log.md",
+      "source": "repo-specific:archon-setup/docs/repo-update-log.md"
+    },
+    {
+      "path": ".agent/startup-baseline.json",
+      "source": "snapshot:repo-template/.agent/startup-baseline.json"
+    },
+    {
+      "path": "docs/plans/README.md",
+      "source": "snapshot:repo-template/docs/plans/README.md"
+    },
+    {
+      "path": ".agent/coordination/README.md",
+      "source": "snapshot:repo-template/.agent/coordination/README.md"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "source": "repo-specific:archon-setup/.github/PULL_REQUEST_TEMPLATE.md"
+    },
+    {
+      "path": ".agent/check-map.yml",
+      "source": "repo-specific:archon-setup/.agent/check-map.yml"
+    },
+    {
+      "path": "scripts/agent/lib.mjs",
+      "source": "snapshot:repo-template/scripts/agent/lib.mjs"
+    },
+    {
+      "path": "scripts/agent/start-task.mjs",
+      "source": "snapshot:repo-template/scripts/agent/start-task.mjs"
+    },
+    {
+      "path": "scripts/agent/status.mjs",
+      "source": "snapshot:repo-template/scripts/agent/status.mjs"
+    },
+    {
+      "path": "scripts/agent/prune.mjs",
+      "source": "snapshot:repo-template/scripts/agent/prune.mjs"
+    },
+    {
+      "path": "scripts/agent/pr-body.mjs",
+      "source": "snapshot:repo-template/scripts/agent/pr-body.mjs"
+    },
+    {
+      "path": "package.json",
+      "source": "merged:agent-lifecycle"
+    },
+    {
+      "path": "scripts/doc-sweep/lib.mjs",
+      "source": "snapshot:repo-template/scripts/doc-sweep/lib.mjs"
+    },
+    {
+      "path": "scripts/doc-sweep/git.mjs",
+      "source": "snapshot:repo-template/scripts/doc-sweep/git.mjs"
+    },
+    {
+      "path": "scripts/doc-sweep/sweep.mjs",
+      "source": "snapshot:repo-template/scripts/doc-sweep/sweep.mjs"
+    },
+    {
+      "path": "docs/agent-process/doc-sweep.md",
+      "source": "snapshot:repo-template/docs/agent-process/doc-sweep.md"
+    }
+  ],
+  "skippedFiles": [],
+  "remoteActions": [],
+  "postChecks": []
+}

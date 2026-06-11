@@ -4,6 +4,30 @@ Cross-tool contract for AI agents (Claude, Codex, Copilot, Gemini, etc.) working
 
 > Per-tool addenda live in `CLAUDE.md`, `GEMINI.md` etc. when they exist. This file holds the rules every agent must follow.
 
+<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->
+<!-- BEGIN MANAGED AGENT START MAP -->
+## Agent Start Map
+
+Agents should not spend time rediscovering the process files. Start here:
+
+- Plans: `docs/plans/`
+- Agent process: `docs/agent-process/`
+- Repo update log: `docs/repo-update-log.md`
+- Check map: `.agent/check-map.yml`
+- Coordination: `.agent/coordination/README.md`
+- PR process: `.github/PULL_REQUEST_TEMPLATE.md`
+- Agent scripts: `scripts/agent/`
+- Doc sweep: `scripts/doc-sweep/`
+- Legacy plans: `docs/superpowers/plans/` is history only; do not add new implementation plans there.
+
+If these files are missing or unclear, stop searching and run:
+
+```text
+node <path-to-archon-setup>/bin/onboard.mjs <repo> --audit
+```
+<!-- END MANAGED AGENT START MAP -->
+<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->
+
 ## What this repo is
 
 `archon-setup` is a plug-and-play repo bootstrapper for the ArchonVII ecosystem. It's a Node-based local web wizard (`npx @archonvii/archon-setup`) that scaffolds a new repository — files, git init, `gh` remote, labels, branch protection — driven by a dependency-aware feature registry.
@@ -42,6 +66,15 @@ This repo treats those three as read-only sources of truth. Snapshots live under
 3. **Never commit to `main`.** Branch protection enforces this once wired.
 4. **Conventional Commits.** `<type>(<scope>): <description>` where `<type>` is one of `feat fix refactor test docs style chore perf ci build revert`.
 5. **PR metadata must pass the shared contract before ready-for-review.** Non-doc PRs must use this exact body order: `## Summary`, `## Verification`, `### Verification Notes`, `## Docs / Changelog`, and an issue link (`Closes #N`, `Fixes #N`, or `Refs #N`). The PR title must use Conventional Commits. Each checked verification box must be backed by concrete command/check/manual evidence, and placeholders such as TODO/TBD/N/A must be gone. Doc-only PRs (every file matches `*.md`, `*.txt`, an image extension, or `.changelog/**`) skip the body ceremony but still need a valid title and branch.
+
+## Startup
+
+- Start with `npm run agent:status` from the repo root to confirm branch,
+  upstream, dirty state, PR/task state, startup map, and next action.
+- If lifecycle/startup files are missing or `agent:status` is unavailable, run
+  `npm run onboard -- . --audit` to inspect the full startup/process baseline.
+- `archon-setup update` is workflow-only. Do not use it for startup/process
+  repair, lifecycle scripts, doc-sweep files, or AGENTS startup-map repair.
 
 ## Verification
 
