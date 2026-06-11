@@ -4,12 +4,15 @@ import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertSchemaSupported, validate } from "../../contracts/validate.mjs";
 import { distributeRepo, loadDefaultCatalog, writeAtomic } from "../../distributor/distribute.mjs";
+import { parseRegions } from "../../distributor/regionEngine.mjs";
 import { refreshRepo } from "../refresh/refreshRepo.mjs";
+import { contentFingerprint } from "../decisions/decisionDoc.mjs";
 import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { evaluateAutoMergeEligibility } from "./autoMergeGate.mjs";
 import { addPrLabel, createDraftPr, getPrView, listPrChecks, queueAutoMerge } from "./ghPr.mjs";
 import { appendRunState, readRunRecord } from "./runRecord.mjs";
+import { deriveRunResults } from "./runResults.mjs";
 import { resolveRequiredChecks as defaultResolveRequiredChecks } from "../branchProtection/tightenRequiredGate.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -134,20 +137,15 @@ function postApplyAuditClean(report, applySet) {
   return true;
 }
 
-function resultItemsFromApplySet(applySet) {
-  return applySet.items.map((item) => ({
-    itemId: item.itemId,
-    file: item.file,
-    regionId: item.regionId,
-    action: item.resolution === "keep-local" ? "skip" : item.writePlan.kind === "create-file" ? "create" : "merge",
-  }));
-}
-
 function changedPathsForApplySet(applySet) {
   return [...new Set(applySet.items.map((item) => item.file))];
 }
 
-function prBodyForApplySet(applySet) {
+// C8 (#187): generated PR bodies must pass the repo-template's own PR contract
+// (pr-contract.mjs): the checked verification item carries a fenced evidence
+// block with the real run facts the lane already holds at body-construction
+// time (runId, baseSha, decision-doc fingerprint, item set, run ledger path).
+export function prBodyForApplySet(applySet, { recordPath = null } = {}) {
   const lines = applySet.items.map((item) => `- ${item.resolution}: \`${item.itemId}\` -> \`${item.writePlan.kind}\``);
   return [
     "## Summary",
@@ -158,11 +156,18 @@ function prBodyForApplySet(applySet) {
     "",
     "- [x] Local post-apply audit passed in the PR lane worktree",
     "",
+    "```evidence",
+    `runId: ${applySet.runId}`,
+    `baseSha: ${applySet.repo.baseSha}`,
+    `decisionDocFingerprint: ${applySet.sourceDecisionDoc.fingerprint}`,
+    `items (${applySet.items.length}):`,
+    ...lines,
+    ...(recordPath ? [`runLedger: ${recordPath}`] : []),
+    "```",
+    "",
     "### Verification Notes",
     "",
-    `Decision doc fingerprint: \`${applySet.sourceDecisionDoc.fingerprint}\``,
-    `Applied items: ${applySet.items.length}`,
-    ...lines,
+    "The post-apply audit re-read every item in the lane worktree and reported clean_apply with no further changes before the branch was committed; the evidence block above carries the audited item set.",
     "",
     "## Docs / Changelog",
     "",
@@ -171,6 +176,45 @@ function prBodyForApplySet(applySet) {
     `Closes #${applySet.sourceDecisionDoc.issueNumber}`,
     "",
   ].join("\n");
+}
+
+function regionInnerOf(body, regionId) {
+  if (body === null || regionId === null) return null;
+  const region = parseRegions(body, "markdown").regions.find((r) => r.id === regionId);
+  return region ? region.inner : null;
+}
+
+// C9 (#187): the ApplySet's expectedFileSha256/expectedRegionInnerSha256 are a
+// per-item integrity property, not decoration — re-prove them inside the
+// freshly cut worktree before any write. Hashes use contentFingerprint
+// (LF-normalized, per decisionDoc.mjs) so a CRLF checkout agrees with the LF
+// tree intake hashed. Null expectations are create-file tolerance: the file
+// (or region) must then be absent. Ownership records are exempt: their
+// expected hashes were captured from the audited source file, while their
+// write target is .archon/region-ownership.json.
+async function assertExpectedItemHashes({ worktreePath, applySet }) {
+  for (const item of applySet.items) {
+    if (item.writePlan.kind === "record-ownership") continue;
+    let body = null;
+    try {
+      body = await readFile(safeJoin(worktreePath, item.file), "utf8");
+    } catch (err) {
+      if (err.code !== "ENOENT") throw err;
+    }
+    const fileHash = body === null ? null : contentFingerprint(body);
+    if (fileHash !== item.expectedFileSha256) {
+      throw new Error(
+        `expected hash mismatch for ${item.itemId}: ${item.file} in the execution worktree does not match expectedFileSha256 (re-run intake against the current tree)`,
+      );
+    }
+    const inner = regionInnerOf(body, item.regionId);
+    const innerHash = inner === null ? null : contentFingerprint(inner);
+    if (innerHash !== item.expectedRegionInnerSha256) {
+      throw new Error(
+        `expected hash mismatch for ${item.itemId}: region ${item.regionId} in ${item.file} does not match expectedRegionInnerSha256 (re-run intake against the current tree)`,
+      );
+    }
+  }
 }
 
 async function appendFailure({ recordPath, runId, failedStage, error, now }) {
@@ -301,6 +345,8 @@ export async function runUpdate({
       now: now(),
     });
 
+    await assertExpectedItemHashes({ worktreePath, applySet });
+
     const worktreeRepo = {
       name: applySet.repo.name,
       path: worktreePath,
@@ -359,7 +405,7 @@ export async function runUpdate({
       branch: branchName,
       worktreePath,
       recordPath,
-      results: { applied: resultItemsFromApplySet(applySet), skipped: [], blocked: [], failed: [] },
+      results: deriveRunResults({ applySet, reachedApplied: true }),
       verification: { local: { status: "passed", detail: "post-apply audit clean" }, postMerge: { status: "skipped" } },
     };
     if (mode === "local-only") return localResult;
@@ -392,7 +438,7 @@ export async function runUpdate({
     });
 
     const repoSlug = `${applySet.repo.owner}/${applySet.repo.name}`;
-    const prBody = prBodyForApplySet(applySet);
+    const prBody = prBodyForApplySet(applySet, { recordPath });
     const pr = await createDraftPr({
       repoSlug,
       base: applySet.repo.defaultBranch,

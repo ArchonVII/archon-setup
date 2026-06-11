@@ -10,6 +10,7 @@ import { refreshRepo } from "../refresh/refreshRepo.mjs";
 import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
 import { addPrLabel, createDraftPr, defaultGhRunner, getPrMergeState } from "./ghPr.mjs";
 import { appendRunState, readRunRecord } from "./runRecord.mjs";
+import { resultsFromRecord } from "./runResults.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const RUN_REPORT_SCHEMA = JSON.parse(
@@ -130,15 +131,6 @@ function postApplyAuditClean(report, applySet) {
   return true;
 }
 
-function resultItemsFromApplySet(applySet) {
-  return applySet.items.map((item) => ({
-    itemId: item.itemId,
-    file: item.file,
-    regionId: item.regionId,
-    action: item.resolution === "keep-local" ? "skip" : item.writePlan.kind === "create-file" ? "create" : "merge",
-  }));
-}
-
 function changedPathsForApplySet(applySet) {
   return [...new Set(applySet.items.map((item) => item.file))];
 }
@@ -216,7 +208,7 @@ function buildRunReport({
     pr: context.prNumber ? { number: context.prNumber, ...(context.prUrl ? { url: context.prUrl } : {}) } : null,
     mergeSha: mergeSha ?? null,
     state,
-    results: { applied: resultItemsFromApplySet(context.applySet), skipped: [], blocked: [], failed: [] },
+    results: resultsFromRecord({ record, applySet: context.applySet }),
     verification: {
       local: localVerificationFor(record),
       postMerge: postMergeVerificationFor(record, state, postMergeVerification),
@@ -503,27 +495,37 @@ function rollbackBranchFor(runId) {
   return `agent/rollback/${safeRunId}-${uniqueSuffix()}`;
 }
 
-function rollbackPrBody(context) {
-  const files = changedPathsForApplySet(context.applySet).map((file) => `- \`${file}\``).join("\n");
-  const issueLine = context.applySet.sourceDecisionDoc.issueNumber
-    ? `Refs #${context.applySet.sourceDecisionDoc.issueNumber}`
-    : null;
+// C8 (#187): generated PR bodies must pass the repo-template's own PR contract
+// (pr-contract.mjs): every checked verification item carries a fenced evidence
+// block with the real run facts, and the body always links an issue — falling
+// back to the original PR number when the run carried no issue (a rollback
+// always reverts a merged PR, so that number always exists).
+export function rollbackPrBody(context, { recordPath = null } = {}) {
+  const files = changedPathsForApplySet(context.applySet);
+  const issueNumber = context.applySet.sourceDecisionDoc.issueNumber ?? null;
+  const issueLine = issueNumber ? `Refs #${issueNumber}` : `Refs #${context.prNumber}`;
   return [
     "## Summary",
     "",
-    `Reverts ArchonVII managed-region refresh run \`${context.applySet.runId}\`.`,
+    `Reverts ArchonVII managed-region refresh run \`${context.applySet.runId}\` (original PR #${context.prNumber}).`,
     "",
     "## Verification",
     "",
     "- [x] Rollback branch affected paths match the recorded base tree",
     "",
+    "```evidence",
+    `runId: ${context.applySet.runId}`,
+    `baseSha: ${context.applySet.repo.baseSha}`,
+    `originalPr: #${context.prNumber}`,
+    `originalMergeSha: ${context.mergeSha}`,
+    `affectedPaths (${files.length}):`,
+    ...files.map((file) => `- ${file}`),
+    ...(recordPath ? [`runLedger: ${recordPath}`] : []),
+    "```",
+    "",
     "### Verification Notes",
     "",
-    `Original PR: #${context.prNumber}`,
-    `Original merge SHA: \`${context.mergeSha}\``,
-    "",
-    "Affected paths:",
-    files,
+    "The rollback worktree was diffed against the recorded base SHA for every affected path before the revert branch was pushed; the evidence block above carries the run facts.",
     "",
     "## Docs / Changelog",
     "",
@@ -531,7 +533,7 @@ function rollbackPrBody(context) {
     "",
     issueLine,
     "",
-  ].filter((line) => line !== null).join("\n");
+  ].join("\n");
 }
 
 async function mergeCommitNeedsMainline({ context, mergeSha, runCommand }) {
@@ -802,7 +804,7 @@ export async function rollbackRun({
     base: context.applySet.repo.defaultBranch,
     head: rollbackBranch,
     title: `revert(agents): rollback refresh ${context.applySet.runId}`,
-    body: rollbackPrBody(context),
+    body: rollbackPrBody(context, { recordPath }),
     draft: false,
     runGh,
   });

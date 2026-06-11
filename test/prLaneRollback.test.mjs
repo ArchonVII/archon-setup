@@ -380,6 +380,43 @@ test("rollbackRun stops safely on later same-region collisions", async () => {
   assert.equal(git(repo.target, ["branch", "--list", record.current.rollbackBranch]), "");
 });
 
+test("RunReport derives result buckets from the reached ledger state: failed preflight applies nothing (C4)", async () => {
+  const repo = await makeRepo();
+  const recordPath = join(repo.root, "run-failed-preflight.jsonl");
+  const set = applySet(repo.baseSha);
+  set.items = [{ ...set.items[0], file: "README.md" }];
+
+  await assert.rejects(
+    runUpdate({
+      applySet: set,
+      targetPath: repo.target,
+      mode: "local-only",
+      confirmationPhrase: PHRASE,
+      recordPath,
+      workRoot: join(repo.root, "worktrees-failed-preflight"),
+      catalog: catalog(),
+      runCommand,
+      now: () => NOW,
+    }),
+    /apply path is outside the allowlist/,
+  );
+
+  const cleaned = await cleanupRun({
+    recordPath,
+    targetPath: repo.target,
+    runCommand,
+    runGh: fakeGh([]),
+    now: () => NOW,
+  });
+
+  assert.equal(cleaned.state, "failed");
+  assert.deepEqual(cleaned.report.results.applied, []);
+  assert.deepEqual(cleaned.report.results.skipped, []);
+  assert.equal(cleaned.report.results.failed.length, 1);
+  assert.equal(cleaned.report.results.failed[0].itemId, set.items[0].itemId);
+  assert.match(cleaned.report.results.failed[0].detail, /never applied; run failed at preflight_started/);
+});
+
 test("CLI cleanup --run resolves run records and emits JSON", async () => {
   const repo = await makeRepo();
   const recordRoot = join(repo.root, "records");

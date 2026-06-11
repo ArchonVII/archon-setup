@@ -244,9 +244,19 @@ test("runUpdate local-only keeps the source checkout untouched when temp-worktre
   const repo = await makeRepo(malformed);
   const recordPath = join(repo.root, "run-apply-fail.jsonl");
 
+  // The ApplySet must describe the malformed tree truthfully (C9 hash gate runs
+  // first); the unterminated region parses to no inner, so the inner hash is null.
+  const malformedSet = applySet(repo.baseSha, {
+    items: [{
+      ...applySet(repo.baseSha).items[0],
+      expectedFileSha256: sha256(malformed),
+      expectedRegionInnerSha256: null,
+    }],
+  });
+
   await assert.rejects(
     runUpdate({
-      applySet: applySet(repo.baseSha),
+      applySet: malformedSet,
       targetPath: repo.target,
       mode: "local-only",
       confirmationPhrase: PHRASE,
@@ -265,6 +275,149 @@ test("runUpdate local-only keeps the source checkout untouched when temp-worktre
     record.entries.map((entry) => entry.state),
     ["planned", "preflight_started", "preflight_passed", "issue_created", "worktree_created", "failed"],
   );
+});
+
+test("runUpdate rejects a stale expectedFileSha256 in the worktree before any write (C9)", async () => {
+  const repo = await makeRepo();
+  const recordPath = join(repo.root, "run-stale-file-hash.jsonl");
+  const staleSet = applySet(repo.baseSha, {
+    items: [{ ...applySet(repo.baseSha).items[0], expectedFileSha256: sha256("a different tree entirely") }],
+  });
+
+  await assert.rejects(
+    runUpdate({
+      applySet: staleSet,
+      targetPath: repo.target,
+      mode: "local-only",
+      confirmationPhrase: PHRASE,
+      recordPath,
+      workRoot: join(repo.root, "worktrees-stale-file"),
+      catalog: catalog(),
+      runCommand,
+      now: () => "2026-06-10T12:00:00.000Z",
+    }),
+    /expected hash mismatch for agents\/AGENTS\.md#2026-01-01-review-block: AGENTS\.md .* expectedFileSha256/,
+  );
+
+  assert.equal(await readFile(join(repo.target, "AGENTS.md"), "utf8"), repo.originalBody);
+  const record = await readRunRecord(recordPath);
+  assert.deepEqual(
+    record.entries.map((entry) => entry.state),
+    ["planned", "preflight_started", "preflight_passed", "issue_created", "worktree_created", "failed"],
+  );
+  assert.equal(record.current.failedStage, "worktree_created");
+});
+
+test("runUpdate rejects a stale expectedRegionInnerSha256 in the worktree (C9)", async () => {
+  const repo = await makeRepo();
+  const recordPath = join(repo.root, "run-stale-region-hash.jsonl");
+  const staleSet = applySet(repo.baseSha, {
+    items: [{ ...applySet(repo.baseSha).items[0], expectedRegionInnerSha256: sha256("a different region inner") }],
+  });
+
+  await assert.rejects(
+    runUpdate({
+      applySet: staleSet,
+      targetPath: repo.target,
+      mode: "local-only",
+      confirmationPhrase: PHRASE,
+      recordPath,
+      workRoot: join(repo.root, "worktrees-stale-region"),
+      catalog: catalog(),
+      runCommand,
+      now: () => "2026-06-10T12:00:00.000Z",
+    }),
+    /expected hash mismatch for agents\/AGENTS\.md#2026-01-01-review-block: region 2026-01-01-review-block .* expectedRegionInnerSha256/,
+  );
+
+  const record = await readRunRecord(recordPath);
+  assert.equal(record.current.state, "failed");
+  assert.equal(record.current.failedStage, "worktree_created");
+});
+
+test("runUpdate rejects a present file when the ApplySet expected none (C9 create-file tolerance is one-way)", async () => {
+  const repo = await makeRepo();
+  const recordPath = join(repo.root, "run-unexpected-file.jsonl");
+  const staleSet = applySet(repo.baseSha, {
+    items: [{
+      ...applySet(repo.baseSha).items[0],
+      expectedFileSha256: null,
+      expectedRegionInnerSha256: null,
+      writePlan: { kind: "create-file", sourceCatalogId: BLOCK_ID },
+    }],
+  });
+
+  await assert.rejects(
+    runUpdate({
+      applySet: staleSet,
+      targetPath: repo.target,
+      mode: "local-only",
+      confirmationPhrase: PHRASE,
+      recordPath,
+      workRoot: join(repo.root, "worktrees-unexpected-file"),
+      catalog: catalog(),
+      runCommand,
+      now: () => "2026-06-10T12:00:00.000Z",
+    }),
+    /expected hash mismatch .* expectedFileSha256/,
+  );
+
+  const record = await readRunRecord(recordPath);
+  assert.equal(record.current.state, "failed");
+});
+
+test("runUpdate local-only reports keep-local ownership records as skipped, not applied (C4)", async () => {
+  const LOCAL_ID = "2026-03-03-local-block";
+  const localBlock = [
+    `<!-- BEGIN ARCHONVII GLOBAL UPDATE: ${LOCAL_ID} -->`,
+    "local-owned guidance",
+    `<!-- END ARCHONVII GLOBAL UPDATE: ${LOCAL_ID} -->`,
+    "",
+  ].join("\n");
+  const body = `# Agents\n\n${managedBlock("stale guidance")}\n${localBlock}`;
+  const repo = await makeRepo(body);
+  const recordPath = join(repo.root, "run-keep-local.jsonl");
+
+  const base = applySet(repo.baseSha).items[0];
+  const set = applySet(repo.baseSha, {
+    items: [
+      { ...base, expectedFileSha256: sha256(body) },
+      {
+        itemId: `agents/AGENTS.md#${LOCAL_ID}`,
+        category: "agents",
+        regionId: LOCAL_ID,
+        file: ".archon/region-ownership.json",
+        resolution: "keep-local",
+        expectedFileSha256: null,
+        expectedRegionInnerSha256: null,
+        writePlan: { kind: "record-ownership" },
+      },
+    ],
+  });
+
+  const result = await runUpdate({
+    applySet: set,
+    targetPath: repo.target,
+    mode: "local-only",
+    confirmationPhrase: PHRASE,
+    recordPath,
+    workRoot: join(repo.root, "worktrees-keep-local"),
+    catalog: catalog(),
+    runCommand,
+    now: () => "2026-06-10T12:00:00.000Z",
+  });
+
+  assert.equal(result.state, "verified_local");
+  assert.deepEqual(result.results.applied.map((item) => item.itemId), [base.itemId]);
+  assert.equal(result.results.skipped.length, 1);
+  assert.equal(result.results.skipped[0].itemId, `agents/AGENTS.md#${LOCAL_ID}`);
+  assert.equal(result.results.skipped[0].action, "skip");
+  assert.match(result.results.skipped[0].detail, /keep-local ownership recorded/);
+  assert.deepEqual(result.results.blocked, []);
+  assert.deepEqual(result.results.failed, []);
+
+  const ownership = JSON.parse(await readFile(join(result.worktreePath, ".archon", "region-ownership.json"), "utf8"));
+  assert.equal(ownership.records.some((record) => record.regionId === LOCAL_ID), true);
 });
 
 test("runUpdate pr-only commits, pushes, creates a labeled draft PR, and does not auto-merge", async () => {
