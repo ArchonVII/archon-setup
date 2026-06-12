@@ -4,6 +4,24 @@
 
 ### Added
 
+- The ecosystem snapshot now judges every registered repo against the
+  maintenance contract: a new pure status engine
+  (`src/server/ecosystem/maintenanceStatus.mjs`) rolls per-role rules from
+  `docs/MAINTENANCE.md` into a per-repo `maintenance` field
+  (`{ status: green|yellow|red, basis: fast|audited, fastStatus, reasons }`,
+  contract `repo-maintenance-status.schema.json`, worst reason wins, every
+  status carries reason codes). The cheap "fast" basis comes from comparing a
+  repo's `.github/archon-setup.json` against the current snapshot pins
+  (`manifestStatus.mjs`); providers are checked pin-vs-local-HEAD (plus the
+  `v1` retag for `github-workflows`), the integrator checks all pins plus the
+  Ecosystem Fix Queue, and applications also surface workflow drift and a
+  14-day events-stale signal. A fast-basis green always renders as "Manifest
+  current · run audit to verify" — never a bare "Current". The snapshot ports
+  table gains a registry join: each recorded port is annotated `reservedBy`
+  and `conflict` (forbidden 5173 in live use, or a live process on a reserved
+  port not attributable to the reserving repo). Lane 2 of the
+  ecosystem-registry rollout (#212). (#215)
+
 - The repo registry is now **seed + user overlay**: the tracked seed
   (`src/server/ecosystem/repoRegistry.json`) stays code-reviewed source, and
   all add/update/lifecycle/remove edits go to `~/.archon/repo-registry.json`

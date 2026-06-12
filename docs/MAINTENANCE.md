@@ -33,9 +33,22 @@ Spec: [`docs/superpowers/specs/2026-06-12-ecosystem-registry-and-maintenance-des
 
 ## Maintenance status (green / yellow / red)
 
-Computed per repo by the maintenance engine (lane 2,
-[archon-setup #215](https://github.com/ArchonVII/archon-setup/issues/215));
-worst reason wins, and every status carries its reason codes. The rules:
+Computed per repo by the maintenance engine
+([archon-setup #215](https://github.com/ArchonVII/archon-setup/issues/215)):
+[`src/server/ecosystem/maintenanceStatus.mjs`](../src/server/ecosystem/maintenanceStatus.mjs)
+(pure rules) fed by
+[`src/server/ecosystem/collectMaintenance.mjs`](../src/server/ecosystem/collectMaintenance.mjs)
+(input gathering) and
+[`src/server/ecosystem/manifestStatus.mjs`](../src/server/ecosystem/manifestStatus.mjs)
+(fast status), surfaced per repo as `maintenance` in `ecosystem-state.json`
+(contract: `src/contracts/schemas/repo-maintenance-status.schema.json`).
+Worst reason wins, and every status carries its reason codes — including
+green, which carries its "nothing wrong" marker
+(`manifest-current-unaudited`, `verified-current`, `snapshot-current`,
+`pins-verified`, or `catalog-present`). When a signal needed for a check
+cannot be gathered, the engine fails closed to YELLOW (`needs-audit`,
+`snapshot-unverified`, or `fix-queue-pending` with an "unreadable" detail)
+rather than guessing green. The rules:
 
 **All roles**
 
@@ -50,29 +63,42 @@ worst reason wins, and every status carries its reason codes. The rules:
   before a repo counts as drifting out of maintenance; spec §4.2).
 - GREEN (fast) — manifest current, no drift, clean. Always rendered as
   **"Manifest current · run audit to verify"**, never a bare "Current"
-  (honesty rule, `docs/FRONTEND_REDESIGN_SPEC.md` §5).
+  (honesty rule, `docs/FRONTEND_REDESIGN_SPEC.md` §5; the engine emits the
+  qualified string as the `manifest-current-unaudited` reason detail).
 - With a fresh deep-audit cache the basis becomes `audited`:
-  verified current → GREEN "Verified current"; drifted/missing → YELLOW;
-  blocked/needs-review → RED.
+  verified current → GREEN `verified-current` ("Verified current");
+  drifted/missing → YELLOW `drift-detected` / `missing-files`;
+  blocked/needs-review → RED `audit-blocked` / `audit-needs-review`.
+  The cache is written and joined by the `repo.audit` RPC (lane 3,
+  [archon-setup #216](https://github.com/ArchonVII/archon-setup/issues/216));
+  until it lands every application is judged on the fast basis.
+  `workflow-drift` and `events-stale` are live signals measured at snapshot
+  time — they apply on **both** bases (worst wins), since they can postdate
+  any cached audit.
 
 **provider**
 
-- GREEN — snapshot pin (`src/snapshots/manifest.json`) equals the provider's
-  local default-branch HEAD, and clean.
+- GREEN `snapshot-current` — snapshot pin (`src/snapshots/manifest.json`)
+  equals the provider's local default-branch HEAD, and clean.
 - YELLOW `snapshot-behind` — provider HEAD ahead of the pin (refresh pending);
-  `github-workflows` also `v1-retag-pending` (local `v1` tag != HEAD).
+  `github-workflows` also `v1-retag-pending` (local `v1` tag != HEAD or
+  missing). `snapshot-unverified` — the pin or local HEAD could not be
+  compared (missing pin entry, git unavailable).
 - RED `snapshot-integrity` — the pinned SHA is unreachable in provider history.
 
 **integrator**
 
-- GREEN — snapshot pins verify and the fix queue is empty.
-- YELLOW `fix-queue-pending` or `snapshot-behind`.
-- RED — snapshot integrity failure.
+- GREEN `pins-verified` — snapshot pins verify and the fix queue
+  (`docs/ecosystem-status.md` "Ecosystem Fix Queue") is empty. Pending =
+  `proposed`, `source-pr`, `ready-for-batch`, or `batched`; `shipped` and
+  `deferred` are settled.
+- YELLOW `fix-queue-pending`, `snapshot-behind`, or `snapshot-unverified`.
+- RED `snapshot-integrity` — any pin fails the reachability check.
 
 **skill-source**
 
-- GREEN — available, clean, catalog present. YELLOW `catalog-missing` or
-  dirty. RED — unavailable.
+- GREEN `catalog-present` — available, clean, `docs/skill-catalog.md` present.
+  YELLOW `catalog-missing` or dirty. RED — unavailable.
 
 ## Dev-port policy
 

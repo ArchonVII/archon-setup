@@ -36,7 +36,9 @@
       "command": "…",
       "startedAt": "ISO",
       "recordedAt": "ISO",
-      "live": true
+      "live": true,
+      "reservedBy": "repo-id | null",
+      "conflict": false
     }
   ],
   "repos": [
@@ -52,7 +54,13 @@
       "branch": "main",
       "dirty": false,
       "lastCommit": { "hash": "…", "committedAt": "ISO", "subject": "…" },
-      "worktrees": [{ "path": "…", "branch": "…" }]
+      "worktrees": [{ "path": "…", "branch": "…" }],
+      "maintenance": {
+        "status": "green|yellow|red",
+        "basis": "fast|audited",
+        "fastStatus": "not_onboarded|manifest_current|manifest_outdated|unknown_needs_audit|null",
+        "reasons": [{ "code": "manifest-current-unaudited", "detail": "Manifest current · run audit to verify" }]
+      }
     }
   ],
   "repoRegistry": {
@@ -72,7 +80,9 @@
         "lifecycle": "active",
         "healthTarget": true,
         "role": "skill-source",
-        "reason": null
+        "reason": null,
+        "reservedPorts": [],
+        "devServer": null
       }
     ]
   },
@@ -124,6 +134,21 @@
   `recordedAt` is when the registry entry was written — it may be stale. Treat port
   ownership as **timestamped evidence, not authority** (PIDs are reused; the registry
   can lag in both directions).
+- **`ports[].reservedBy` / `ports[].conflict`** join the repo registry's
+  `reservedPorts` onto the live port table (#215, spec §4.5). `reservedBy` is the
+  non-removed registry entry holding the port. `conflict` is `true` for a live
+  process on a forbidden port (5173) or a live process on a reserved port whose
+  recorded command line does not mention the reserving repo's path — that
+  attribution is command-string evidence, not authority, and fails closed (an
+  unattributable live process on a reserved port counts as a conflict).
+- **`repos[].maintenance`** is the per-repo maintenance assessment
+  (`src/contracts/schemas/repo-maintenance-status.schema.json`; rules in
+  [`docs/MAINTENANCE.md`](./MAINTENANCE.md)). `status` is the worst reason's
+  severity; `basis: "fast"` means cheap manifest/git signals only — a fast green
+  must always render as **"Manifest current · run audit to verify"** (the
+  `manifest-current-unaudited` reason detail), never a bare "Current". Repos
+  without a registry role (e.g. plain `--github-root` enumeration) carry
+  `maintenance: null`.
 - **`repoRegistry`** is the canonical active/inactive repository list for this
   ecosystem health surface. The built-in registry lives at
   `src/server/ecosystem/repoRegistry.json`; active entries are collected into
