@@ -5,7 +5,6 @@ import { auditPlan } from "./onboard/auditPlan.mjs";
 import { pickFolder } from "./lib/pickFolder.mjs";
 import { buildSnapshot } from "./ecosystem/snapshot.mjs";
 import { redactDeep } from "./ecosystem/redact.mjs";
-import { DEFAULT_REPO_REGISTRY_PATH } from "./ecosystem/repoRegistry.mjs";
 import { distributeGlobalUpdate, listGlobalUpdates } from "./globalUpdates.mjs";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -31,7 +30,7 @@ export const RPC = {
     const snap = await buildSnapshot({
       portRegistryPath: join(home, ".claude", "port-registry.json"),
       githubRoot: "C:\\GitHub",
-      repoRegistryPath: DEFAULT_REPO_REGISTRY_PATH,
+      // repoRegistryPath omitted → effective registry (seed + user overlay, #214)
       amberNode: /amber/i,
       anomaliesPath: join(home, ".claude", "anomalies.md"),
     });

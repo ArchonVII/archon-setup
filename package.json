@@ -31,6 +31,7 @@
   "files": [
     "bin/",
     "src/",
+    "config/",
     "install.ps1",
     "AGENTS.md",
     "CLAUDE.md",

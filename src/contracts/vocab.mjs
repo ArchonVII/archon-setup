@@ -44,3 +44,18 @@ export const RECOMMENDATION_REASONS = [
 // Distribution categories — #145 granular-distributor design (AGENTS ships
 // first; hooks/callers/baseline are M8–M10; skills is report-only M7).
 export const CATEGORIES = ["agents", "hooks", "callers", "baseline", "skills"];
+
+// Repo registry lifecycles — #214 ecosystem-registry design (spec §4.1):
+// "removed" is a tombstone kept for history, never an active health target.
+export const REPO_LIFECYCLES = ["active", "inactive", "removed"];
+
+// Repo registry roles — mirrors config/ecosystem-map.json roles plus the
+// consumer "application" role (spec §4.1; docs/MAINTENANCE.md duty tables).
+export const REPO_ROLES = [
+  "application",
+  "workflow-provider",
+  "baseline-provider",
+  "org-defaults-provider",
+  "ecosystem-health-hub",
+  "skill-source",
+];

@@ -11,6 +11,10 @@ make a change so it propagates correctly and **does not** clobber something mana
 > refs in [`src/snapshots/manifest.json`](../src/snapshots/manifest.json). Do not
 > hand-edit it — run `npm run update-ecosystem-overview`.
 
+This doc is the **map**. The companion **contract** — what "maintained" means per
+role, the green/yellow/red status rules, and the dev-port policy — is
+[`docs/MAINTENANCE.md`](./MAINTENANCE.md).
+
 ## When to read this
 
 Read (or be pointed at) this doc before modifying:

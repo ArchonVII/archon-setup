@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "repositories": [
+    {
+      "id": "example-app",
+      "name": "example-app",
+      "owner": "ArchonVII",
+      "repo": "example-app",
+      "path": "C:/GitHub/example-app",
+      "lifecycle": "active",
+      "healthTarget": true
+    }
+  ]
+}
