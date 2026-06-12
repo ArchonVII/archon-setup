@@ -63,7 +63,7 @@ The meta layer is **providers → integrator → consumers**, with a separate
 | [ArchonVII/github-workflows](https://github.com/ArchonVII/github-workflows) | `C:/GitHub/github-workflows` | workflow-provider | reusable workflow bodies (examples/*.yml); scripts/setup-repo.mjs (labels + branch protection) | consumed @v1; snapshot v1@af0ac6e |
 | [ArchonVII/repo-template](https://github.com/ArchonVII/repo-template) | `C:/GitHub/repo-template` | baseline-provider | AGENTS.md (canonical per-repo contract); .agent/ startup + check-map baseline; scripts/agent/ lifecycle helpers; scripts/doc-sweep/ | snapshot main@1a729fd |
 | [ArchonVII/archon-setup](https://github.com/ArchonVII/archon-setup) | `C:/GitHub/archon-setup` | ecosystem-health-hub | src/snapshots/ (SHA-pinned provider snapshots); src/registry/features.json (feature registry); src/server/globalUpdates.mjs (distributable AGENTS.md fixes); ecosystem-state.json health surface; config/ecosystem-map.json + docs/ecosystem-overview.md (this map) | not snapshotted (integrator/source) |
-| [ArchonVII/jma-skill-review](https://github.com/ArchonVII/jma-skill-review) | `C:/Users/josep/skills` | skill-source | shared/ (active shared skills); shared/agents/ (cross-tool personas, e.g. gamemaster); docs/skills-policy.md (canonical skills policy); docs/skill-catalog.md (skills index) | not snapshotted (integrator/source) |
+| [ArchonVII/jma-skill-review](https://github.com/ArchonVII/jma-skill-review) | `C:/Users/josep/skills` | skill-source | shared/ (active shared skills); shared/agents/ (cross-tool personas, e.g. gamemaster); docs/skills-policy.md (canonical skills policy); docs/skill-catalog.md (skills index); shared/skill-router/ (skill selection router) | not snapshotted (integrator/source) |
 
 _Provider snapshots captured 2026-06-11T23:04:06.616Z … 2026-06-11T23:04:06.712Z (source: `src/snapshots/manifest.json`)._
 <!-- END GENERATED: ecosystem-map -->
@@ -73,6 +73,7 @@ _Provider snapshots captured 2026-06-11T23:04:06.616Z … 2026-06-11T23:04:06.71
 | You want to change… | Edit here (source of truth) | Then |
 | --- | --- | --- |
 | Global/shared skill or persona behavior | `C:\Users\josep\skills\shared\<skill>` (repair target) — resolve the active path first per `docs/skills-policy.md` | Update `docs/skill-catalog.md`; PR via `ArchonVII/jma-skill-review` |
+| Skill inventory / selection | `C:\Users\josep\skills\docs\skill-catalog.md`; `C:\Users\josep\skills\shared\skill-router\` | Keep the catalog and router aligned; PR via `ArchonVII/jma-skill-review` |
 | Skill loading / repair / duplicate policy | `C:\Users\josep\skills\docs\skills-policy.md` | — |
 | Per-repo `AGENTS.md` contract | `C:\GitHub\repo-template\AGENTS.md` | Re-run `npm run refresh-snapshots` in archon-setup |
 | A reusable workflow body | `C:\GitHub\github-workflows\examples\*.yml` | Deliberate `@v1` retag, then refresh snapshot |

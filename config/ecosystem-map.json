@@ -93,7 +93,8 @@
         "shared/ (active shared skills)",
         "shared/agents/ (cross-tool personas, e.g. gamemaster)",
         "docs/skills-policy.md (canonical skills policy)",
-        "docs/skill-catalog.md (skills index)"
+        "docs/skill-catalog.md (skills index)",
+        "shared/skill-router/ (skill selection router)"
       ],
       "consumers": [
         "Claude/Codex/Gemini skill roots (junction aliases to shared/)",
