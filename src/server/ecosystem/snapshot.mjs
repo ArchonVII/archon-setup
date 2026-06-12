@@ -5,30 +5,74 @@ import { collectGovernance } from "./collectGovernance.mjs";
 import { collectAmber } from "./collectAmber.mjs";
 import { collectSignals } from "./collectSignals.mjs";
 import { collectEvents } from "./collectEvents.mjs";
+import { collectMaintenance } from "./collectMaintenance.mjs";
 import { activeRepoEntries, loadRepoRegistry } from "./repoRegistry.mjs";
 import { loadEffectiveRegistry } from "./registryStore.mjs";
+import { FORBIDDEN_PORTS } from "./portPolicy.mjs";
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
 
 const EMPTY_EVENTS = { id: "events", status: "green", detail: "0 events", count: 0, recent: [] };
 
+// Port attribution is command-string evidence, not authority: a live process
+// counts as the reserving repo's own when its recorded command line mentions
+// the repo's registered path (normalized for case and separators).
+function commandMentionsPath(command, repoPath) {
+  if (!command || !repoPath) return false;
+  const normalize = (s) => String(s).replaceAll("\\", "/").toLowerCase();
+  return normalize(command).includes(normalize(repoPath));
+}
+
+// Pure: annotate port rows with the registry's reservations (#215, spec §4.5).
+// reservedBy = the non-removed registry entry holding the port; conflict =
+// a live process on a forbidden port, or a live process on a reserved port
+// that cannot be attributed to the reserving repo (fail closed on unknown).
+export function joinPortReservations(portRows, registryRepositories) {
+  const reservations = new Map();
+  for (const entry of registryRepositories ?? []) {
+    if (entry.lifecycle === "removed") continue;
+    for (const port of entry.reservedPorts ?? []) {
+      if (!reservations.has(port)) reservations.set(port, entry);
+    }
+  }
+  return (portRows ?? []).map((row) => {
+    const owner = reservations.get(row.port) ?? null;
+    const conflict = Boolean(
+      row.live &&
+        (FORBIDDEN_PORTS.includes(row.port) || (owner && !commandMentionsPath(row.command, owner.path))),
+    );
+    return { ...row, reservedBy: owner?.id ?? null, conflict };
+  });
+}
+
 // Pure: combine collector results into the schemaVersion-1 snapshot object.
-// `events` is optional for backward compatibility — when absent it defaults to
-// an empty green section and is NOT counted in the summary (only a section a
-// collector actually produced contributes to the green/yellow/red tally).
-export function assembleSnapshot({ ports, repos, governance, amber, signals, events }, generatedAt) {
+// `events` and `maintenance` are optional for backward compatibility — when
+// absent, events defaults to an empty green section and repos pass through
+// without a maintenance join (only a section a collector actually produced
+// contributes to the green/yellow/red tally; maintenance is a per-repo field,
+// never a summary section).
+export function assembleSnapshot({ ports, repos, governance, amber, signals, events, maintenance }, generatedAt) {
   const checks = [ports, repos, governance, amber, signals, events].filter(Boolean);
   const summary = checks.reduce((acc, c) => {
     acc[c.status] = (acc[c.status] || 0) + 1;
     return acc;
   }, { green: 0, yellow: 0, red: 0 });
+
+  const registry = repos.registry ?? null;
+  const portRows = registry
+    ? joinPortReservations(ports.ports ?? [], registry.repositories ?? [])
+    : ports.ports ?? [];
+  const repoRows = maintenance?.byId
+    ? (repos.repos ?? []).map((row) => ({ ...row, maintenance: maintenance.byId[row.id] ?? null }))
+    : repos.repos ?? [];
+
   return {
     schemaVersion: 1,
     generatedAt,
     summary,
-    ports: ports.ports ?? [],
-    repos: repos.repos ?? [],
-    repoRegistry: repos.registry ?? null,
+    ports: portRows,
+    repos: repoRows,
+    repoRegistry: registry,
     governance: governance ?? { id: "governance", status: "yellow", detail: "not collected", repos: [] },
     amber,
     signals,
@@ -46,7 +90,8 @@ async function repoSignalPaths(githubRoot, registry) {
   }
 }
 
-// Thin I/O wrapper: runs all collectors in parallel and assembles.
+// Thin I/O wrapper: runs all collectors in parallel, joins the maintenance
+// engine over their results, and assembles.
 export async function buildSnapshot({ portRegistryPath, githubRoot, amberNode, anomaliesPath, repoRegistryPath } = {}) {
   // Per-repo signal files live under githubRoot: noticed.md at
   // <repo>/.claude/noticed.md and the event stream at <repo>/.archon/events.jsonl.
@@ -67,5 +112,6 @@ export async function buildSnapshot({ portRegistryPath, githubRoot, amberNode, a
     collectSignals(anomaliesPath, noticedPaths),
     collectEvents(eventsJsonlPaths),
   ]);
-  return assembleSnapshot({ ports, repos, governance, amber, signals, events }, new Date().toISOString());
+  const maintenance = await collectMaintenance({ repos: repos.repos ?? [], events, governance });
+  return assembleSnapshot({ ports, repos, governance, amber, signals, events, maintenance }, new Date().toISOString());
 }

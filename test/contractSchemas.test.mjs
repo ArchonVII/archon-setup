@@ -8,6 +8,10 @@ import { assertSchemaSupported, validate } from "../src/contracts/validate.mjs";
 import {
   CATEGORIES,
   CURRENT_STATES,
+  FAST_STATUSES,
+  MAINTENANCE_BASES,
+  MAINTENANCE_REASONS,
+  MAINTENANCE_STATUSES,
   OPERATION_ACTIONS,
   RAW_FILE_STATUSES,
   RAW_REPO_STATUSES,
@@ -179,6 +183,19 @@ const CONTRACTS = [
       "invalid-live-status-key.json": "repositories[0].status: unexpected additional property",
     },
   },
+  {
+    schema: "repo-maintenance-status.schema.json",
+    dir: "repo-maintenance-status",
+    invalid: {
+      "invalid-unknown-reason-code.json": 'reasons[0].code: value "vibes-off" not in enum',
+      // Every status carries at least one reason code (docs/MAINTENANCE.md).
+      "invalid-empty-reasons.json": "reasons: array shorter than minItems 1",
+      "invalid-missing-basis.json": 'missing required property "basis"',
+      // The honesty rule is structural: there is no display-label field to
+      // smuggle a bare "Current" through (#215, FRONTEND_REDESIGN_SPEC §5).
+      "invalid-bare-status-extra-key.json": "label: unexpected additional property",
+    },
+  },
 ];
 
 for (const contract of CONTRACTS) {
@@ -335,6 +352,13 @@ test("schema enums match the shared vocab module exactly", () => {
   const repoRegistry = schemaOf("repo-registry.schema.json");
   assert.deepEqual(repoRegistry.$defs.entry.properties.lifecycle.enum, REPO_LIFECYCLES);
   assert.deepEqual(repoRegistry.$defs.entry.properties.role.enum, REPO_ROLES);
+
+  // Repo maintenance status (#215)
+  const maintenance = schemaOf("repo-maintenance-status.schema.json");
+  assert.deepEqual(maintenance.properties.status.enum, MAINTENANCE_STATUSES);
+  assert.deepEqual(maintenance.properties.basis.enum, MAINTENANCE_BASES);
+  assert.deepEqual(maintenance.properties.fastStatus.enum, [...FAST_STATUSES, null]);
+  assert.deepEqual(maintenance.$defs.reason.properties.code.enum, MAINTENANCE_REASONS);
 });
 
 // ---- the shipped seed registry must satisfy its own contract ----

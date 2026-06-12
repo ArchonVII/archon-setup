@@ -86,6 +86,9 @@ export function summarizeRepoRegistry(registry) {
       healthTarget: entry.healthTarget,
       role: entry.role ?? null,
       reason: entry.reason ?? null,
+      // Port reservations surface in the snapshot ports join (#215, spec §4.5).
+      reservedPorts: entry.reservedPorts ?? [],
+      devServer: entry.devServer ?? null,
     })),
   };
 }

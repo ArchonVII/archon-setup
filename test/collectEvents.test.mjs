@@ -62,3 +62,18 @@ test("collectEvents tolerates missing files and returns a green empty section", 
   assert.equal(section.count, 0);
   assert.deepEqual(section.recent, []);
 });
+
+test("collectEvents reports per-source lastEventAt for the maintenance engine (#215)", async () => {
+  const a = await repoWithEvents("archon-ev-last-a-", [
+    { ts: "2026-06-01T00:00:00.000Z", type: "plan-start" },
+    { ts: "2026-06-03T00:00:00.000Z", type: "plan-end" },
+    { ts: "2026-06-02T00:00:00.000Z", type: "task" }, // out of order on purpose
+  ]);
+  const missing = join(tmpdir(), "nope-does-not-exist", ".archon", "events.jsonl");
+
+  const section = await collectEvents([a, missing]);
+
+  assert.equal(section.sources.length, 2);
+  assert.deepEqual(section.sources[0], { path: a, count: 3, lastEventAt: "2026-06-03T00:00:00.000Z" });
+  assert.deepEqual(section.sources[1], { path: missing, count: 0, lastEventAt: null });
+});

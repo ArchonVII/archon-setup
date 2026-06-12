@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archon-setup/contracts/repo-maintenance-status",
+  "title": "Per-repo maintenance assessment embedded in ecosystem-state.json repos[]: green/yellow/red rollup with reason codes plus the fast (manifest-only) status; #215 lane 2 of the ecosystem-registry rollout",
+  "type": "object",
+  "required": ["status", "basis", "fastStatus", "reasons"],
+  "additionalProperties": false,
+  "properties": {
+    "status": { "enum": ["green", "yellow", "red"] },
+    "basis": { "enum": ["fast", "audited"] },
+    "fastStatus": {
+      "enum": [
+        "not_onboarded",
+        "manifest_current",
+        "manifest_outdated",
+        "unknown_needs_audit",
+        null
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/reason" }
+    }
+  },
+  "$defs": {
+    "reason": {
+      "type": "object",
+      "required": ["code", "detail"],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "repo-unavailable",
+            "dirty-worktree",
+            "not-onboarded",
+            "manifest-outdated",
+            "workflow-drift",
+            "needs-audit",
+            "events-stale",
+            "manifest-current-unaudited",
+            "verified-current",
+            "drift-detected",
+            "missing-files",
+            "audit-blocked",
+            "audit-needs-review",
+            "snapshot-current",
+            "snapshot-behind",
+            "snapshot-integrity",
+            "snapshot-unverified",
+            "v1-retag-pending",
+            "pins-verified",
+            "fix-queue-pending",
+            "catalog-present",
+            "catalog-missing"
+          ]
+        },
+        "detail": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

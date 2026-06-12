@@ -59,3 +59,52 @@ export const REPO_ROLES = [
   "ecosystem-health-hub",
   "skill-source",
 ];
+
+// Fast (manifest-only) repo statuses — docs/FRONTEND_REDESIGN_SPEC.md §5.1;
+// computed by src/server/ecosystem/manifestStatus.mjs (#215 lane 2).
+export const FAST_STATUSES = [
+  "not_onboarded",
+  "manifest_current",
+  "manifest_outdated",
+  "unknown_needs_audit",
+];
+
+// Maintenance rollup statuses and bases — docs/MAINTENANCE.md status rules
+// (spec §4.2). "fast" = cheap local signals only; "audited" = a deep-audit
+// cache backed the verdict (the only basis allowed to claim verified truth).
+export const MAINTENANCE_STATUSES = ["green", "yellow", "red"];
+export const MAINTENANCE_BASES = ["fast", "audited"];
+
+// Closed maintenance reason vocabulary — every status carries reason codes
+// (docs/MAINTENANCE.md "Maintenance status"); severity per code is pinned in
+// src/server/ecosystem/maintenanceStatus.mjs and tested against this list.
+export const MAINTENANCE_REASONS = [
+  // all roles
+  "repo-unavailable",
+  "dirty-worktree",
+  // application — fast basis
+  "not-onboarded",
+  "manifest-outdated",
+  "workflow-drift",
+  "needs-audit",
+  "events-stale",
+  "manifest-current-unaudited",
+  // application — audited basis (VerifiedStatus, FRONTEND_REDESIGN_SPEC §5.2)
+  "verified-current",
+  "drift-detected",
+  "missing-files",
+  "audit-blocked",
+  "audit-needs-review",
+  // provider / integrator snapshot pins
+  "snapshot-current",
+  "snapshot-behind",
+  "snapshot-integrity",
+  "snapshot-unverified",
+  "v1-retag-pending",
+  // integrator
+  "pins-verified",
+  "fix-queue-pending",
+  // skill-source
+  "catalog-present",
+  "catalog-missing",
+];

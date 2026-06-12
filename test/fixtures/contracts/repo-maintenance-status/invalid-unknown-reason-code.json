@@ -1,0 +1,8 @@
+{
+  "status": "yellow",
+  "basis": "fast",
+  "fastStatus": null,
+  "reasons": [
+    { "code": "vibes-off", "detail": "not a closed-vocabulary code" }
+  ]
+}
