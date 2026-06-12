@@ -27,8 +27,12 @@ const BASELINE_FILES = [
   "CHANGELOG.md",
   ".github/dependabot.yml",
   ".github/PULL_REQUEST_TEMPLATE.md",
+  ".github/workflows/anomaly-triage.yml",
   ".github/workflows/repo-required-gate.yml",
   ".github/archon-setup.json",
+  "scripts/close/lib.mjs",
+  "scripts/close/scan-complete.mjs",
+  "scripts/close/ci-guard.mjs",
 ];
 
 // F19 / authority markers that the wizard scrubs out of generated hooks.

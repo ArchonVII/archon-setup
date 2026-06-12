@@ -10,6 +10,7 @@ Cross-tool contract for AI agents (Claude, Codex, Copilot, Gemini, etc.) working
 - `ARCHITECTURE.md` — directory ownership and cross-boundary rules (add when the layout outgrows obviousness)
 
 <!-- BEGIN MANAGED AGENT START MAP -->
+
 ## Agent Start Map
 
 Agents should not spend time rediscovering the process files. Start here:
@@ -21,14 +22,17 @@ Agents should not spend time rediscovering the process files. Start here:
 - Coordination: `.agent/coordination/README.md`
 - PR process: `.github/PULL_REQUEST_TEMPLATE.md`
 - Agent scripts: `scripts/agent/`
+- Close guards: `scripts/close/`
 - Doc sweep: `scripts/doc-sweep/`
 - Legacy plans: `docs/superpowers/plans/` is history only; do not add new implementation plans there.
+- Friction ledger: for a non-bug workflow hiccup, append one row to `.claude/friction.md`, do not fix it mid-task, and keep working; bugs/security or off-task defects still go to `.archon/anomalies-thispr.md`.
 
 If these files are missing or unclear, stop searching and run:
 
 ```text
 node <path-to-archon-setup>/bin/onboard.mjs <repo> --audit
 ```
+
 <!-- END MANAGED AGENT START MAP -->
 
 ## Workflow
@@ -93,7 +97,12 @@ Repo-owned helpers (zero-dep, `node`):
   whereas `agent:prune` finishes the delete and skips any single un-removable lane instead
   of aborting the batch. Idempotent.
 
-Optional capabilities (claims #14, close-scan #28) are reported as "not installed" when absent.
+Optional claim capabilities (#14) are reported as "not installed" when absent.
+
+Local delivery guards:
+
+- `npm run close:scan:complete -- --repo OWNER/REPO --pr <number> --changelog-decision "<fragment-or-no-changelog>" --findings-decision "<decision>"` — run after final local verification and before pushing a delivery update. It runs local required-gate parity checks and writes the ignored `.agent/close-scan/complete.json` marker bound to the exact current `HEAD`.
+- `npm run close:ci:guard -- --repo OWNER/REPO --pr <number>` — run after pushing the exact final `HEAD` and before `agent:close-preflight`, `agent:pr-ready`, or merge actions. It verifies the close-scan marker, PR body evidence, local branch/upstream identity, and the `repo-required-gate / decision` check. Missing or unavailable CI is a failure, not a pass.
 
 ## Owner Maintenance Lane
 
@@ -113,12 +122,13 @@ A narrow, named set of agent-local note files may be **added or modified** direc
 
 - `.claude/noticed.md` — per-repo observation log (the `Observations` convention)
 - `.claude/napkin.md` — per-repo curated runbook (the napkin skill, curated each session)
+- `.claude/friction.md` — per-repo structured friction ledger for non-bug workflow hiccups
 
 These need no `(owner)` scope — any Conventional Commit subject works (e.g. `chore(noticed): flush observations`), and the issue-ref requirement is waived when every staged path is a ledger. Renames, copies, and deletes of a ledger still require the normal branch/PR lane. The allowlist lives in `.githooks/scripts/owner-maintenance.sh` (`owner_maintenance_is_append_log`); extend it only for a file a documented convention mandates frequent low-ceremony writes to.
 
 ## Anomaly triage
 
-While working on a PR, you'll often notice off-task bugs, stale files, or tech debt that **don't belong in the current change** but shouldn't be lost. The convention: write a structured entry to `.archon/anomalies-thispr.md` on the PR branch. A reusable workflow (`anomaly-triage.yml` from [`ArchonVII/github-workflows`](https://github.com/ArchonVII/github-workflows)) reads that file on every PR event and routes each entry — related entries become sticky PR review comments, unrelated entries become new GitHub issues. Re-runs are idempotent (each entry carries a fingerprint).
+While working on a PR, you'll often notice off-task bugs, stale files, or tech debt that **don't belong in the current change** but shouldn't be lost. The convention: write a structured entry to `.archon/anomalies-thispr.md` on the PR branch. The caller workflow at `.github/workflows/anomaly-triage.yml` invokes [`ArchonVII/github-workflows`](https://github.com/ArchonVII/github-workflows) on every PR event and routes each entry — related entries become sticky PR review comments, unrelated entries become new GitHub issues. Re-runs are idempotent (each entry carries a fingerprint).
 
 ### Entry format
 
@@ -142,7 +152,7 @@ hypothesis you have. Imagine a different agent or human picking this up cold.>
 
 ### Rules
 
-- The file lives at `.archon/anomalies-thispr.md` on the PR branch. The `.archon/` directory should be in `.gitignore` **except** for this one file (use `!anomalies-thispr.md`).
+- The file lives at `.archon/anomalies-thispr.md` on the PR branch. `.gitignore` should ignore `.archon/*` local state while keeping `!.archon/anomalies-thispr.md` trackable.
 - Append rather than overwrite — multiple entries are normal across a PR's commits.
 - Don't summarize the anomaly in your PR description. The triage workflow does that automatically in its summary comment.
 - If you notice something while working but realize it _is_ part of the PR's scope, fix it directly in the PR — don't write an anomaly entry for work you're about to do anyway.
@@ -156,7 +166,7 @@ hypothesis you have. Imagine a different agent or human picking this up cold.>
 - **Unrelated** → opens a new GitHub issue in this repo (or `Downstream repo` if specified) with a back-link to this PR and the `auto-triaged` label.
 - Posts a single summary comment on the PR listing everything filed.
 
-Set this up by adding the caller workflow from [`github-workflows/examples/anomaly-triage.yml`](https://github.com/ArchonVII/github-workflows/blob/main/examples/anomaly-triage.yml) to `.github/workflows/`.
+Keep `.github/workflows/anomaly-triage.yml` aligned with [`github-workflows/examples/anomaly-triage.yml`](https://github.com/ArchonVII/github-workflows/blob/main/examples/anomaly-triage.yml).
 
 ## Verification
 
@@ -181,12 +191,24 @@ Before marking a PR ready for review:
 
 ## Local delivery guards
 
-If this repo adds a local close-scan, pre-push, or CI-delivery guard, keep the
-guard strict for pushes that would update the remote branch: verification and
-any close-scan completion marker must bind to the exact final `HEAD` after the
-last commit.
+This repo includes local close-scan delivery guards. Keep them strict for pushes
+that would update the remote branch: verification and the close-scan completion
+marker must bind to the exact final `HEAD` after the last commit.
 
-The guard should still allow true no-op finalization pushes, where local `HEAD`
+Run `npm run close:scan:complete -- --repo OWNER/REPO --pr <number>
+--changelog-decision "<fragment-or-no-changelog>" --findings-decision
+"<decision>"` after final local verification and before pushing. It writes the
+ignored `.agent/close-scan/complete.json` marker with changelog, findings, and
+verification decisions for the current `HEAD`.
+
+After pushing that exact `HEAD`, run `npm run close:ci:guard -- --repo
+OWNER/REPO --pr <number>` before `npm run agent:close-preflight`, `npm run
+agent:pr-ready`, or `gh pr merge`. The guard verifies local branch/upstream
+identity, PR body evidence, the fresh close-scan marker, and the
+`repo-required-gate / decision` check. If CI checks are missing, pending, or not
+green, the guard fails rather than pretending they ran.
+
+The guard still allows true no-op finalization pushes, where local `HEAD`
 already matches the upstream branch and no remote update or CI-triggering
 delivery action would occur. This keeps Copilot/Codex automatic cleanup pushes
 from failing after the branch is already synced, without creating a bypass for
@@ -202,8 +224,8 @@ real changes.
 - Use `close:review` for verify -> push -> PR body -> ready-for-review handoff.
 - Use `close:ship` only when the user explicitly says `/close`, `ship it`,
   `land it`, `merge to main`, or equivalent delivery language.
-- If this repo adds a local close-scan guard, run it before `git push`,
-  `npm run agent:pr-ready`, and `gh pr merge`.
+- Run `close:scan:complete` before a delivery `git push`, then run
+  `close:ci:guard` before `npm run agent:pr-ready` and `gh pr merge`.
 
 ## CHANGELOG
 

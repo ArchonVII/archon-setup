@@ -43,6 +43,8 @@ test("agent-workflow.anomaly-triage is a runtime feature, not coupled to repo-cr
   const triage = features.find((f) => f.id === "agent-workflow.anomaly-triage");
   assert.ok(triage, "anomaly-triage feature missing");
   assert.equal(triage.group, "agent-workflow");
+  assert.equal(triage.default, true);
+  assert.equal(triage.locked, true);
   assert.equal(triage.remoteRequirement, "runtime");
   assert.ok(!(triage.requires || []).includes("remote.github"));
   assert.ok(triage.creates.includes(".github/workflows/anomaly-triage.yml"));

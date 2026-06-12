@@ -120,7 +120,7 @@ test("onboard --audit reports warning-level startup readiness in JSON", async ()
   assert.equal(parsed.ok, true);
   assert.equal(parsed.mode, "audit");
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
-  assert.equal(parsed.audit.startupReadiness.baselineVersion, "2026-06-08-agent-start-map");
+  assert.equal(parsed.audit.startupReadiness.baselineVersion, "2026-06-12-close-scan-guard");
   assert.ok(parsed.audit.startupReadiness.missing.includes("docs/plans/README.md"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("AGENTS.md"));
   assert.ok(parsed.audit.startupReadiness.legacyDetected.includes("docs/superpowers/plans/"));
@@ -162,11 +162,15 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await writeFile(join(root, "package.json"), JSON.stringify({ name: "demo", scripts: { ...AGENT_SCRIPTS } }, null, 2) + "\n");
 
   for (const relativePath of [
+    ".github/workflows/anomaly-triage.yml",
     "scripts/agent/lib.mjs",
     "scripts/agent/start-task.mjs",
     "scripts/agent/status.mjs",
     "scripts/agent/prune.mjs",
     "scripts/agent/pr-body.mjs",
+    "scripts/close/lib.mjs",
+    "scripts/close/scan-complete.mjs",
+    "scripts/close/ci-guard.mjs",
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",
     "scripts/doc-sweep/sweep.mjs",
@@ -212,10 +216,13 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   for (const relativePath of [
     ".agent/startup-baseline.json",
     "docs/plans/README.md",
+    ".github/workflows/anomaly-triage.yml",
     "scripts/agent/lib.mjs",
     "scripts/agent/start-task.mjs",
     "scripts/agent/prune.mjs",
     "scripts/agent/pr-body.mjs",
+    "scripts/close/lib.mjs",
+    "scripts/close/scan-complete.mjs",
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",
     "scripts/doc-sweep/sweep.mjs",
@@ -225,6 +232,8 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   }
   await mkdir(join(root, "scripts", "agent"), { recursive: true });
   await writeFile(join(root, "scripts", "agent", "status.mjs"), "console.log('old status without startup map');\n", "utf8");
+  await mkdir(join(root, "scripts", "close"), { recursive: true });
+  await writeFile(join(root, "scripts", "close", "ci-guard.mjs"), "console.log('old close guard');\n", "utf8");
 
   const { stdout } = await execFileP(
     process.execPath,
@@ -236,6 +245,7 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/agent/status.mjs"));
+  assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/close/ci-guard.mjs"));
 });
 
 test("startup readiness reports stale same-version startup baseline contract", async () => {
@@ -268,11 +278,15 @@ test("startup readiness reports stale same-version startup baseline contract", a
 
   for (const relativePath of [
     "docs/plans/README.md",
+    ".github/workflows/anomaly-triage.yml",
     "scripts/agent/lib.mjs",
     "scripts/agent/start-task.mjs",
     "scripts/agent/status.mjs",
     "scripts/agent/prune.mjs",
     "scripts/agent/pr-body.mjs",
+    "scripts/close/lib.mjs",
+    "scripts/close/scan-complete.mjs",
+    "scripts/close/ci-guard.mjs",
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",
     "scripts/doc-sweep/sweep.mjs",

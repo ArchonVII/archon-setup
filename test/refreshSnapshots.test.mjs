@@ -10,6 +10,7 @@ import {
   expectedRef,
   formatDivergenceReport,
   refreshSnapshots,
+  SOURCES,
   validateSourceCheckout,
   verifySnapshots,
 } from "../scripts/refresh-snapshots.mjs";
@@ -75,6 +76,15 @@ const workflowSource = (localPath) => ({
   copyFrom: "examples",
   snapshotDir: "github-workflows",
   ref: "v1",
+});
+
+test("repo-template snapshot source includes startup-baseline workflow callers", () => {
+  const repoTemplate = SOURCES.find((source) => source.key === "repoTemplate");
+  assert.ok(repoTemplate, "repoTemplate snapshot source missing");
+  assert.ok(
+    repoTemplate.copyFiles.includes(".github/workflows/anomaly-triage.yml"),
+    "repo-template anomaly caller must be snapshotted because startup-baseline.json requires it"
+  );
 });
 
 test("expectedRef maps moving release refs to concrete local git refs", () => {

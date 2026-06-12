@@ -14,6 +14,9 @@ const SCRIPT_FILES = [
   "scripts/agent/status.mjs",
   "scripts/agent/prune.mjs",
   "scripts/agent/pr-body.mjs",
+  "scripts/close/lib.mjs",
+  "scripts/close/scan-complete.mjs",
+  "scripts/close/ci-guard.mjs",
 ];
 
 async function makeTarget() {
@@ -131,6 +134,8 @@ test("AGENT_SCRIPTS exports the current lifecycle entries", () => {
     "agent:prune": "node scripts/agent/prune.mjs",
     "agent:start-task": "node scripts/agent/start-task.mjs",
     "agent:pr-body": "node scripts/agent/pr-body.mjs",
+    "close:scan:complete": "node scripts/close/scan-complete.mjs",
+    "close:ci:guard": "node scripts/close/ci-guard.mjs",
   });
 });
 

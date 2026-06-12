@@ -9,14 +9,17 @@ import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { recordCreatedFile } from "../lib/manifest.mjs";
 
-// The repo-template agent worktree-lifecycle scripts (shipped upstream in
-// repo-template; snapshotted under src/snapshots/repo-template/scripts/agent/).
+// The repo-template agent worktree-lifecycle and close-guard scripts (shipped
+// upstream in repo-template and snapshotted under src/snapshots/repo-template).
 const SCRIPT_FILES = [
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",
   "scripts/agent/prune.mjs",
   "scripts/agent/pr-body.mjs",
+  "scripts/close/lib.mjs",
+  "scripts/close/scan-complete.mjs",
+  "scripts/close/ci-guard.mjs",
 ];
 
 // The npm script entries this task idempotently merges into the target's
@@ -27,6 +30,8 @@ export const AGENT_SCRIPTS = {
   "agent:prune": "node scripts/agent/prune.mjs",
   "agent:start-task": "node scripts/agent/start-task.mjs",
   "agent:pr-body": "node scripts/agent/pr-body.mjs",
+  "close:scan:complete": "node scripts/close/scan-complete.mjs",
+  "close:ci:guard": "node scripts/close/ci-guard.mjs",
 };
 
 async function readTargetPackageJson(targetPath) {
@@ -92,5 +97,5 @@ export async function verify(ctx) {
 }
 
 export function rollbackHint(ctx) {
-  return `Delete ${ctx.targetPath}/scripts/agent/ and remove the agent:* entries from package.json to retry.`;
+  return `Delete ${ctx.targetPath}/scripts/agent/ and ${ctx.targetPath}/scripts/close/, then remove the managed agent:* and close:* entries from package.json to retry.`;
 }

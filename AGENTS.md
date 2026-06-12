@@ -6,6 +6,7 @@ Cross-tool contract for AI agents (Claude, Codex, Copilot, Gemini, etc.) working
 
 <!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->
 <!-- BEGIN MANAGED AGENT START MAP -->
+
 ## Agent Start Map
 
 Agents should not spend time rediscovering the process files. Start here:
@@ -17,14 +18,17 @@ Agents should not spend time rediscovering the process files. Start here:
 - Coordination: `.agent/coordination/README.md`
 - PR process: `.github/PULL_REQUEST_TEMPLATE.md`
 - Agent scripts: `scripts/agent/`
+- Close guards: `scripts/close/`
 - Doc sweep: `scripts/doc-sweep/`
 - Legacy plans: `docs/superpowers/plans/` is history only; do not add new implementation plans there.
+- Friction ledger: for a non-bug workflow hiccup, append one row to `.claude/friction.md`, do not fix it mid-task, and keep working; bugs/security or off-task defects still go to `.archon/anomalies-thispr.md`.
 
 If these files are missing or unclear, stop searching and run:
 
 ```text
 node <path-to-archon-setup>/bin/onboard.mjs <repo> --audit
 ```
+
 <!-- END MANAGED AGENT START MAP -->
 <!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->
 

@@ -23,7 +23,9 @@
     "agent:status": "node scripts/agent/status.mjs",
     "agent:prune": "node scripts/agent/prune.mjs",
     "agent:start-task": "node scripts/agent/start-task.mjs",
-    "agent:pr-body": "node scripts/agent/pr-body.mjs"
+    "agent:pr-body": "node scripts/agent/pr-body.mjs",
+    "close:scan:complete": "node scripts/close/scan-complete.mjs",
+    "close:ci:guard": "node scripts/close/ci-guard.mjs"
   },
   "engines": {
     "node": ">=20"

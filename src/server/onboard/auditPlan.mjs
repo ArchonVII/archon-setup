@@ -297,7 +297,11 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
     case "docs/agent-process/doc-sweep.md":
       return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     default:
-      if (relativePath.startsWith("scripts/agent/") || relativePath.startsWith("scripts/doc-sweep/")) {
+      if (
+        relativePath.startsWith("scripts/agent/") ||
+        relativePath.startsWith("scripts/close/") ||
+        relativePath.startsWith("scripts/doc-sweep/")
+      ) {
         return (await fileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
       }
       return "present";

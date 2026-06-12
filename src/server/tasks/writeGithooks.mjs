@@ -25,6 +25,7 @@ export function scrubHookBody(body) {
     // repos. User-facing hook text references AGENTS.md (ships everywhere), so
     // nothing user-visible is lost.
     .replace(/# Authority: docs\/adr\/001-primary-checkout-worktree-policy\.md \(F19\)\.\n/g, "")
+    .replace(/# Authority: docs\/adr\/001-primary-checkout-worktree-policy\.md[^\n]*\n/g, "")
     .replace(/ \(ADR-001\)/g, "")
     .replace(/ \(F19\)/g, "")
     // test-checkout-role.sh cross-references the F18 guard by name in a comment;

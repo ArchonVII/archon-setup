@@ -89,6 +89,13 @@ stage_file "README.md" "unsafe"
 expect_failure "pre-commit-owner-unsafe" run_in_tmp "${pre_commit_hook}"
 
 reset_tmp_repo
+run_in_tmp git branch -m trunk
+run_in_tmp git update-ref refs/remotes/origin/trunk HEAD
+run_in_tmp git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/trunk
+stage_file "src/app.ts" "unsafe"
+expect_failure "pre-commit-owner-unsafe-custom-default" run_in_tmp "${pre_commit_hook}"
+
+reset_tmp_repo
 stage_file "docs/process/policy.md" "unsafe"
 expect_failure "pre-commit-owner-unsafe-docs-process" run_in_tmp "${pre_commit_hook}"
 
@@ -114,6 +121,18 @@ reset_tmp_repo
 stage_file ".claude/napkin.md" "runbook"
 expect_success "pre-commit-ledger-napkin-add" run_in_tmp "${pre_commit_hook}"
 expect_success "commit-msg-ledger-napkin-add" run_in_tmp "${commit_msg_hook}" "$(message_file "docs(napkin): seed runbook")"
+
+# The friction ledger is append-only in normal use: direct-main appends pass the
+# same named-ledger gate without needing an issue reference.
+reset_tmp_repo
+mkdir -p "${tmp}/repo/.claude"
+printf '<!-- usage -->\n| date | category | what happened | cost | suggested fix |\n|---|---|---|---|---|\n' > "${tmp}/repo/.claude/friction.md"
+run_in_tmp git add .claude/friction.md
+run_in_tmp git commit -m "chore: seed friction ledger (#1)" --no-verify >/dev/null
+printf '| 2026-06-12 | tooling | hook test rerun | rerun | keep the regression |\n' >> "${tmp}/repo/.claude/friction.md"
+run_in_tmp git add .claude/friction.md
+expect_success "pre-commit-ledger-friction-append" run_in_tmp "${pre_commit_hook}"
+expect_success "commit-msg-ledger-friction-append" run_in_tmp "${commit_msg_hook}" "$(message_file "chore(friction): log hook hiccup")"
 
 # A non-allowlisted .claude file is still blocked on main.
 reset_tmp_repo
