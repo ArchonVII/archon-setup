@@ -209,7 +209,7 @@ export function computeMaintenanceStatus({
   fastStatus = null,
   workflowDrift = null,
   events = null,
-  governance = null, // eslint-disable-line no-unused-vars -- reserved (spec §4.2 signature)
+  governance = null, // reserved: part of the spec §4.2 signature, no rule consumes it yet
   snapshotPin = null,
   auditCache = null,
   now,
