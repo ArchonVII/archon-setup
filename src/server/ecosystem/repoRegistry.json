@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-06-09",
-  "description": "Canonical local active repository registry for archon-setup ecosystem health.",
+  "updatedAt": "2026-06-12",
+  "description": "Canonical local active repository registry for archon-setup ecosystem health. Tracked seed; user edits live in the overlay (~/.archon/repo-registry.json) via src/server/ecosystem/registryStore.mjs. Port blocks are documented in docs/MAINTENANCE.md.",
   "repositories": [
     {
       "id": "archon",
@@ -11,7 +11,8 @@
       "path": "C:/GitHub/archon",
       "lifecycle": "active",
       "healthTarget": true,
-      "role": "application"
+      "role": "application",
+      "reservedPorts": [5182, 5183]
     },
     {
       "id": "archon-setup",
@@ -21,7 +22,8 @@
       "path": "C:/GitHub/archon-setup",
       "lifecycle": "active",
       "healthTarget": true,
-      "role": "ecosystem-health-hub"
+      "role": "ecosystem-health-hub",
+      "reservedPorts": [5180, 5181]
     },
     {
       "id": "github-workflows",
@@ -61,7 +63,8 @@
       "path": "C:/PythonProjects/pigafetta",
       "lifecycle": "active",
       "healthTarget": true,
-      "role": "application"
+      "role": "application",
+      "reservedPorts": [5184, 5185]
     },
     {
       "id": "jma-history",
@@ -71,7 +74,8 @@
       "path": "C:/jma/jma-history",
       "lifecycle": "active",
       "healthTarget": true,
-      "role": "application"
+      "role": "application",
+      "reservedPorts": [5186, 5187]
     },
     {
       "id": "skills-review",
@@ -91,7 +95,8 @@
       "path": "C:/jill/hudson-bend",
       "lifecycle": "active",
       "healthTarget": true,
-      "role": "application"
+      "role": "application",
+      "reservedPorts": [5188, 5189]
     },
     {
       "id": "jma-ui",
