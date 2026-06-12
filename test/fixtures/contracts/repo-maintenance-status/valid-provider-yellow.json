@@ -1,0 +1,9 @@
+{
+  "status": "yellow",
+  "basis": "fast",
+  "fastStatus": null,
+  "reasons": [
+    { "code": "snapshot-behind", "detail": "provider HEAD abc1234 is ahead of pinned def5678 (githubWorkflows)" },
+    { "code": "v1-retag-pending", "detail": "local v1 tag 1111111 != HEAD abc1234" }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "status": "green",
+  "basis": "fast",
+  "fastStatus": "manifest_current",
+  "label": "Current",
+  "reasons": [
+    { "code": "manifest-current-unaudited", "detail": "Manifest current · run audit to verify" }
+  ]
+}

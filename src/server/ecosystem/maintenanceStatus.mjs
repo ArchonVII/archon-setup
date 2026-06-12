@@ -141,6 +141,7 @@ function pinFindings(pin, findings) {
     });
     return;
   }
+  if (pin.pinnedSha === pin.localHead) return; // current — equality is self-evident
   if (pin.pinReachable !== true) {
     findings.push({
       code: "snapshot-unverified",
@@ -148,12 +149,10 @@ function pinFindings(pin, findings) {
     });
     return;
   }
-  if (pin.pinnedSha !== pin.localHead) {
-    findings.push({
-      code: "snapshot-behind",
-      detail: `provider HEAD ${shortSha(pin.localHead)} is ahead of pinned ${shortSha(pin.pinnedSha)} (${pin.key})`,
-    });
-  }
+  findings.push({
+    code: "snapshot-behind",
+    detail: `provider HEAD ${shortSha(pin.localHead)} is ahead of pinned ${shortSha(pin.pinnedSha)} (${pin.key})`,
+  });
 }
 
 function providerReasons({ snapshotPin }, findings) {

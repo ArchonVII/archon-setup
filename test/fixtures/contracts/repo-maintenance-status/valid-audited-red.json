@@ -1,0 +1,9 @@
+{
+  "status": "red",
+  "basis": "audited",
+  "fastStatus": "manifest_outdated",
+  "reasons": [
+    { "code": "audit-blocked", "detail": "deep audit blocked" },
+    { "code": "dirty-worktree", "detail": "primary checkout has uncommitted changes" }
+  ]
+}
