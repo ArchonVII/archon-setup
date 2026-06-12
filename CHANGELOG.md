@@ -32,6 +32,11 @@
 
 ### Fixed
 
+- Headless onboarding now includes runtime workflow caller files such as
+  `.github/workflows/repo-required-gate.yml` in the default local baseline, so
+  generated `.agent/check-map.yml` policy is backed by the workflow branch
+  protection expects before a newly onboarded repo is pushed. (#210)
+
 - The repo-template snapshot is reconverged with its manifest pin: the five
   #197 review fixes now come from the provider (repo-template#67) instead of
   the hand-edits #199 flagged, and the pin advanced `292dada` → `d74d23c` with

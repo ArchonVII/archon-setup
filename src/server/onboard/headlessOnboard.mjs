@@ -12,11 +12,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_MANIFEST = join(__dirname, "..", "..", "snapshots", "manifest.json");
 
 // The wizard's default Features screen pre-selects every `default` feature.
-// Headlessly we restrict to the ones that need no GitHub remote so the CLI is
-// deterministic and offline-friendly — exactly the "local baseline" the
-// existing-repo onboarding (e.g. jma-history during F19) needed.
+// Headlessly we exclude only API-target features that mutate GitHub. Runtime
+// workflow callers are local files, so include them to keep generated policy
+// artifacts backed by the workflows they reference.
 export function defaultLocalSelection(features) {
-  return features.filter((f) => f.default && !f.remoteRequirement).map((f) => f.id);
+  return features.filter((f) => f.default && f.remoteRequirement !== "api-target").map((f) => f.id);
 }
 
 // Snapshot provenance recorded into the generated `.github/archon-setup.json`.

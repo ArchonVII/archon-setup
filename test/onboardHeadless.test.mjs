@@ -27,6 +27,7 @@ const BASELINE_FILES = [
   "CHANGELOG.md",
   ".github/dependabot.yml",
   ".github/PULL_REQUEST_TEMPLATE.md",
+  ".github/workflows/repo-required-gate.yml",
   ".github/archon-setup.json",
 ];
 
@@ -78,13 +79,15 @@ async function withGitIdentity(fn) {
   }
 }
 
-test("defaultLocalSelection is every default feature with no remoteRequirement", async () => {
+test("defaultLocalSelection includes local files and runtime workflow callers", async () => {
   const { features } = await loadRegistry();
-  const expected = features.filter((f) => f.default && !f.remoteRequirement).map((f) => f.id);
+  const expected = features
+    .filter((f) => f.default && f.remoteRequirement !== "api-target")
+    .map((f) => f.id);
   assert.deepEqual(defaultLocalSelection(features), expected);
   assert.ok(expected.includes("foundation.hooks"));
   assert.ok(!expected.includes("remote.labels"), "api-target features are not in the local baseline");
-  assert.ok(!expected.includes("workflow.required-gate"), "runtime features are not in the local baseline");
+  assert.ok(expected.includes("workflow.required-gate"), "required gate caller is part of the local baseline");
 });
 
 test("dry-run builds a plan via the shared planner and writes nothing", async () => {
