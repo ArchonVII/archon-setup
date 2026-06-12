@@ -20,8 +20,10 @@ export function parseEventLog(jsonl) {
 }
 
 // Collect events across every repo's `.archon/events.jsonl`, returning the
-// most-recent-N globally (sorted by `ts` descending). Events are informational,
-// so the section is always green. Missing/unreadable files contribute nothing.
+// most-recent-N globally (sorted by `ts` descending) plus a per-source
+// `lastEventAt` (#215: the maintenance engine's events-stale input). Events
+// are informational, so the section is always green. Missing/unreadable files
+// contribute a zero-count source with `lastEventAt: null`.
 export async function collectEvents(eventsJsonlPaths = [], { recentN = 5 } = {}) {
   const read = async (p) => {
     try {
@@ -32,9 +34,16 @@ export async function collectEvents(eventsJsonlPaths = [], { recentN = 5 } = {})
   };
 
   const all = [];
+  const sources = [];
   for (const p of eventsJsonlPaths) {
     const { events } = parseEventLog(await read(p));
     all.push(...events);
+    // ISO-8601 timestamps order lexicographically; max ts = most recent.
+    const lastEventAt = events.reduce(
+      (latest, ev) => (ev.ts && (!latest || String(ev.ts) > latest) ? String(ev.ts) : latest),
+      null,
+    );
+    sources.push({ path: p, count: events.length, lastEventAt });
   }
   const recent = [...all]
     .sort((a, b) => String(b.ts).localeCompare(String(a.ts)))
@@ -46,5 +55,6 @@ export async function collectEvents(eventsJsonlPaths = [], { recentN = 5 } = {})
     detail: `${all.length} events`,
     count: all.length,
     recent,
+    sources,
   };
 }
