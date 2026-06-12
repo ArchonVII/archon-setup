@@ -5,6 +5,7 @@ import { collectGovernance } from "./collectGovernance.mjs";
 import { collectAmber } from "./collectAmber.mjs";
 import { collectSignals } from "./collectSignals.mjs";
 import { collectEvents } from "./collectEvents.mjs";
+import { collectFriction, noLedgerFrictionSummary } from "./collectFriction.mjs";
 import { collectMaintenance } from "./collectMaintenance.mjs";
 import { activeRepoEntries, loadRepoRegistry } from "./repoRegistry.mjs";
 import { loadEffectiveRegistry } from "./registryStore.mjs";
@@ -51,8 +52,8 @@ export function joinPortReservations(portRows, registryRepositories) {
 // without a maintenance join (only a section a collector actually produced
 // contributes to the green/yellow/red tally; maintenance is a per-repo field,
 // never a summary section).
-export function assembleSnapshot({ ports, repos, governance, amber, signals, events, maintenance }, generatedAt) {
-  const checks = [ports, repos, governance, amber, signals, events].filter(Boolean);
+export function assembleSnapshot({ ports, repos, governance, amber, signals, events, friction, maintenance }, generatedAt) {
+  const checks = [ports, repos, governance, amber, signals, events, friction].filter(Boolean);
   const summary = checks.reduce((acc, c) => {
     acc[c.status] = (acc[c.status] || 0) + 1;
     return acc;
@@ -65,19 +66,27 @@ export function assembleSnapshot({ ports, repos, governance, amber, signals, eve
   const repoRows = maintenance?.byId
     ? (repos.repos ?? []).map((row) => ({ ...row, maintenance: maintenance.byId[row.id] ?? null }))
     : repos.repos ?? [];
+  const repoRowsWithFriction = friction?.byPath
+    ? repoRows.map((row) => ({
+        ...row,
+        friction: row.path ? friction.byPath[join(row.path, ".claude", "friction.md")] ?? noLedgerFrictionSummary() : null,
+      }))
+    : repoRows;
 
-  return {
+  const snapshot = {
     schemaVersion: 1,
     generatedAt,
     summary,
     ports: portRows,
-    repos: repoRows,
+    repos: repoRowsWithFriction,
     repoRegistry: registry,
     governance: governance ?? { id: "governance", status: "yellow", detail: "not collected", repos: [] },
     amber,
     signals,
     events: events ?? EMPTY_EVENTS,
   };
+  if (friction) snapshot.friction = friction;
+  return snapshot;
 }
 
 async function repoSignalPaths(githubRoot, registry) {
@@ -103,15 +112,17 @@ export async function buildSnapshot({ portRegistryPath, githubRoot, amberNode, a
   const repoPaths = await repoSignalPaths(githubRoot, registry);
   const noticedPaths = repoPaths.map((repoPath) => join(repoPath, ".claude", "noticed.md"));
   const eventsJsonlPaths = repoPaths.map((repoPath) => join(repoPath, ".archon", "events.jsonl"));
+  const frictionMdPaths = repoPaths.map((repoPath) => join(repoPath, ".claude", "friction.md"));
 
-  const [ports, repos, governance, amber, signals, events] = await Promise.all([
+  const [ports, repos, governance, amber, signals, events, friction] = await Promise.all([
     collectPorts(portRegistryPath),
     collectRepos({ githubRoot, registry, repoRegistryPath }),
     collectGovernance(),
     collectAmber(amberNode),
     collectSignals(anomaliesPath, noticedPaths),
     collectEvents(eventsJsonlPaths),
+    collectFriction(frictionMdPaths),
   ]);
   const maintenance = await collectMaintenance({ repos: repos.repos ?? [], events, governance });
-  return assembleSnapshot({ ports, repos, governance, amber, signals, events, maintenance }, new Date().toISOString());
+  return assembleSnapshot({ ports, repos, governance, amber, signals, events, friction, maintenance }, new Date().toISOString());
 }

@@ -73,6 +73,56 @@ test("assembleSnapshot joins per-repo maintenance by id (#215)", () => {
   assert.deepEqual(snap.summary, { green: 5, yellow: 0, red: 0 });
 });
 
+test("assembleSnapshot joins per-repo friction by ledger path (#233)", () => {
+  const friction = {
+    id: "friction",
+    status: "green",
+    detail: "1 friction entries; 1 repos without ledgers",
+    count: 1,
+    noLedger: 1,
+    sources: [],
+    byPath: {
+      "C:\\GitHub\\with-ledger\\.claude\\friction.md": {
+        state: "present",
+        count: 1,
+        byCategory: { tooling: 1, docs: 0, skill: 0, hook: 0, ci: 0, env: 0 },
+        byCost: { rerun: 1, blocked: 0, "context-burn": 0, none: 0 },
+        lastEntryAt: "2026-06-12",
+        unparsed: 0,
+      },
+    },
+  };
+  const snap = assembleSnapshot({
+    ports: { id: "ports", status: "green", detail: "", ports: [] },
+    repos: {
+      id: "repos",
+      status: "green",
+      detail: "",
+      repos: [
+        { id: "with-ledger", name: "with-ledger", path: "C:\\GitHub\\with-ledger" },
+        { id: "without-ledger", name: "without-ledger", path: "C:\\GitHub\\without-ledger" },
+      ],
+      registry: { active: 2, inactive: 0, repositories: [] },
+    },
+    governance: { id: "governance", status: "green", detail: "", repos: [] },
+    amber: { id: "amber", status: "green", detail: "", online: true, lastSeen: "z" },
+    signals: { id: "signals", status: "green", detail: "", anomalies: 0, noticed: 0, recent: [] },
+    friction,
+  }, "2026-06-12T00:00:00.000Z");
+
+  assert.equal(snap.friction.count, 1);
+  assert.equal(snap.repos[0].friction.byCategory.tooling, 1);
+  assert.deepEqual(snap.repos[1].friction, {
+    state: "no-ledger",
+    count: 0,
+    byCategory: { tooling: 0, docs: 0, skill: 0, hook: 0, ci: 0, env: 0 },
+    byCost: { rerun: 0, blocked: 0, "context-burn": 0, none: 0 },
+    lastEntryAt: null,
+    unparsed: 0,
+  });
+  assert.equal(snap.summary.green, 6);
+});
+
 test("joinPortReservations annotates reservedBy and conflict (#215, spec §4.5)", () => {
   const registryRepos = [
     { id: "archon-setup", lifecycle: "active", path: "C:/GitHub/archon-setup", reservedPorts: [5180, 5181] },

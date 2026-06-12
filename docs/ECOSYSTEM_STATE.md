@@ -60,6 +60,14 @@
         "basis": "fast|audited",
         "fastStatus": "not_onboarded|manifest_current|manifest_outdated|unknown_needs_audit|null",
         "reasons": [{ "code": "manifest-current-unaudited", "detail": "Manifest current · run audit to verify" }]
+      },
+      "friction": {
+        "state": "present|no-ledger",
+        "count": 0,
+        "byCategory": { "tooling": 0, "docs": 0, "skill": 0, "hook": 0, "ci": 0, "env": 0 },
+        "byCost": { "rerun": 0, "blocked": 0, "context-burn": 0, "none": 0 },
+        "lastEntryAt": "YYYY-MM-DD|null",
+        "unparsed": 0
       }
     }
   ],
@@ -124,6 +132,18 @@
     "anomalies": 0,
     "noticed": 0,
     "recent": ["…"]
+  },
+  "friction": {
+    "id": "friction",
+    "status": "green",
+    "detail": "0 friction entries; 0 repos without ledgers; 0 unparsed rows",
+    "count": 0,
+    "byCategory": { "tooling": 0, "docs": 0, "skill": 0, "hook": 0, "ci": 0, "env": 0 },
+    "byCost": { "rerun": 0, "blocked": 0, "context-burn": 0, "none": 0 },
+    "lastEntryAt": null,
+    "unparsed": 0,
+    "noLedger": 0,
+    "sources": []
   }
 }
 ```
@@ -149,6 +169,13 @@
   `manifest-current-unaudited` reason detail), never a bare "Current". Repos
   without a registry role (e.g. plain `--github-root` enumeration) carry
   `maintenance: null`.
+- **`repos[].friction`** is the per-repo summary of `.claude/friction.md`
+  (`src/contracts/schemas/repo-friction.schema.json`). `state: "present"` means
+  the ledger was readable, even when `count` is zero. `state: "no-ledger"` means
+  there is no readable ledger signal; consumers must not treat that as "no
+  friction". Malformed table rows are counted in `unparsed` and never abort the
+  snapshot. The top-level `friction` section aggregates counts across collected
+  repo ledgers.
 - **`repoRegistry`** is the canonical active/inactive repository list for this
   ecosystem health surface. The built-in registry lives at
   `src/server/ecosystem/repoRegistry.json`; active entries are collected into
@@ -164,8 +191,8 @@
   `permissions` fields, and unavailable API data are recorded as `unknown` or
   `unavailable`; consumers must not infer a protected or unprotected state from those
   values.
-- **`summary`** counts collector statuses (ports, repos, governance, amber, signals),
-  not items.
+- **`summary`** counts collector statuses (ports, repos, governance, amber,
+  signals, events, friction when collected), not items.
 - Regeneration is wired **outside this repo** (a `~/.claude` SessionStart hook or a
   Windows Task Scheduler entry calling `npm --prefix C:\GitHub\archon-setup run snapshot`),
   keeping `archon-setup` itself portable.

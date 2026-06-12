@@ -1,0 +1,21 @@
+{
+  "state": "present",
+  "count": 1,
+  "byCategory": {
+    "tooling": 1,
+    "docs": 0,
+    "skill": 0,
+    "hook": 0,
+    "ci": 0,
+    "env": 0,
+    "other": 1
+  },
+  "byCost": {
+    "rerun": 1,
+    "blocked": 0,
+    "context-burn": 0,
+    "none": 0
+  },
+  "lastEntryAt": "2026-06-12",
+  "unparsed": 0
+}

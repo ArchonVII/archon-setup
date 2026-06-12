@@ -1,0 +1,20 @@
+{
+  "state": "missing",
+  "count": 0,
+  "byCategory": {
+    "tooling": 0,
+    "docs": 0,
+    "skill": 0,
+    "hook": 0,
+    "ci": 0,
+    "env": 0
+  },
+  "byCost": {
+    "rerun": 0,
+    "blocked": 0,
+    "context-burn": 0,
+    "none": 0
+  },
+  "lastEntryAt": null,
+  "unparsed": 0
+}
