@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assembleSnapshot } from "../src/server/ecosystem/snapshot.mjs";
+import { assembleSnapshot, joinPortReservations } from "../src/server/ecosystem/snapshot.mjs";
 
 test("assembleSnapshot builds summary and merges payloads", () => {
   const snap = assembleSnapshot({
@@ -38,6 +38,95 @@ test("assembleSnapshot carries an events section through and counts it in the su
   assert.equal(snap.events.count, 2);
   assert.equal(snap.events.recent[0].type, "plan-end");
   assert.equal(snap.summary.green, 6); // ports, repos, governance, amber, signals, events
+});
+
+test("assembleSnapshot joins per-repo maintenance by id (#215)", () => {
+  const maintenance = {
+    byId: {
+      x: {
+        status: "green",
+        basis: "fast",
+        fastStatus: "manifest_current",
+        reasons: [{ code: "manifest-current-unaudited", detail: "Manifest current · run audit to verify" }],
+      },
+    },
+  };
+  const snap = assembleSnapshot({
+    ports: { id: "ports", status: "green", detail: "", ports: [] },
+    repos: {
+      id: "repos",
+      status: "green",
+      detail: "",
+      repos: [{ id: "x", name: "x" }, { id: "y", name: "y" }],
+      registry: { active: 2, inactive: 0, repositories: [] },
+    },
+    governance: { id: "governance", status: "green", detail: "", repos: [] },
+    amber: { id: "amber", status: "green", detail: "", online: true, lastSeen: "z" },
+    signals: { id: "signals", status: "green", detail: "", anomalies: 0, noticed: 0, recent: [] },
+    maintenance,
+  }, "2026-06-12T00:00:00.000Z");
+
+  assert.equal(snap.repos[0].maintenance.status, "green");
+  assert.match(snap.repos[0].maintenance.reasons[0].detail, /run audit to verify/);
+  assert.equal(snap.repos[1].maintenance, null, "repos without an assessment carry an explicit null");
+  // Maintenance is a per-repo field, never a summary section.
+  assert.deepEqual(snap.summary, { green: 5, yellow: 0, red: 0 });
+});
+
+test("joinPortReservations annotates reservedBy and conflict (#215, spec §4.5)", () => {
+  const registryRepos = [
+    { id: "archon-setup", lifecycle: "active", path: "C:/GitHub/archon-setup", reservedPorts: [5180, 5181] },
+    { id: "old-repo", lifecycle: "removed", path: "C:/GitHub/old-repo", reservedPorts: [5190] },
+  ];
+  const rows = joinPortReservations([
+    // Reserved + live + command attributable to the reserving repo → no conflict.
+    { port: 5180, live: true, command: 'node "C:\\GitHub\\archon-setup\\node_modules\\vite\\bin\\vite.js"' },
+    // Reserved + live + foreign command → conflict (squatter).
+    { port: 5181, live: true, command: "python -m other_tool serve" },
+    // Forbidden Vite default in live use → conflict even unreserved.
+    { port: 5173, live: true, command: "node vite.js" },
+    // Reserved but dead recorded process → no conflict.
+    { port: 5180, live: false, command: "stale" },
+    // Unreserved machine tool → untouched by reservations.
+    { port: 8765, live: true, command: "python -m vision_gateway serve" },
+    // Tombstoned reservations do not reserve.
+    { port: 5190, live: true, command: "whatever" },
+  ], registryRepos);
+
+  assert.deepEqual(
+    rows.map((r) => [r.port, r.reservedBy, r.conflict]),
+    [
+      [5180, "archon-setup", false],
+      [5181, "archon-setup", true],
+      [5173, null, true],
+      [5180, "archon-setup", false],
+      [8765, null, false],
+      [5190, null, false],
+    ],
+  );
+});
+
+test("assembleSnapshot annotates ports when a registry is present", () => {
+  const snap = assembleSnapshot({
+    ports: { id: "ports", status: "green", detail: "", ports: [{ port: 5184, live: true, command: "elsewhere" }] },
+    repos: {
+      id: "repos",
+      status: "green",
+      detail: "",
+      repos: [],
+      registry: {
+        active: 1,
+        inactive: 0,
+        repositories: [{ id: "pigafetta", lifecycle: "active", path: "C:/PythonProjects/pigafetta", reservedPorts: [5184, 5185] }],
+      },
+    },
+    governance: { id: "governance", status: "green", detail: "", repos: [] },
+    amber: { id: "amber", status: "green", detail: "", online: true, lastSeen: "z" },
+    signals: { id: "signals", status: "green", detail: "", anomalies: 0, noticed: 0, recent: [] },
+  }, "2026-06-12T00:00:00.000Z");
+
+  assert.equal(snap.ports[0].reservedBy, "pigafetta");
+  assert.equal(snap.ports[0].conflict, true, "live process not attributable to the reserving repo");
 });
 
 test("assembleSnapshot tolerates a missing events section (backward compatible)", () => {
