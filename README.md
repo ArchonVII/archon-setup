@@ -84,7 +84,7 @@ npm run onboard -- <targetPath> [options]
 
 | Option             | Effect                                                                                                   |
 | ------------------ | -------------------------------------------------------------------------------------------------------- |
-| `--features a,b,c` | Override the selection (default: the local baseline — every default feature that needs no GitHub remote) |
+| `--features a,b,c` | Override the selection (default: the local baseline — every default feature except GitHub API mutations) |
 | `--owner <name>`   | GitHub owner/account; enables `CODEOWNERS` and the manifest owner                                        |
 | `--repo <name>`    | Repo name recorded in `.github/archon-setup.json`                                                        |
 | `--visibility <v>` | `private` (default) or `public`                                                                          |
@@ -93,7 +93,8 @@ npm run onboard -- <targetPath> [options]
 | `--json`           | Emit the result as JSON instead of human-readable text                                                   |
 
 `--dry-run` shows exactly what the wizard's Review screen would, and onboarding
-writes the same baseline — including the F19-scrubbed `.githooks/`. This is the
+writes the same baseline — including the F19-scrubbed `.githooks/` and local
+runtime workflow callers such as `repo-required-gate.yml`. This is the
 first-class version of the one-off script used to onboard existing repos during
 the F19 rollout.
 
