@@ -24,6 +24,10 @@ edits, and leaves for review, see
 [`docs/REPO_ONBOARDING_WALKTHROUGH.md`](./docs/REPO_ONBOARDING_WALKTHROUGH.md).
 For the current coordinator/review/close handoff, see
 [`docs/COORDINATOR_HANDOFF.md`](./docs/COORDINATOR_HANDOFF.md).
+For the current active-lane map and held decision gates, see
+[`docs/CURRENT_WORK.md`](./docs/CURRENT_WORK.md). The Agent OS roadmap promoted
+on 2026-06-12 lives at
+[`docs/plans/2026-06-12-os-roadmap.md`](./docs/plans/2026-06-12-os-roadmap.md).
 
 ## Quickstart
 
@@ -303,6 +307,10 @@ Existing agent-facing capabilities:
   `npm run update-ecosystem-overview` (`--check` is enforced by `npm test`).
   It is meta-repo only and is intentionally not linked from `repo-template`, so
   consumer repos stay coordination-isolated.
+- **Current work map** - `docs/CURRENT_WORK.md` is the single active-lane map
+  for the current Agent OS, document-policy, and registry/dashboard work. Update
+  it in the same PR whenever a lane merges, a lane issue is filed, or a held
+  decision gate changes.
 - **Headless existing-repo audit** - `npm run onboard -- <repo> --audit`
   reports planned baseline files as `present`, `missing`, or `drifted` without
   writing.

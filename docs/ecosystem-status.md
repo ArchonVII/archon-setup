@@ -1,8 +1,10 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-06-10 by Codex (plan/status closeout snapshot refresh #182 lane)_
+_Last updated: 2026-06-12 by Codex (current-work map and OS roadmap lane #230)_
 
 The canonical "what is the ecosystem doing right now?" document for the core ArchonVII source-of-truth repos and the active local health set. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
+
+For the single current-work map of active lanes, blocked-by relationships, held PRs, and decision gates, see [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md).
 
 ## Topology
 
@@ -19,9 +21,9 @@ Four core sibling repos under [@ArchonVII](https://github.com/ArchonVII) still d
 
 `src/server/ecosystem/repoRegistry.json` is the explicit local registry consumed by `npm run snapshot` and the Ecosystem screen before any fallback `C:\GitHub` root scan. Active entries are scanned into `ecosystem-state.json` `repos[]`; inactive entries remain visible in `repoRegistry.repositories[]` so agents know they are deliberately excluded.
 
-Active as of 2026-06-09: `archon`, `archon-setup`, `github-workflows`, `repo-template`, `.github`, `pigafetta`, `jma-history`, `skills-review` (`ArchonVII/jma-skill-review` at `C:\Users\josep\skills`), and `hudson-bend`.
+Active as of 2026-06-12: `archon`, `archon-setup`, `github-workflows`, `repo-template`, `.github`, `pigafetta`, `jma-history`, `skills-review` (`ArchonVII/jma-skill-review` at `C:\Users\josep\skills`), and `hudson-bend`.
 
-Inactive as of 2026-06-09: `jma-ui`.
+Inactive as of 2026-06-12: `jma-ui`.
 
 ## Rollout playbook
 
@@ -83,20 +85,29 @@ snapshot refresh or the change unblocks active work.
 
 | Repo               | Status        | Detail                                                                                                                                         |
 | ------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `github-workflows` | Clean on main | `v1` moved to `af0ac6e` on 2026-06-09 (#62), isolating skipped non-`ci:full` label runs from the real required-gate concurrency group. No open PRs. |
-| `archon-setup`     | In progress   | E2E roadmap in flight (umbrella #154): M0 (#167), M0.5 (#176), M1 (#177, `e2ff766`) merged. M2 decision flow (#158) is the active lane; M3 (#159) is unblocked and briefed for a parallel agent (issue comment). |
-| `repo-template`    | Clean on main | `origin/main` at `292dada`; snapshotted into `archon-setup` for plan/status closeout guidance. No open PRs.                                    |
-| `.github`          | Clean on main | `origin/main` at `1962f27`; snapshotted into `archon-setup`. No open PRs.                                                                      |
+| `archon-setup`     | In progress   | Ecosystem registry/dashboard epic [#212](https://github.com/ArchonVII/archon-setup/issues/212): lanes 0-2 merged on 2026-06-12 (`3fe47b0`, `4d00804`, `f67a081`); lanes 3-9 remain mapped in [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md). Document-policy epic [#223](https://github.com/ArchonVII/archon-setup/issues/223) is held by draft spec PR [#224](https://github.com/ArchonVII/archon-setup/pull/224). Agent OS epic [#229](https://github.com/ArchonVII/archon-setup/issues/229) Stage 0/1 lanes are filed; this status refresh is [#230](https://github.com/ArchonVII/archon-setup/issues/230). |
+| `repo-template`    | In progress   | OS Stage 0 wiring issues [#75](https://github.com/ArchonVII/repo-template/issues/75), [#76](https://github.com/ArchonVII/repo-template/issues/76), [#77](https://github.com/ArchonVII/repo-template/issues/77), and revived close-scan [#28](https://github.com/ArchonVII/repo-template/issues/28) are open and independent. Stage 1 friction ledger [#78](https://github.com/ArchonVII/repo-template/issues/78) waits for #75 because both edit `AGENTS.md`. Epic #212 lanes [#70](https://github.com/ArchonVII/repo-template/issues/70) and [#71](https://github.com/ArchonVII/repo-template/issues/71) are open. |
+| `github-workflows` | In progress   | README refresh PR [#66](https://github.com/ArchonVII/github-workflows/pull/66) is open; Dependabot actions PR [#68](https://github.com/ArchonVII/github-workflows/pull/68) is open with `vitest` failing. Document-policy lanes [#69](https://github.com/ArchonVII/github-workflows/issues/69) and [#70](https://github.com/ArchonVII/github-workflows/issues/70) are blocked by repo-template/doc-policy prerequisites. `@v1` retag remains owner-gated. |
+| `.github`          | In progress   | Profile refresh PR [#29](https://github.com/ArchonVII/.github/pull/29) is draft and awaiting owner feedback. Document-policy STARTER lane [#27](https://github.com/ArchonVII/.github/issues/27) waits for archon-setup spec PR #224. |
+| `jma-skill-review` | In progress   | Description lint gate PR [#180](https://github.com/ArchonVII/jma-skill-review/pull/180) remains open. PRs [#183](https://github.com/ArchonVII/jma-skill-review/pull/183) and [#184](https://github.com/ArchonVII/jma-skill-review/pull/184) merged on 2026-06-12. Project-intake skill lane [#178](https://github.com/ArchonVII/jma-skill-review/issues/178) waits for repo-template vision/doc-policy lanes. |
 
 ## In-flight PRs
 
-| Repo | PR | Purpose |
+| Repo | PR | Purpose / state |
 | --- | --- | --- |
-| `archon-setup` | `agent/codex/159-pr-lane` | M3 (#159): PR lane execution from M2 `ApplySet` (`refresh --intake ... --execute`) with temp worktree apply, JSONL run states, PR-only mode, and auto-merge eligibility gate. |
+| `archon-setup` | [#224](https://github.com/ArchonVII/archon-setup/pull/224) | Draft document-policy spec; owner-held gate for epic #223. |
+| `archon-setup` | [#209](https://github.com/ArchonVII/archon-setup/pull/209) | Dependabot actions update; checks green as of 2026-06-11. |
+| `archon-setup` | [#208](https://github.com/ArchonVII/archon-setup/pull/208) | Docs/contracts reconciliation; file list does not overlap this #230 lane. |
+| `github-workflows` | [#66](https://github.com/ArchonVII/github-workflows/pull/66) | README refresh; review path. |
+| `github-workflows` | [#68](https://github.com/ArchonVII/github-workflows/pull/68) | Dependabot actions update; `vitest` failing as of 2026-06-11. |
+| `.github` | [#29](https://github.com/ArchonVII/.github/pull/29) | Draft public profile refresh; awaiting owner feedback. |
+| `jma-skill-review` | [#180](https://github.com/ArchonVII/jma-skill-review/pull/180) | Description lint gate; review path. |
 
 ## F-roadmap
 
 Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects the original finding.
+
+Review note, 2026-06-12: no F-number status transition was identified during the #230 status refresh. Current execution focus is the Agent OS roadmap (#229), document-policy epic (#223), and the registry/dashboard epic (#212); update the rows below only when a tracked F-number issue changes state.
 
 | ID  | Title                                          | Status                                                 | Severity | Tracking issue                                         |
 | --- | ---------------------------------------------- | ------------------------------------------------------ | -------- | ------------------------------------------------------ |
@@ -128,6 +139,9 @@ Feature IDs come from the `docs/phase2/findings.md` numbering. Severity reflects
 
 ## Recently completed
 
+- **2026-06-12** — Ecosystem registry and maintenance rollout lanes 0-2 shipped in `archon-setup`: spec PR [#213](https://github.com/ArchonVII/archon-setup/pull/213) (`3fe47b0`), registry seed/overlay + port policy + maintenance contract PR [#222](https://github.com/ArchonVII/archon-setup/pull/222) (`4d00804`, closed [#214](https://github.com/ArchonVII/archon-setup/issues/214)), and maintenance status engine + fastStatus + snapshot wiring PR [#228](https://github.com/ArchonVII/archon-setup/pull/228) (`f67a081`, closed [#215](https://github.com/ArchonVII/archon-setup/issues/215)).
+- **2026-06-12** — Agent OS roadmap epic [#229](https://github.com/ArchonVII/archon-setup/issues/229) filed Stage 0/1 lanes; the owner-approved roadmap moved into this repo at [`docs/plans/2026-06-12-os-roadmap.md`](./plans/2026-06-12-os-roadmap.md) and the current-work map at [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md).
+- **2026-06-12** — `jma-skill-review` PRs [#183](https://github.com/ArchonVII/jma-skill-review/pull/183) and [#184](https://github.com/ArchonVII/jma-skill-review/pull/184) merged; PR [#180](https://github.com/ArchonVII/jma-skill-review/pull/180) remains open.
 - **2026-06-10** — Plan/status artifact closeout guidance shipped across
   `jma-history` #289, `jma-skill-review` #139, and `repo-template` #63. This
   lane refreshes the `archon-setup` repo-template snapshot to `292dada` and adds
