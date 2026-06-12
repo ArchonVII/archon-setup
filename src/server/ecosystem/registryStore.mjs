@@ -17,7 +17,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { validate } from "../../contracts/validate.mjs";
-import { validateEntryPorts } from "./portPolicy.mjs";
+import { FORBIDDEN_PORTS, validateEntryPorts } from "./portPolicy.mjs";
 import { writeAtomic } from "./writeAtomic.mjs";
 import {
   DEFAULT_REPO_REGISTRY_PATH,
@@ -72,13 +72,57 @@ async function assertValidRegistryDoc(doc, label) {
     const detail = result.errors.map((e) => `${e.path}: ${e.message}`).join("; ");
     throw codedError("registry-schema-invalid", `${label} failed repo-registry schema: ${detail}`);
   }
+  assertUniqueIds(doc.repositories ?? [], label);
+}
+
+// Cross-entry invariants the per-item JSON schema cannot express (#222 review
+// finding 2). Enforced on every load AND every write, so hand-edited seed or
+// overlay files fail closed instead of silently winning by Map-merge order.
+function assertUniqueIds(repositories, label) {
+  const seen = new Set();
+  for (const entry of repositories) {
+    if (seen.has(entry.id)) {
+      throw codedError("duplicate-repo-id", `${label}: duplicate registry id "${entry.id}"`);
+    }
+    seen.add(entry.id);
+  }
+}
+
+function assertEffectivePortInvariants(repositories, label) {
+  const owners = new Map();
+  for (const entry of repositories) {
+    if (entry.lifecycle === "removed") continue;
+    const ports = entry.reservedPorts ?? [];
+    for (const port of ports) {
+      if (FORBIDDEN_PORTS.includes(port)) {
+        throw codedError("port-forbidden", `${label}: "${entry.id}" reserves forbidden port ${port}`);
+      }
+      const owner = owners.get(port);
+      if (owner && owner !== entry.id) {
+        throw codedError("port-conflict", `${label}: port ${port} reserved by both "${owner}" and "${entry.id}"`);
+      }
+      owners.set(port, entry.id);
+    }
+    const primaryPort = entry.devServer?.primaryPort;
+    if (primaryPort !== undefined && !ports.includes(primaryPort)) {
+      throw codedError(
+        "dev-server-port-unreserved",
+        `${label}: "${entry.id}" devServer.primaryPort ${primaryPort} is not in its reservedPorts`,
+      );
+    }
+  }
 }
 
 // Ids defined by config/ecosystem-map.json form the protected meta-layer:
 // they cannot be removed and their owner/repo/role are locked (spec §4.1).
+// Fail closed: a missing/unreadable map refuses mutations rather than silently
+// disabling the locks (the npx-packaging failure mode from the #222 review).
 export async function metaLayerIds(mapPath = DEFAULT_ECOSYSTEM_MAP_PATH) {
   const map = await readJsonOrNull(mapPath);
-  return new Set((map?.repos ?? []).map((repo) => repo.id));
+  if (!map || !Array.isArray(map.repos)) {
+    throw codedError("ecosystem-map-missing", `ecosystem map not readable at ${mapPath}; refusing registry mutation`);
+  }
+  return new Set(map.repos.map((repo) => repo.id));
 }
 
 function pickWritable(entry) {
@@ -131,6 +175,7 @@ export async function loadEffectiveRegistry({
   registry.summary = summarize(registry.repositories);
   registry.overlayPath = overlayPath;
   registry.overlayPresent = Boolean(overlayRaw);
+  assertEffectivePortInvariants(registry.repositories, "effective registry");
   return registry;
 }
 

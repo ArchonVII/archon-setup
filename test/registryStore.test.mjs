@@ -228,3 +228,63 @@ test("metaLayerIds reads config/ecosystem-map.json (real file)", async () => {
     assert.ok(ids.has(id), `${id} should be a meta-layer id`);
   }
 });
+
+test("a missing ecosystem map fails closed: mutations refuse instead of unlocking (#222 review)", async () => {
+  const { dir, seedPath, overlayPath } = await makeFixture();
+  const missingMap = join(dir, "no-such-map.json");
+  await assert.rejects(
+    upsertOverlayEntry(appEntry(), { seedPath, overlayPath, mapPath: missingMap, now: NOW }),
+    (err) => err.code === "ecosystem-map-missing",
+  );
+  await assert.rejects(
+    removeOverlayEntry("app-one", { seedPath, overlayPath, mapPath: missingMap, now: NOW }),
+    (err) => err.code === "ecosystem-map-missing",
+  );
+});
+
+test("cross-entry invariants are enforced on load, not just on write (#222 review)", async () => {
+  // Duplicate ids inside one document.
+  const dupDir = await mkdtemp(join(tmpdir(), "registry-invariants-"));
+  const dupSeed = join(dupDir, "seed.json");
+  const doc = seedDoc();
+  doc.repositories.push({ ...doc.repositories[1] });
+  await writeFile(dupSeed, JSON.stringify(doc, null, 2));
+  await assert.rejects(
+    loadEffectiveRegistry({ seedPath: dupSeed, overlayPath: join(dupDir, "none.json") }),
+    (err) => err.code === "duplicate-repo-id",
+  );
+
+  // Hand-edited overlay conflicting with a seed reservation.
+  const { dir, seedPath } = await makeFixture();
+  const conflictOverlay = join(dir, "conflict-overlay.json");
+  await writeFile(conflictOverlay, JSON.stringify({
+    schemaVersion: 1,
+    repositories: [appEntry({ reservedPorts: [5180] })],
+  }, null, 2));
+  await assert.rejects(
+    loadEffectiveRegistry({ seedPath, overlayPath: conflictOverlay }),
+    (err) => err.code === "port-conflict",
+  );
+
+  // Hand-edited forbidden port.
+  const forbiddenOverlay = join(dir, "forbidden-overlay.json");
+  await writeFile(forbiddenOverlay, JSON.stringify({
+    schemaVersion: 1,
+    repositories: [appEntry({ reservedPorts: [5173] })],
+  }, null, 2));
+  await assert.rejects(
+    loadEffectiveRegistry({ seedPath, overlayPath: forbiddenOverlay }),
+    (err) => err.code === "port-forbidden",
+  );
+
+  // devServer.primaryPort outside the entry's reservation.
+  const unreservedOverlay = join(dir, "unreserved-overlay.json");
+  await writeFile(unreservedOverlay, JSON.stringify({
+    schemaVersion: 1,
+    repositories: [appEntry({ reservedPorts: [5190], devServer: { kind: "vite", primaryPort: 5191 } })],
+  }, null, 2));
+  await assert.rejects(
+    loadEffectiveRegistry({ seedPath, overlayPath: unreservedOverlay }),
+    (err) => err.code === "dev-server-port-unreserved",
+  );
+});

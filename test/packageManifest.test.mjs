@@ -35,6 +35,7 @@ const REQUIRED = [
   "src/registry/features.json",
   "src/registry/schema.json",
   "src/snapshots/manifest.json",
+  "config/ecosystem-map.json", // meta-layer lock source for the registry store (#214)
   "README.md",
   "LICENSE",
   "CHANGELOG.md",

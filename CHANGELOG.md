@@ -16,8 +16,12 @@
   (`repo-registry.schema.json`), per-repo dev-port reservations validated by
   the new port policy (5173 forbidden; standard range 5170–5999), and the
   maintenance contract is written down in `docs/MAINTENANCE.md` (per-role
-  duties + green/yellow/red rules). First lane of the ecosystem-registry
-  rollout (#212). (#214)
+  duties + green/yellow/red rules). Cross-entry invariants (unique ids, port
+  conflicts, forbidden ports, `devServer.primaryPort` membership) are enforced
+  on every load as well as every write, so hand-edited files fail closed;
+  `config/ecosystem-map.json` ships in the npm tarball and a missing map
+  refuses registry mutations instead of silently disabling the meta-layer
+  locks. First lane of the ecosystem-registry rollout (#212). (#214)
 
 - `archon-setup` now dogfoods the remaining foundation baseline it installs for
   consumers: managed `.githooks`, the actionlint caller, CODEOWNERS,
