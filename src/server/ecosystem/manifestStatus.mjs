@@ -51,12 +51,15 @@ export function compareManifestToPins(setupManifest, currentPins) {
 
 async function readJson(path) {
   // Distinguishes "file absent" (null) from "present but unreadable/invalid"
-  // (undefined) so the caller can map them to different statuses.
+  // (undefined) so the caller can map them to different statuses. Only a
+  // genuinely missing path means absent; EACCES/EISDIR and friends are
+  // "present but unreadable" and must NOT read as not_onboarded (Codex
+  // review, PR #228).
   let raw;
   try {
     raw = await readFile(path, "utf8");
-  } catch {
-    return null;
+  } catch (err) {
+    return err?.code === "ENOENT" || err?.code === "ENOTDIR" ? null : undefined;
   }
   try {
     return JSON.parse(raw);

@@ -85,6 +85,13 @@ test("computeFastStatus reads the repo manifest and the snapshot pins from disk"
   await writeFile(join(repoPath, ".github", "archon-setup.json"), "{not json", "utf8");
   assert.equal(await computeFastStatus(repoPath, options), "unknown_needs_audit");
 
+  // Unreadable-but-present manifest (here: a directory at the manifest path)
+  // is unknown_needs_audit, never not_onboarded (Codex review, PR #228).
+  await rm(join(repoPath, ".github", "archon-setup.json"));
+  await mkdir(join(repoPath, ".github", "archon-setup.json"));
+  assert.equal(await computeFastStatus(repoPath, options), "unknown_needs_audit");
+  await rm(join(repoPath, ".github", "archon-setup.json"), { recursive: true });
+
   // Unreadable pins file fails closed.
   await writeFile(join(repoPath, ".github", "archon-setup.json"), JSON.stringify(manifest(PINS)), "utf8");
   assert.equal(
