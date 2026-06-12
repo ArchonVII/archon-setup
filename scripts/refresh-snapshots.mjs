@@ -60,6 +60,7 @@ export const SOURCES = [
       ".github/PULL_REQUEST_TEMPLATE.md",
       ".github/dependabot.yml",
       ".github/workflows/actionlint.yml",
+      ".github/workflows/anomaly-triage.yml",
     ],
     copyDirs: [
       "examples",

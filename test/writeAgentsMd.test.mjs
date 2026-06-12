@@ -24,7 +24,7 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
   assert.match(agents, /Repo update log/);
   assert.match(agents, /Agent Start Map/);
   assert.match(updateLog, /# Repository Update Log/);
-  assert.equal(JSON.parse(startupBaseline).version, "2026-06-08-agent-start-map");
+  assert.equal(JSON.parse(startupBaseline).version, "2026-06-12-close-scan-guard");
   assert.match(plansReadme, /docs\/plans\/YYYY-MM-DD-<slug>\.md/);
   assert.deepEqual(
     ctx.manifest.createdFiles.map((file) => file.path),

@@ -67,6 +67,17 @@
   the update flow is provider PR → `refresh-snapshots` → `agent:self-apply` →
   commit, audited by the root↔snapshot parity test. (#201)
 
+### Changed
+
+- Refreshed the `repo-template` snapshot to `main` commit `7853175`, carrying
+  the Stage 0/1 Agent OS provider batch: anomaly triage caller (#75),
+  doc-orphan detector wiring (#76), default-branch hook repair (#77), local
+  close-scan guards (#28), and the friction ledger append-log contract (#78).
+  The lifecycle installer/self-apply path now carries `scripts/close/*` and
+  `close:*` package scripts, and anomaly triage is a locked default runtime
+  caller so freshly onboarded repos satisfy the refreshed startup baseline.
+  (#232)
+
 ### Fixed
 
 - Headless onboarding now includes runtime workflow caller files such as

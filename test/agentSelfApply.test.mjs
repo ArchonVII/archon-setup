@@ -12,11 +12,15 @@ import { REPO_TEMPLATE_SNAPSHOT, normalizeSnapshotText } from "../src/server/tas
 // doc-sweep task ships alongside its scripts.
 const BASELINE_FILES = [
   ".agent/startup-baseline.json",
+  ".github/workflows/anomaly-triage.yml",
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",
   "scripts/agent/prune.mjs",
   "scripts/agent/pr-body.mjs",
+  "scripts/close/lib.mjs",
+  "scripts/close/scan-complete.mjs",
+  "scripts/close/ci-guard.mjs",
   "scripts/doc-sweep/lib.mjs",
   "scripts/doc-sweep/git.mjs",
   "scripts/doc-sweep/sweep.mjs",
@@ -43,6 +47,8 @@ test("selfApply installs the full baseline into an empty target from the snapsho
   const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
   assert.equal(pkg.scripts["agent:status"], "node scripts/agent/status.mjs");
   assert.equal(pkg.scripts["agent:pr-body"], "node scripts/agent/pr-body.mjs");
+  assert.equal(pkg.scripts["close:scan:complete"], "node scripts/close/scan-complete.mjs");
+  assert.equal(pkg.scripts["close:ci:guard"], "node scripts/close/ci-guard.mjs");
 });
 
 test("selfApply is idempotent: a second run reports already-done and changes no bytes", async () => {
@@ -69,7 +75,12 @@ test("selfApply repairs drifted root copies back to the snapshot (post-refresh u
 
   // Simulate a stale root after a snapshot refresh changed the baseline: one
   // drifted file per task surface.
-  const drifted = [".agent/startup-baseline.json", "scripts/agent/lib.mjs", "scripts/doc-sweep/sweep.mjs"];
+  const drifted = [
+    ".agent/startup-baseline.json",
+    ".github/workflows/anomaly-triage.yml",
+    "scripts/agent/lib.mjs",
+    "scripts/doc-sweep/sweep.mjs",
+  ];
   for (const rel of drifted) {
     await writeFile(join(root, rel), "stale root copy\n", "utf8");
   }

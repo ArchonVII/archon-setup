@@ -276,7 +276,8 @@
     "id": "agent-workflow.anomaly-triage",
     "label": "Anomaly triage",
     "group": "agent-workflow",
-    "default": false,
+    "default": true,
+    "locked": true,
     "remoteRequirement": "runtime",
     "creates": [".github/workflows/anomaly-triage.yml"],
     "tasks": ["installWorkflow"],
@@ -467,11 +468,14 @@
       "scripts/agent/status.mjs",
       "scripts/agent/prune.mjs",
       "scripts/agent/pr-body.mjs",
+      "scripts/close/lib.mjs",
+      "scripts/close/scan-complete.mjs",
+      "scripts/close/ci-guard.mjs",
       "package.json"
     ],
     "tasks": ["writeAgentLifecycle"],
-    "beginnerDescription": "Installs the agent worktree-lifecycle scripts (agent:start-task / status / prune / pr-body) and wires their npm script entries.",
-    "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune,pr-body}.mjs from the repo-template snapshot and idempotently MERGES the managed agent:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison."
+    "beginnerDescription": "Installs the agent worktree-lifecycle and close-guard scripts, then wires their npm script entries.",
+    "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune,pr-body}.mjs and scripts/close/{lib,scan-complete,ci-guard}.mjs from the repo-template snapshot and idempotently MERGES the managed agent:* and close:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison."
   },
   {
     "id": "agent-workflow.doc-sweep",

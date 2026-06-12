@@ -1,6 +1,6 @@
 # Current Work - ArchonVII Agent OS
 
-Updated: 2026-06-12 by ArchonVII/archon-setup#230.
+Updated: 2026-06-12 by ArchonVII/archon-setup#232.
 
 Update rule: update this file in the same PR whenever a lane merges, a lane issue is filed, or a decision gate changes. Keep it as the single current-work map; detailed history belongs in the linked issue, PR, roadmap, or `docs/ecosystem-status.md`.
 
@@ -10,8 +10,9 @@ Roadmap source: [`docs/plans/2026-06-12-os-roadmap.md`](./plans/2026-06-12-os-ro
 
 - ArchonVII/archon-setup#212 lanes 0-2 shipped on 2026-06-12: spec PR ArchonVII/archon-setup#213, registry/port policy PR ArchonVII/archon-setup#222, maintenance status PR ArchonVII/archon-setup#228.
 - ArchonVII/archon-setup#223 is gated by draft spec PR ArchonVII/archon-setup#224. Start its implementation lanes only after that spec merges.
-- ArchonVII/archon-setup#229 Stage 0 and Stage 1 lanes are filed. Stage 0 has several independent repo-template fixes plus this status-doc lane.
-- `docs/ecosystem-overview.md` is generated and intentionally out of scope for this lane.
+- ArchonVII/archon-setup#229 Stage 0 provider lanes are merged: repo-template PRs #80 (#75), #79 (#76), #81 (#77), #82 (#28), and #83 (#78). This #232 lane refreshes the `repo-template` snapshot once across the merged batch.
+- ArchonVII/archon-setup#230 and #231 merged on 2026-06-12 via PRs #236 and #235.
+- `docs/ecosystem-overview.md` is generated from `config/ecosystem-map.json` and `src/snapshots/manifest.json`; this lane regenerates it after the snapshot refresh.
 
 ## Epic #212 - Registry, Maintenance, Dashboard
 
@@ -47,16 +48,16 @@ Roadmap source: [`docs/plans/2026-06-12-os-roadmap.md`](./plans/2026-06-12-os-ro
 
 | Stage / lane | Issue / PR | Status | Blocked by |
 | --- | --- | --- | --- |
-| Stage 0 - anomaly ledger path + caller | [ArchonVII/repo-template#75](https://github.com/ArchonVII/repo-template/issues/75) | Open; independent now | None |
-| Stage 0 - doc-orphan-detector cron caller | [ArchonVII/repo-template#76](https://github.com/ArchonVII/repo-template/issues/76) | Open; independent now | None |
-| Stage 0 - hook default-branch + docs/phase2 refs | [ArchonVII/repo-template#77](https://github.com/ArchonVII/repo-template/issues/77) | Open; independent now | None |
-| Stage 0 - close-scan local delivery guard | [ArchonVII/repo-template#28](https://github.com/ArchonVII/repo-template/issues/28) | Open; revived | None |
-| Stage 0 - current-work map + roadmap doc | [ArchonVII/archon-setup#230](https://github.com/ArchonVII/archon-setup/issues/230) | In progress in this branch | None |
-| Stage 0 - skills source in ecosystem map | [ArchonVII/archon-setup#231](https://github.com/ArchonVII/archon-setup/issues/231) | Open; independent now | None |
-| Stage 0 - provider snapshot refresh | [ArchonVII/archon-setup#232](https://github.com/ArchonVII/archon-setup/issues/232) | Open | [ArchonVII/repo-template#75](https://github.com/ArchonVII/repo-template/issues/75), [ArchonVII/repo-template#76](https://github.com/ArchonVII/repo-template/issues/76), [ArchonVII/repo-template#77](https://github.com/ArchonVII/repo-template/issues/77), [ArchonVII/repo-template#78](https://github.com/ArchonVII/repo-template/issues/78) |
-| Stage 1 - friction ledger contract | [ArchonVII/repo-template#78](https://github.com/ArchonVII/repo-template/issues/78) | Open | [ArchonVII/repo-template#75](https://github.com/ArchonVII/repo-template/issues/75) because both edit AGENTS.md |
-| Stage 1 - friction collector | [ArchonVII/archon-setup#233](https://github.com/ArchonVII/archon-setup/issues/233) | Open | [ArchonVII/repo-template#78](https://github.com/ArchonVII/repo-template/issues/78); coordinate with registry RPC lane [ArchonVII/archon-setup#216](https://github.com/ArchonVII/archon-setup/issues/216) |
-| Stage 1 - friction-ledger feature entry | [ArchonVII/archon-setup#234](https://github.com/ArchonVII/archon-setup/issues/234) | Open | [ArchonVII/repo-template#78](https://github.com/ArchonVII/repo-template/issues/78); coordinate with snapshot lane [ArchonVII/archon-setup#232](https://github.com/ArchonVII/archon-setup/issues/232) |
+| Stage 0 - anomaly ledger path + caller | [ArchonVII/repo-template#75](https://github.com/ArchonVII/repo-template/issues/75) / [PR #80](https://github.com/ArchonVII/repo-template/pull/80) | Merged on 2026-06-12 (`5e7ff7a`) | None |
+| Stage 0 - doc-orphan-detector cron caller | [ArchonVII/repo-template#76](https://github.com/ArchonVII/repo-template/issues/76) / [PR #79](https://github.com/ArchonVII/repo-template/pull/79) | Merged on 2026-06-12 (`996f69e`) | None |
+| Stage 0 - hook default-branch + docs/phase2 refs | [ArchonVII/repo-template#77](https://github.com/ArchonVII/repo-template/issues/77) / [PR #81](https://github.com/ArchonVII/repo-template/pull/81) | Merged on 2026-06-12 (`9c6c0e8`) | None |
+| Stage 0 - close-scan local delivery guard | [ArchonVII/repo-template#28](https://github.com/ArchonVII/repo-template/issues/28) / [PR #82](https://github.com/ArchonVII/repo-template/pull/82) | Merged on 2026-06-12 (`4c2ff73`) | None |
+| Stage 0 - current-work map + roadmap doc | [ArchonVII/archon-setup#230](https://github.com/ArchonVII/archon-setup/issues/230) / [PR #236](https://github.com/ArchonVII/archon-setup/pull/236) | Merged on 2026-06-12 (`b15e245`) | None |
+| Stage 0 - skills source in ecosystem map | [ArchonVII/archon-setup#231](https://github.com/ArchonVII/archon-setup/issues/231) / [PR #235](https://github.com/ArchonVII/archon-setup/pull/235) | Merged on 2026-06-12 (`b338224`) | None |
+| Stage 0 - provider snapshot refresh | [ArchonVII/archon-setup#232](https://github.com/ArchonVII/archon-setup/issues/232) | In progress in this branch; provider blockers satisfied; `repoTemplate` pin refreshed to `7853175` | None |
+| Stage 1 - friction ledger contract | [ArchonVII/repo-template#78](https://github.com/ArchonVII/repo-template/issues/78) / [PR #83](https://github.com/ArchonVII/repo-template/pull/83) | Merged on 2026-06-12 (`7853175`) | None |
+| Stage 1 - friction collector | [ArchonVII/archon-setup#233](https://github.com/ArchonVII/archon-setup/issues/233) | Open; provider contract merged | Coordinate with registry RPC lane [ArchonVII/archon-setup#216](https://github.com/ArchonVII/archon-setup/issues/216) |
+| Stage 1 - friction-ledger feature entry | [ArchonVII/archon-setup#234](https://github.com/ArchonVII/archon-setup/issues/234) | Open; provider contract merged | Snapshot lane [ArchonVII/archon-setup#232](https://github.com/ArchonVII/archon-setup/issues/232) must merge first |
 | Stage 1 - weekly page-gm digest | No code issue | Ritual after collection starts | Friction data from Stage 1 lanes |
 
 Stages 2-4 from the roadmap are not filed yet; file those after Stage 1 friction data ranks what process data to encode first.

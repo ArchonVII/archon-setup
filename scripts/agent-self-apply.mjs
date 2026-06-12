@@ -24,6 +24,7 @@ const MODULE_PATH = fileURLToPath(import.meta.url);
 export const ROOT = join(dirname(MODULE_PATH), "..");
 
 const STARTUP_BASELINE = ".agent/startup-baseline.json";
+const ANOMALY_TRIAGE_WORKFLOW = ".github/workflows/anomaly-triage.yml";
 
 // The startup baseline rides the same installer primitives the feature tasks
 // use; writeAgentsMd owns it for consumers, but its composite scope (managed
@@ -35,12 +36,20 @@ const startupBaselineTask = {
   verify: (ctx) => verifyAllMatch(ctx, [STARTUP_BASELINE]),
 };
 
+const anomalyTriageWorkflowTask = {
+  name: "anomaly-triage-workflow",
+  check: (ctx) => checkAllMatch(ctx, [ANOMALY_TRIAGE_WORKFLOW]),
+  apply: async (ctx) => [await writeSnapshotFile(ctx, ANOMALY_TRIAGE_WORKFLOW, { overwrite: true })],
+  verify: (ctx) => verifyAllMatch(ctx, [ANOMALY_TRIAGE_WORKFLOW]),
+};
+
 // Exactly the surface test/agentLifecycleScripts.test.mjs pins byte-identical
 // to the snapshot, plus the agent:* package.json entries the lifecycle task
 // merges. Each entry is an installer task module: check/apply/verify.
 export const TASKS = [
   { name: "agent-lifecycle", check: agentLifecycle.check, apply: agentLifecycle.apply, verify: agentLifecycle.verify },
   { name: "doc-sweep", check: docSweep.check, apply: docSweep.apply, verify: docSweep.verify },
+  anomalyTriageWorkflowTask,
   startupBaselineTask,
 ];
 

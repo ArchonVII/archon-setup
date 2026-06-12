@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-12 - Repo-template Stage 0/1 snapshot refresh
+
+- **Issue/PR:** #232 / pending
+- **Branch:** agent/codex/232-chore-snapshots-refresh-provider-snapshots-once
+- **Changed paths:** AGENTS.md, CHANGELOG.md, docs/CURRENT_WORK.md, docs/ecosystem-overview.md, docs/ecosystem-status.md, docs/repo-update-log.md, .agent/startup-baseline.json, .github/workflows/anomaly-triage.yml, package.json, scripts/agent-self-apply.mjs, scripts/agent/**, scripts/close/**, scripts/doc-sweep/**, scripts/refresh-snapshots.mjs, src/registry/features.json, src/server/onboard/auditPlan.mjs, src/server/tasks/writeAgentLifecycle.mjs, src/server/tasks/writeGithooks.mjs, src/snapshots/manifest.json, src/snapshots/repo-template/**, test/**
+- **What changed:** Refreshed the `repoTemplate` snapshot from `1a729fd3dc0ffb00fea464291d2038a56817d4cc` to `78531751357787eeb28fe9a96f5a48c2faaa446c`, carrying repo-template PRs #80/#79/#81/#82/#83 for issues #75/#76/#77/#28/#78 in one pass. Expanded the repo-template snapshot allowlist to include `.github/workflows/anomaly-triage.yml` because the refreshed startup baseline requires it, extended the lifecycle installer/self-apply path to carry `scripts/close/*` and `close:*` package scripts, made anomaly triage a locked default runtime caller, and updated the root managed start map/status docs. The second refresh used `--accept-snapshot-divergence` only to recapture the now-expected anomaly workflow file that the previous allowlist omitted.
+- **Verification:** `npm run snapshots:verify` passed for githubWorkflows @ `af0ac6e` (18 files), repoTemplate @ `7853175` (85 files), and orgDefaults @ `1962f27` (1 file). `npm run agent:self-apply -- --check` reported already-done for `agent-lifecycle`, `doc-sweep`, `anomaly-triage-workflow`, and `startup-baseline`. `npm test` passed 566 tests (564 pass, 2 skipped). `git diff --check` passed with Windows LF-to-CRLF normalization warnings only. `node bin\onboard.mjs C:\GitHub\archon-setup-232-chore-snapshots-refresh-provider-snapshots-once --audit --json` passed with startupReadiness `warning`, no missing/stale startup paths, and only the intentional `docs/superpowers/plans/` legacy archive warning.
+- **Propagation:** completed `repo-template` provider snapshot refresh for the merged Stage 0/1 batch; no fleet distribution in this lane.
+
 ## 2026-06-11 - Foundation self-onboard
 
 - **Issue/PR:** #202 / pending
