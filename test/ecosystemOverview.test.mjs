@@ -112,3 +112,27 @@ test("ecosystem-map.json lists only meta-layer repos", async () => {
   }
   assert.ok(roles.has("ecosystem-health-hub") && roles.has("skill-source"));
 });
+
+test("skill-source map entry points agents at the catalog and router", async () => {
+  const map = JSON.parse(await readFile(join(repoRoot, "config", "ecosystem-map.json"), "utf8"));
+  const skillRepo = map.repos.find((r) => r.id === "skills-review");
+  assert.ok(skillRepo, "skills-review must be listed in the ecosystem map");
+  assert.equal(skillRepo.role, "skill-source");
+  assert.equal(skillRepo.localPath, "C:/Users/josep/skills");
+  assert.ok(
+    skillRepo.owns.includes("docs/skill-catalog.md (skills index)"),
+    "skills-review must expose the skill catalog as a source of truth",
+  );
+  assert.ok(
+    skillRepo.owns.includes("shared/skill-router/ (skill selection router)"),
+    "skills-review must expose the skill-router selection surface",
+  );
+});
+
+test("change-routing table answers where skill inventory and selection live", async () => {
+  const doc = await readFile(join(repoRoot, "docs", "ecosystem-overview.md"), "utf8");
+  const row = doc.split(/\r?\n/).find((line) => line.startsWith("| Skill inventory / selection |"));
+  assert.ok(row, "overview must include a Skill inventory / selection change-routing row");
+  assert.match(row, /C:\\Users\\josep\\skills\\docs\\skill-catalog\.md/);
+  assert.match(row, /C:\\Users\\josep\\skills\\shared\\skill-router\\/);
+});
