@@ -161,6 +161,56 @@ test("meta-layer ids: owner/repo/role locked, removal refused either way", async
     removeOverlayEntry("hub", { hard: true, seedPath, overlayPath, mapPath, now: NOW }),
     (err) => err.code === "meta-layer-locked",
   );
+
+  // With a legit overlay copy of "hub" in place, the lock must still compare
+  // against the SEED, not the overlay copy (#222 review thread 2).
+  await assert.rejects(
+    upsertOverlayEntry(
+      appEntry({ id: "hub", repo: "hub", role: "application", path: "C:/GitHub/hub", reservedPorts: [5180, 5181] }),
+      { seedPath, overlayPath, mapPath, now: NOW },
+    ),
+    (err) => err.code === "meta-layer-locked",
+  );
+});
+
+test("a hand-edited overlay cannot spoof or tombstone a meta-layer repo (#222 review)", async () => {
+  const { dir, seedPath, mapPath } = await makeFixture();
+
+  // Overlay redefines a locked identity field for a protected id.
+  const spoofOverlay = join(dir, "spoof-overlay.json");
+  await writeFile(spoofOverlay, JSON.stringify({
+    schemaVersion: 1,
+    repositories: [{
+      id: "hub", name: "hub", owner: "EvilOrg", repo: "hub", path: "C:/GitHub/hub",
+      lifecycle: "active", healthTarget: true, role: "ecosystem-health-hub",
+    }],
+  }, null, 2));
+  await assert.rejects(
+    loadEffectiveRegistry({ seedPath, overlayPath: spoofOverlay, mapPath }),
+    (err) => err.code === "meta-layer-locked",
+  );
+  // And a later upsert repeating the spoofed fields cannot slip through either.
+  await assert.rejects(
+    upsertOverlayEntry(
+      appEntry({ id: "hub", repo: "hub", owner: "EvilOrg", role: "ecosystem-health-hub", path: "C:/GitHub/hub" }),
+      { seedPath, overlayPath: spoofOverlay, mapPath, now: NOW },
+    ),
+    (err) => err.code === "meta-layer-locked",
+  );
+
+  // Overlay tombstones a protected id.
+  const tombOverlay = join(dir, "tomb-overlay.json");
+  await writeFile(tombOverlay, JSON.stringify({
+    schemaVersion: 1,
+    repositories: [{
+      id: "hub", name: "hub", owner: "ArchonVII", repo: "hub", path: "C:/GitHub/hub",
+      lifecycle: "removed", healthTarget: false, role: "ecosystem-health-hub", removedAt: "2026-06-12",
+    }],
+  }, null, 2));
+  await assert.rejects(
+    loadEffectiveRegistry({ seedPath, overlayPath: tombOverlay, mapPath }),
+    (err) => err.code === "meta-layer-locked",
+  );
 });
 
 test("removal: soft tombstone for seed entries, hard delete only for overlay-only entries", async () => {

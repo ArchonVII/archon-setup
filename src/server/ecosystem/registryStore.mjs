@@ -151,13 +151,39 @@ function summarize(repositories) {
 export async function loadEffectiveRegistry({
   seedPath = DEFAULT_REPO_REGISTRY_PATH,
   overlayPath = defaultOverlayPath(),
+  mapPath = DEFAULT_ECOSYSTEM_MAP_PATH,
 } = {}) {
   const seedRaw = await readJsonOrNull(seedPath);
   if (!seedRaw) throw codedError("registry-seed-missing", `repo registry seed not found at ${seedPath}`);
   await assertValidRegistryDoc(seedRaw, `seed ${seedPath}`);
 
   const overlayRaw = await readJsonOrNull(overlayPath);
-  if (overlayRaw) await assertValidRegistryDoc(overlayRaw, `overlay ${overlayPath}`);
+  if (overlayRaw) {
+    await assertValidRegistryDoc(overlayRaw, `overlay ${overlayPath}`);
+    // Meta-layer lock at the load seam (#222 review): the tracked SEED is the
+    // lock source, never the overlay — a hand-edited overlay that redefines a
+    // protected repo's identity must fail closed here, not become the baseline
+    // every consumer (and a later upsert comparison) silently trusts.
+    const protectedIds = await metaLayerIds(mapPath);
+    for (const entry of overlayRaw.repositories) {
+      if (!protectedIds.has(entry.id)) continue;
+      const seedEntry = seedRaw.repositories.find((e) => e.id === entry.id);
+      if (!seedEntry) {
+        throw codedError("meta-layer-locked", `overlay ${overlayPath}: meta-layer id "${entry.id}" has no seed entry`);
+      }
+      if (entry.lifecycle === "removed") {
+        throw codedError("meta-layer-locked", `overlay ${overlayPath}: meta-layer repo "${entry.id}" cannot be tombstoned`);
+      }
+      for (const key of ["owner", "repo", "role"]) {
+        if (entry[key] !== seedEntry[key]) {
+          throw codedError(
+            "meta-layer-locked",
+            `overlay ${overlayPath}: locked "${key}" redefined for meta-layer repo "${entry.id}"`,
+          );
+        }
+      }
+    }
+  }
 
   const merged = new Map();
   for (const entry of seedRaw.repositories) merged.set(entry.id, { ...entry, origin: "seed" });
@@ -213,7 +239,7 @@ export async function upsertOverlayEntry(input, {
 } = {}) {
   const stamp = todayStamp(now);
 
-  const effective = await loadEffectiveRegistry({ seedPath, overlayPath });
+  const effective = await loadEffectiveRegistry({ seedPath, overlayPath, mapPath });
   const existing = effective.repositories.find((entry) => entry.id === input?.id) ?? null;
 
   const candidate = pickWritable({
@@ -230,12 +256,17 @@ export async function upsertOverlayEntry(input, {
     throw codedError("use-remove", "use removeOverlayEntry to tombstone an entry");
   }
 
+  // Lock source is the tracked SEED, never the (possibly hand-edited) overlay
+  // copy that loadEffectiveRegistry merged over it (#222 review).
   const protectedIds = await metaLayerIds(mapPath);
   if (protectedIds.has(candidate.id)) {
-    const seedEntry = effective.repositories.find((e) => e.id === candidate.id && e.origin === "seed")
-      ?? effective.repositories.find((e) => e.id === candidate.id);
+    const seedRaw = await readJsonOrNull(seedPath);
+    const seedEntry = (seedRaw?.repositories ?? []).find((e) => e.id === candidate.id);
+    if (!seedEntry) {
+      throw codedError("meta-layer-locked", `"${candidate.id}" is a meta-layer id with no seed entry; refusing`);
+    }
     for (const key of ["owner", "repo", "role"]) {
-      if (seedEntry && candidate[key] !== seedEntry[key]) {
+      if (candidate[key] !== seedEntry[key]) {
         throw codedError("meta-layer-locked", `"${candidate.id}" is a meta-layer repo; "${key}" is locked`);
       }
     }
@@ -266,7 +297,7 @@ export async function removeOverlayEntry(id, {
   now = null,
 } = {}) {
   const stamp = todayStamp(now);
-  const effective = await loadEffectiveRegistry({ seedPath, overlayPath });
+  const effective = await loadEffectiveRegistry({ seedPath, overlayPath, mapPath });
   const existing = effective.repositories.find((entry) => entry.id === id);
   if (!existing) throw codedError("unknown-repo", `no registry entry with id "${id}"`);
 
