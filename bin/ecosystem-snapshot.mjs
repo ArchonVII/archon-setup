@@ -6,7 +6,6 @@ import { buildSnapshot } from "../src/server/ecosystem/snapshot.mjs";
 import { redactDeep } from "../src/server/ecosystem/redact.mjs";
 import { renderHtml } from "../src/server/ecosystem/renderHtml.mjs";
 import { writeAtomic } from "../src/server/ecosystem/writeAtomic.mjs";
-import { DEFAULT_REPO_REGISTRY_PATH } from "../src/server/ecosystem/repoRegistry.mjs";
 
 function flag(name, fallback) {
   const i = process.argv.indexOf(`--${name}`);
@@ -16,8 +15,12 @@ function flag(name, fallback) {
 const home = homedir();
 const outDir = resolve(flag("out-dir", join(home, ".claude")));
 const githubRoot = resolve(flag("github-root", "C:\\GitHub"));
-const repoRegistryFlag = flag("repo-registry", DEFAULT_REPO_REGISTRY_PATH);
-const repoRegistryPath = repoRegistryFlag === "none" ? null : resolve(repoRegistryFlag);
+// No flag → effective registry (seed + user overlay); "none" → no registry
+// (enumerate github-root); explicit path → that file only (#214).
+const repoRegistryFlag = flag("repo-registry", undefined);
+const repoRegistryPath = repoRegistryFlag === undefined
+  ? undefined
+  : repoRegistryFlag === "none" ? null : resolve(repoRegistryFlag);
 const portRegistryPath = resolve(flag("port-registry", join(home, ".claude", "port-registry.json")));
 const anomaliesPath = resolve(flag("anomalies", join(home, ".claude", "anomalies.md")));
 const amberNode = new RegExp(flag("amber-node", "amber"), "i");

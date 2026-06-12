@@ -7,6 +7,7 @@ import {
   loadRepoRegistry,
   summarizeRepoRegistry,
 } from "./repoRegistry.mjs";
+import { loadEffectiveRegistry } from "./registryStore.mjs";
 
 export function parseLastCommit(raw) {
   const line = (raw || "").trim();
@@ -128,7 +129,11 @@ export async function collectRepos(githubRoot, options = {}) {
   const runCommand = options.runCommand ?? defaultRunCommand;
   let registry = options.registry;
   if (registry === undefined && Object.hasOwn(options, "repoRegistryPath")) {
-    registry = await loadRepoRegistry(options.repoRegistryPath);
+    // Path semantics (#214): undefined → effective registry (seed + user
+    // overlay); null → no registry (enumerate githubRoot); string → that file only.
+    registry = options.repoRegistryPath === undefined
+      ? await loadEffectiveRegistry()
+      : await loadRepoRegistry(options.repoRegistryPath);
   }
   if (registry) return collectRegisteredRepos(registry, runCommand);
 

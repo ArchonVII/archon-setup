@@ -6,6 +6,7 @@ import { collectAmber } from "./collectAmber.mjs";
 import { collectSignals } from "./collectSignals.mjs";
 import { collectEvents } from "./collectEvents.mjs";
 import { activeRepoEntries, loadRepoRegistry } from "./repoRegistry.mjs";
+import { loadEffectiveRegistry } from "./registryStore.mjs";
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
 
@@ -49,7 +50,11 @@ async function repoSignalPaths(githubRoot, registry) {
 export async function buildSnapshot({ portRegistryPath, githubRoot, amberNode, anomaliesPath, repoRegistryPath } = {}) {
   // Per-repo signal files live under githubRoot: noticed.md at
   // <repo>/.claude/noticed.md and the event stream at <repo>/.archon/events.jsonl.
-  const registry = await loadRepoRegistry(repoRegistryPath);
+  // Path semantics (#214): undefined → effective registry (seed + user
+  // overlay); null → no registry (enumerate githubRoot); string → that file only.
+  const registry = repoRegistryPath === undefined
+    ? await loadEffectiveRegistry()
+    : await loadRepoRegistry(repoRegistryPath);
   const repoPaths = await repoSignalPaths(githubRoot, registry);
   const noticedPaths = repoPaths.map((repoPath) => join(repoPath, ".claude", "noticed.md"));
   const eventsJsonlPaths = repoPaths.map((repoPath) => join(repoPath, ".archon", "events.jsonl"));

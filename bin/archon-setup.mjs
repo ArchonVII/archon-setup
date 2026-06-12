@@ -50,7 +50,6 @@ if (argv[0] === "distribute") {
   }
 
   const { collectRepos } = await import("../src/server/ecosystem/collectRepos.mjs");
-  const { DEFAULT_REPO_REGISTRY_PATH } = await import("../src/server/ecosystem/repoRegistry.mjs");
   const { distribute, exitCodeFor, loadDefaultCatalog, repoContextFor, DEFAULT_LOG_PATH } = await import(
     "../src/distributor/distribute.mjs"
   );
@@ -107,7 +106,7 @@ if (argv[0] === "distribute") {
 
     const repos = targetPath
       ? [await repoContextFor(targetPath)]
-      : (await collectRepos({ repoRegistryPath: DEFAULT_REPO_REGISTRY_PATH })).repos;
+      : (await collectRepos({ repoRegistryPath: undefined })).repos; // effective registry (#214)
     run = await distribute({
       repos,
       all,

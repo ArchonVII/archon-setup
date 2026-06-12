@@ -3,7 +3,6 @@ import { dirname } from "node:path";
 import { globalUpdatesCatalogEntries, ONBOARDING_MANAGED_IDS } from "../distributor/catalogSource.mjs";
 import { distributeRepo } from "../distributor/distribute.mjs";
 import { collectRepos } from "./ecosystem/collectRepos.mjs";
-import { DEFAULT_REPO_REGISTRY_PATH } from "./ecosystem/repoRegistry.mjs";
 
 const BROWSER_BACKEND_UPDATE_ID = "2026-05-31-browser-backend-preflight";
 const STRICT_PR_READY_UPDATE_ID = "2026-05-31-strict-pr-ready-contract";
@@ -289,7 +288,8 @@ export async function distributeGlobalUpdate({
   confirmation,
   dryRun = true,
   githubRoot = "C:\\GitHub",
-  repoRegistryPath = DEFAULT_REPO_REGISTRY_PATH,
+  // undefined → effective registry (seed + user overlay, #214); explicit path → that file only.
+  repoRegistryPath = undefined,
   repos,
   now = new Date().toISOString(),
   logPath,
