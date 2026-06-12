@@ -12,6 +12,8 @@ import {
   RAW_FILE_STATUSES,
   RAW_REPO_STATUSES,
   RECOMMENDATION_REASONS,
+  REPO_LIFECYCLES,
+  REPO_ROLES,
   REPO_SKIP_REASONS,
   RESOLUTION_OPTIONS,
 } from "../src/contracts/vocab.mjs";
@@ -166,6 +168,17 @@ const CONTRACTS = [
       "invalid-missing-rationale.json": 'missing required property "whySelected"',
     },
   },
+  {
+    schema: "repo-registry.schema.json",
+    dir: "repo-registry",
+    invalid: {
+      "invalid-bad-lifecycle.json": 'repositories[0].lifecycle: value "archived" not in enum',
+      "invalid-missing-role.json": 'missing required property "role"',
+      "invalid-port-out-of-bounds.json": "repositories[0].reservedPorts[0]: number above maximum",
+      // Live status is computed, never stored in the registry (#214 spec §4.1).
+      "invalid-live-status-key.json": "repositories[0].status: unexpected additional property",
+    },
+  },
 ];
 
 for (const contract of CONTRACTS) {
@@ -317,4 +330,16 @@ test("schema enums match the shared vocab module exactly", () => {
   assert.deepEqual(row.recommended.enum, recommendedEnum);
   assert.deepEqual(row.recommendationReason.enum, RECOMMENDATION_REASONS);
   assert.deepEqual(row.options.items.enum, RESOLUTION_OPTIONS);
+
+  // Repo registry (#214)
+  const repoRegistry = schemaOf("repo-registry.schema.json");
+  assert.deepEqual(repoRegistry.$defs.entry.properties.lifecycle.enum, REPO_LIFECYCLES);
+  assert.deepEqual(repoRegistry.$defs.entry.properties.role.enum, REPO_ROLES);
+});
+
+// ---- the shipped seed registry must satisfy its own contract ----
+
+test("seed repo registry validates against repo-registry.schema.json", () => {
+  const seed = loadJson(join(ROOT, "src", "server", "ecosystem", "repoRegistry.json"));
+  assert.deepEqual(validate(schemaOf("repo-registry.schema.json"), seed).errors, []);
 });

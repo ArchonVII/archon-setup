@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-06-12",
+  "description": "Seed-style registry with a dev-server reservation.",
+  "repositories": [
+    {
+      "id": "example-app",
+      "name": "example-app",
+      "owner": "ArchonVII",
+      "repo": "example-app",
+      "path": "C:/GitHub/example-app",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "application",
+      "reservedPorts": [5190, 5191],
+      "devServer": { "kind": "vite", "primaryPort": 5190, "command": "npm run dev" }
+    },
+    {
+      "id": "example-provider",
+      "name": "example-provider",
+      "owner": "ArchonVII",
+      "repo": "example-provider",
+      "path": "C:/GitHub/example-provider",
+      "lifecycle": "inactive",
+      "healthTarget": false,
+      "role": "workflow-provider",
+      "reason": "example inactive entry"
+    }
+  ]
+}

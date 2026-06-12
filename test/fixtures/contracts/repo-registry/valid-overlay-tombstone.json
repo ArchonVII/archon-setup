@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-06-12",
+  "description": "Overlay with one addition and one soft-removal tombstone.",
+  "repositories": [
+    {
+      "id": "added-by-user",
+      "name": "added-by-user",
+      "owner": "ArchonVII",
+      "repo": "added-by-user",
+      "path": "D:/code/added-by-user",
+      "lifecycle": "active",
+      "healthTarget": true,
+      "role": "application",
+      "reservedPorts": [5300],
+      "notes": "added via dashboard",
+      "addedAt": "2026-06-12",
+      "updatedAt": "2026-06-12"
+    },
+    {
+      "id": "retired-app",
+      "name": "retired-app",
+      "owner": "ArchonVII",
+      "repo": "retired-app",
+      "path": "C:/GitHub/retired-app",
+      "lifecycle": "removed",
+      "healthTarget": false,
+      "role": "application",
+      "reason": "superseded",
+      "removedAt": "2026-06-12",
+      "updatedAt": "2026-06-12"
+    }
+  ]
+}
