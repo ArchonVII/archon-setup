@@ -35,4 +35,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: No-op gate
-        run: echo "minimal-ci: no build/test configured for this repo. ci-success passes by design."
+        run: |
+          echo "minimal-ci: no build/test configured for this repo. ci-success passes by design."
