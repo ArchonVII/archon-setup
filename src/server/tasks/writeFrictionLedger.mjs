@@ -8,6 +8,12 @@ import { writeSnapshotFile } from "./repoTemplateSnapshot.mjs";
 const LEDGER_PATH = ".claude/friction.md";
 const GITIGNORE_PATH = ".gitignore";
 const REQUIRED_GITIGNORE_LINES = [".claude/*", "!.claude/friction.md"];
+// A bare `.claude` / `.claude/` directory ignore shadows the friction
+// re-include: git cannot re-include a file whose parent directory is excluded
+// (gitignore(5), "It is not possible to re-include a file if a parent
+// directory of that file is excluded"). The glob form `.claude/*` ignores the
+// directory's contents while still allowing `!.claude/friction.md`.
+const CLAUDE_DIR_IGNORE = /^\/?\.claude\/?$/;
 const LEDGER_HEADER = "| date | category | what happened | cost | suggested fix |";
 const LEDGER_SEPARATOR = "|---|---|---|---|---|";
 
@@ -24,15 +30,34 @@ function hasLine(body, line) {
   return new RegExp(`^${line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m").test(body);
 }
 
+function hasClaudeDirIgnore(body) {
+  return String(body ?? "").split(/\r?\n/).some((line) => CLAUDE_DIR_IGNORE.test(line.trim()));
+}
+
 function gitignoreHasFrictionException(body) {
-  return REQUIRED_GITIGNORE_LINES.every((line) => hasLine(body, line));
+  // The exception is only real when both managed lines are present AND no bare
+  // `.claude` directory ignore shadows the re-include — otherwise git keeps
+  // friction.md untracked and verify() would falsely report success.
+  if (!REQUIRED_GITIGNORE_LINES.every((line) => hasLine(body, line))) return false;
+  return !hasClaudeDirIgnore(body);
 }
 
 function ensureGitignoreFrictionException(body) {
-  const missing = REQUIRED_GITIGNORE_LINES.filter((line) => !hasLine(body, line));
-  if (!missing.length) return body;
+  const original = String(body ?? "");
+  // Convert any shadowing bare `.claude` directory ignore to `.claude/*` so the
+  // re-include below actually takes effect. Only rewrite line endings when a
+  // conversion is needed, to keep the no-op path (and CRLF files) idempotent.
+  const normalized = hasClaudeDirIgnore(original)
+    ? original
+        .split(/\r?\n/)
+        .map((line) => (CLAUDE_DIR_IGNORE.test(line.trim()) ? ".claude/*" : line))
+        .join("\n")
+    : original;
 
-  const trimmed = String(body ?? "").trimEnd();
+  const missing = REQUIRED_GITIGNORE_LINES.filter((line) => !hasLine(normalized, line));
+  if (!missing.length) return normalized;
+
+  const trimmed = normalized.trimEnd();
   const prefix = trimmed ? `${trimmed}\n\n` : "";
   return `${prefix}# ArchonVII friction ledger\n${missing.join("\n")}\n`;
 }

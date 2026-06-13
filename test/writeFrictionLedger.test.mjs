@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
 import * as task from "../src/server/tasks/writeFrictionLedger.mjs";
 
@@ -15,6 +16,17 @@ function ctx(targetPath) {
     targetPath,
     manifest: { createdFiles: [], skippedFiles: [], remoteActions: [] },
   };
+}
+
+// git check-ignore: exit 0 = path is ignored, exit 1 = not ignored.
+function gitIgnores(root, relPath) {
+  try {
+    execFileSync("git", ["-C", root, "check-ignore", "-q", relPath]);
+    return true;
+  } catch (err) {
+    if (err.status === 1) return false;
+    throw err;
+  }
 }
 
 test("writeFrictionLedger seeds the ledger and gitignore exception", async () => {
@@ -57,4 +69,29 @@ test("writeFrictionLedger is idempotent after apply", async () => {
   const gitignore = await readFile(join(root, ".gitignore"), "utf8");
   assert.equal((gitignore.match(/^!\.claude\/friction\.md$/gm) || []).length, 1);
   assert.deepEqual(await task.verify(taskCtx), { ok: true });
+});
+
+test("writeFrictionLedger keeps the ledger trackable when .claude/ is already ignored (#234)", async () => {
+  const root = await tempRoot();
+  // Pre-existing repos may already exclude the whole .claude directory.
+  await writeFile(join(root, ".gitignore"), ".claude/\nnode_modules/\n", "utf8");
+  const taskCtx = ctx(root);
+
+  assert.equal(await task.check(taskCtx), "needs-apply");
+  await task.apply(taskCtx);
+
+  const gitignore = await readFile(join(root, ".gitignore"), "utf8");
+  assert.match(gitignore, /^\.claude\/\*$/m, "bare .claude/ should be converted to the glob form");
+  assert.doesNotMatch(gitignore, /^\.claude\/$/m, "the shadowing bare .claude/ directory ignore must be gone");
+  assert.match(gitignore, /^!\.claude\/friction\.md$/m);
+  assert.deepEqual(await task.verify(taskCtx), { ok: true });
+
+  // Definitive check: git itself must not ignore the ledger (writeFrictionLedger
+  // runs before initGitAndCommit, so a static rewrite is the only available fix).
+  execFileSync("git", ["-C", root, "init", "-q"]);
+  assert.equal(
+    gitIgnores(root, ".claude/friction.md"),
+    false,
+    "friction.md must be trackable, not shadowed by the .claude directory ignore",
+  );
 });
