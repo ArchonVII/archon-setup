@@ -63,6 +63,56 @@ test("foundation.agents plans the repo update log with AGENTS.md", async () => {
   assert.ok(agents.creates.includes("docs/plans/README.md"));
 });
 
+test("friction ledger is a locked default foundation feature (#234)", async () => {
+  const { features } = await loadRegistry();
+  const friction = features.find((f) => f.id === "foundation.friction-ledger");
+
+  assert.ok(friction, "foundation.friction-ledger feature missing");
+  assert.equal(friction.group, "foundations");
+  assert.equal(friction.default, true);
+  assert.equal(friction.locked, true);
+  assert.deepEqual(friction.creates, [".claude/friction.md"]);
+  assert.deepEqual(friction.tasks, ["writeFrictionLedger"]);
+  for (const required of ["foundation.agents", "foundation.gitignore", "foundation.hooks"]) {
+    assert.ok(friction.requires.includes(required), `friction ledger should require ${required}`);
+  }
+});
+
+test("planning friction ledger wires the seed before the initial commit (#234)", async () => {
+  const plan = await buildPlan({
+    selection: ["foundation.friction-ledger", "foundation.git-init"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: {} },
+  });
+
+  assert.ok(plan.selectedFeatureIds.includes("foundation.friction-ledger"));
+  assert.ok(plan.files.some((f) => f.path === ".claude/friction.md" && f.feature === "foundation.friction-ledger"));
+
+  const tasks = plan.ordered.map((unit) => unit.taskId);
+  assert.ok(tasks.includes("writeFrictionLedger"), "writeFrictionLedger should be planned");
+  assert.ok(tasks.indexOf("writeFrictionLedger") < tasks.indexOf("initGitAndCommit"));
+});
+
+test("friction ledger source policy is present in the repo-template snapshot (#234)", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const snapDir = join(here, "..", "src", "snapshots", "repo-template");
+
+  const ledger = await readFile(join(snapDir, ".claude", "friction.md"), "utf8");
+  assert.match(ledger, /^\| date \| category \| what happened \| cost \| suggested fix \|/m);
+  assert.match(ledger, /tooling \| docs \| skill \| hook \| ci \| env/);
+  assert.match(ledger, /rerun \| blocked \| context-burn \| none/);
+
+  const agents = await readFile(join(snapDir, "AGENTS.md"), "utf8");
+  assert.match(agents, /`\.claude\/friction\.md`/);
+  assert.match(agents, /non-bug workflow hiccup/i);
+
+  const ownerMaintenance = await readFile(join(snapDir, ".githooks", "scripts", "owner-maintenance.sh"), "utf8");
+  assert.match(ownerMaintenance, /\.claude\/friction\.md/);
+});
+
 test("planning anomaly-triage plans the workflow without repo-create", async () => {
   const plan = await buildPlan({
     selection: ["agent-workflow.anomaly-triage"],

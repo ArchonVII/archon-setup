@@ -31,6 +31,7 @@ export const SOURCES = [
     copyFiles: [
       "README.md",
       "AGENTS.md",
+      ".claude/friction.md",
       ".agent/startup-baseline.json",
       "docs/repo-update-log.md",
       "docs/plans/README.md",

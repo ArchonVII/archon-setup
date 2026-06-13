@@ -49,6 +49,7 @@ function defaultOptionsFor(feature) {
 }
 
 function taskPhase(unit) {
+  if (unit.taskId === "writeFrictionLedger") return 5;
   if (unit.taskId === "initGitAndCommit") return 10;
   if (unit.taskId === "ghRepoCreateAndPush") return 20;
   if (unit.taskId === "applyLabels") return 30;
