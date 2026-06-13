@@ -108,3 +108,9 @@ export const MAINTENANCE_REASONS = [
   "catalog-present",
   "catalog-missing",
 ];
+
+// Friction ledger contract — `.claude/friction.md` rows from
+// ArchonVII/repo-template#78, collected into ecosystem-state repos[].friction.
+export const FRICTION_STATES = ["present", "no-ledger"];
+export const FRICTION_CATEGORIES = ["tooling", "docs", "skill", "hook", "ci", "env"];
+export const FRICTION_COSTS = ["rerun", "blocked", "context-burn", "none"];

@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assembleSnapshot, joinPortReservations } from "../src/server/ecosystem/snapshot.mjs";
+import { mkdtemp, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { assembleSnapshot, joinPortReservations, repoSignalPaths } from "../src/server/ecosystem/snapshot.mjs";
 
 test("assembleSnapshot builds summary and merges payloads", () => {
   const snap = assembleSnapshot({
@@ -73,6 +76,56 @@ test("assembleSnapshot joins per-repo maintenance by id (#215)", () => {
   assert.deepEqual(snap.summary, { green: 5, yellow: 0, red: 0 });
 });
 
+test("assembleSnapshot joins per-repo friction by ledger path (#233)", () => {
+  const friction = {
+    id: "friction",
+    status: "green",
+    detail: "1 friction entries; 1 repos without ledgers",
+    count: 1,
+    noLedger: 1,
+    sources: [],
+    byPath: {
+      "C:/GitHub/with-ledger/.claude/friction.md": {
+        state: "present",
+        count: 1,
+        byCategory: { tooling: 1, docs: 0, skill: 0, hook: 0, ci: 0, env: 0 },
+        byCost: { rerun: 1, blocked: 0, "context-burn": 0, none: 0 },
+        lastEntryAt: "2026-06-12",
+        unparsed: 0,
+      },
+    },
+  };
+  const snap = assembleSnapshot({
+    ports: { id: "ports", status: "green", detail: "", ports: [] },
+    repos: {
+      id: "repos",
+      status: "green",
+      detail: "",
+      repos: [
+        { id: "with-ledger", name: "with-ledger", path: "C:\\GitHub\\with-ledger" },
+        { id: "without-ledger", name: "without-ledger", path: "C:\\GitHub\\without-ledger" },
+      ],
+      registry: { active: 2, inactive: 0, repositories: [] },
+    },
+    governance: { id: "governance", status: "green", detail: "", repos: [] },
+    amber: { id: "amber", status: "green", detail: "", online: true, lastSeen: "z" },
+    signals: { id: "signals", status: "green", detail: "", anomalies: 0, noticed: 0, recent: [] },
+    friction,
+  }, "2026-06-12T00:00:00.000Z");
+
+  assert.equal(snap.friction.count, 1);
+  assert.equal(snap.repos[0].friction.byCategory.tooling, 1);
+  assert.deepEqual(snap.repos[1].friction, {
+    state: "no-ledger",
+    count: 0,
+    byCategory: { tooling: 0, docs: 0, skill: 0, hook: 0, ci: 0, env: 0 },
+    byCost: { rerun: 0, blocked: 0, "context-burn": 0, none: 0 },
+    lastEntryAt: null,
+    unparsed: 0,
+  });
+  assert.equal(snap.summary.green, 6);
+});
+
 test("joinPortReservations annotates reservedBy and conflict (#215, spec §4.5)", () => {
   const registryRepos = [
     { id: "archon-setup", lifecycle: "active", path: "C:/GitHub/archon-setup", reservedPorts: [5180, 5181] },
@@ -139,4 +192,21 @@ test("assembleSnapshot tolerates a missing events section (backward compatible)"
   }, "2026-06-02T00:00:00.000Z");
   assert.equal(snap.summary.green, 5);
   assert.deepEqual(snap.events, { id: "events", status: "green", detail: "0 events", count: 0, recent: [] });
+});
+
+test("repoSignalPaths (no registry) keeps only git work trees, matching collectRepos (#233)", async () => {
+  const root = await mkdtemp(join(tmpdir(), "archon-signal-paths-"));
+  await mkdir(join(root, "real-repo"));
+  await mkdir(join(root, "_worktrees")); // scratch pool — must be excluded
+  await mkdir(join(root, "plain-dir")); // not a git work tree — must be excluded
+
+  // Fake git: only `real-repo` answers `rev-parse --is-inside-work-tree` as true.
+  const runCommand = (_cmd, args) => {
+    const repoPath = args[1]; // ["-C", <path>, "rev-parse", "--is-inside-work-tree"]
+    const inside = repoPath.endsWith("real-repo");
+    return Promise.resolve({ code: inside ? 0 : 128, stdout: inside ? "true\n" : "" });
+  };
+
+  const paths = await repoSignalPaths(root, null, runCommand);
+  assert.deepEqual(paths, [join(root, "real-repo")]);
 });

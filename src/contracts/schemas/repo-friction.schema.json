@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "archon-setup/contracts/repo-friction",
+  "title": "Per-repo friction ledger summary embedded in ecosystem-state.json repos[] from .claude/friction.md; #233 Agent OS Stage 1",
+  "type": "object",
+  "required": ["state", "count", "byCategory", "byCost", "lastEntryAt", "unparsed"],
+  "additionalProperties": false,
+  "properties": {
+    "state": { "enum": ["present", "no-ledger"] },
+    "count": { "type": "integer", "minimum": 0 },
+    "byCategory": { "$ref": "#/$defs/categoryCounts" },
+    "byCost": { "$ref": "#/$defs/costCounts" },
+    "lastEntryAt": { "type": ["string", "null"] },
+    "unparsed": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "count": { "type": "integer", "minimum": 0 },
+    "categoryCounts": {
+      "type": "object",
+      "required": ["tooling", "docs", "skill", "hook", "ci", "env"],
+      "additionalProperties": false,
+      "properties": {
+        "tooling": { "$ref": "#/$defs/count" },
+        "docs": { "$ref": "#/$defs/count" },
+        "skill": { "$ref": "#/$defs/count" },
+        "hook": { "$ref": "#/$defs/count" },
+        "ci": { "$ref": "#/$defs/count" },
+        "env": { "$ref": "#/$defs/count" }
+      }
+    },
+    "costCounts": {
+      "type": "object",
+      "required": ["rerun", "blocked", "context-burn", "none"],
+      "additionalProperties": false,
+      "properties": {
+        "rerun": { "$ref": "#/$defs/count" },
+        "blocked": { "$ref": "#/$defs/count" },
+        "context-burn": { "$ref": "#/$defs/count" },
+        "none": { "$ref": "#/$defs/count" }
+      }
+    }
+  }
+}

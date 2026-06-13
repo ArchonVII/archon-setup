@@ -9,6 +9,9 @@ import {
   CATEGORIES,
   CURRENT_STATES,
   FAST_STATUSES,
+  FRICTION_CATEGORIES,
+  FRICTION_COSTS,
+  FRICTION_STATES,
   MAINTENANCE_BASES,
   MAINTENANCE_REASONS,
   MAINTENANCE_STATUSES,
@@ -196,6 +199,15 @@ const CONTRACTS = [
       "invalid-bare-status-extra-key.json": "label: unexpected additional property",
     },
   },
+  {
+    schema: "repo-friction.schema.json",
+    dir: "repo-friction",
+    invalid: {
+      "invalid-unknown-state.json": 'state: value "missing" not in enum',
+      "invalid-extra-category.json": "byCategory.other: unexpected additional property",
+      "invalid-negative-unparsed.json": "unparsed: number below minimum",
+    },
+  },
 ];
 
 for (const contract of CONTRACTS) {
@@ -359,6 +371,12 @@ test("schema enums match the shared vocab module exactly", () => {
   assert.deepEqual(maintenance.properties.basis.enum, MAINTENANCE_BASES);
   assert.deepEqual(maintenance.properties.fastStatus.enum, [...FAST_STATUSES, null]);
   assert.deepEqual(maintenance.$defs.reason.properties.code.enum, MAINTENANCE_REASONS);
+
+  // Repo friction (#233)
+  const friction = schemaOf("repo-friction.schema.json");
+  assert.deepEqual(friction.properties.state.enum, FRICTION_STATES);
+  assert.deepEqual(Object.keys(friction.$defs.categoryCounts.properties), FRICTION_CATEGORIES);
+  assert.deepEqual(Object.keys(friction.$defs.costCounts.properties), FRICTION_COSTS);
 });
 
 // ---- the shipped seed registry must satisfy its own contract ----

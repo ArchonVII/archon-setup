@@ -39,6 +39,14 @@ async function git(repoPath, args, runCommand = defaultRunCommand) {
   }
 }
 
+// Shared predicate so the snapshot's signal-path derivation and collectRepos
+// agree on which first-level dirs count as repos. Divergence here let scratch
+// dirs (e.g. _worktrees) inflate friction's noLedger telemetry (#233 review).
+export async function isGitWorkTree(repoPath, runCommand = defaultRunCommand) {
+  const inside = await git(repoPath, ["rev-parse", "--is-inside-work-tree"], runCommand);
+  return inside?.trim() === "true";
+}
+
 async function collectOneRepo(entry, runCommand = defaultRunCommand) {
   const name = entry.name;
   const repoPath = entry.path;
@@ -148,8 +156,7 @@ export async function collectRepos(githubRoot, options = {}) {
   const repos = [];
   for (const e of candidates) {
     const repoPath = join(githubRoot, e.name);
-    const head = await git(repoPath, ["rev-parse", "--is-inside-work-tree"], runCommand);
-    if (head?.trim() === "true") {
+    if (await isGitWorkTree(repoPath, runCommand)) {
       repos.push(await collectOneRepo({
         id: e.name,
         name: e.name,
