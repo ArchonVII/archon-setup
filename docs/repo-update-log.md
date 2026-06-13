@@ -38,7 +38,7 @@ repository-policy changes in `archon-setup`.
 
 ## 2026-06-11 - Self-applied root baseline via the installer
 
-- **Issue/PR:** #201 / pending
+- **Issue/PR:** #201 / #205
 - **Branch:** agent/claude/201-self-apply-baseline
 - **Changed paths:** scripts/agent-self-apply.mjs, package.json, test/agentSelfApply.test.mjs, test/agentLifecycleScripts.test.mjs, AGENTS.md, CHANGELOG.md, docs/repo-update-log.md
 - **What changed:** New `npm run agent:self-apply` (CLI `--check` for a read-only drift report, exit 1 on drift) repairs the root agent baseline from the repo-template snapshot via the existing installer task modules — `writeAgentLifecycle` (five lifecycle scripts + `agent:*` package-script merge), `writeDocSweep` (three doc-sweep scripts + spec), and the startup baseline via the shared `writeSnapshotFile`/`checkAllMatch` primitives. AGENTS.md now documents the end-to-end flow (provider PR → `refresh-snapshots` → `agent:self-apply` → commit) and prohibits hand-edits to `src/snapshots/**` and the root copies; the parity test's guidance message points at the mechanism instead of "fix both in lockstep".
@@ -47,7 +47,7 @@ repository-policy changes in `archon-setup`.
 
 ## 2026-06-11 - Snapshot integrity gate at the refresh seam
 
-- **Issue/PR:** #200 / pending
+- **Issue/PR:** #200 / #204
 - **Branch:** agent/claude/200-snapshot-integrity-gate
 - **Changed paths:** scripts/refresh-snapshots.mjs, package.json, test/refreshSnapshots.test.mjs, CHANGELOG.md, docs/repo-update-log.md
 - **What changed:** `refreshSnapshots` now verifies each existing snapshot directory against the provider at the manifest-recorded SHA before any delete/copy, with in-band status records (`fresh` / `ok` / `divergent` / `unverifiable`). Divergence or an unresolvable pin refuses with a per-file report unless `--accept-snapshot-divergence` is passed, which instead warns with the exact list of discarded content. New read-only `npm run snapshots:verify` (CLI `--verify`) runs the same comparison without writes; the comparison is EOL-tolerant per this repo's recorded CRLF gotcha but otherwise byte-exact.
@@ -56,7 +56,7 @@ repository-policy changes in `archon-setup`.
 
 ## 2026-06-11 - Snapshot reconvergence with provider pin
 
-- **Issue/PR:** #199 / pending
+- **Issue/PR:** #199 / #203
 - **Branch:** agent/claude/199-reconverge-snapshot
 - **Changed paths:** src/snapshots/manifest.json, src/snapshots/repo-template/**, scripts/agent/lib.mjs, scripts/agent/status.mjs, scripts/agent/prune.mjs, docs/ecosystem-overview.md, CHANGELOG.md, docs/repo-update-log.md
 - **What changed:** Ran `node scripts/refresh-snapshots.mjs` after repo-template#67 landed the upstream port of the #197 review fixes; the repoTemplate pin advanced `292dada` → `d74d23c`. Reconvergence proof: zero body changes for `.agent/startup-baseline.json`, `scripts/doc-sweep/sweep.mjs`, `test/startup-baseline.test.mjs`; `scripts/agent/{lib,prune}.mjs` and `test/agent/lib.test.mjs` legitimately carry repo-template#65 (merged-PR-proof prune retirement), and `scripts/agent/status.mjs` carries the owner-review worktree-claims fix from repo-template#67. Root lifecycle copies synced snapshot→root for the three changed files (the parity-pinned lockstep, in the sanctioned direction); `docs/ecosystem-overview.md` regenerated from the manifest.
@@ -65,7 +65,7 @@ repository-policy changes in `archon-setup`.
 
 ## 2026-06-11 - Root startup baseline repair
 
-- **Issue/PR:** #196 / pending
+- **Issue/PR:** #196 / #197
 - **Branch:** agent/codex/196-bootstrap-lifecycle-baseline
 - **Changed paths:** AGENTS.md, .agent/startup-baseline.json, .agent/check-map.yml, .agent/coordination/README.md, .github/PULL_REQUEST_TEMPLATE.md, docs/plans/README.md, docs/agent-process/doc-sweep.md, docs/repo-update-log.md, scripts/agent/**, scripts/doc-sweep/**, package.json, src/server/tasks/writeAgentLifecycle.mjs, src/server/onboard/auditPlan.mjs, src/registry/features.json, test/**
 - **What changed:** Brought the `archon-setup` root checkout into the same startup/process baseline it audits and installs for consumers. The lifecycle installer now includes `agent:pr-body`, matching the current repo-template snapshot command surface.
