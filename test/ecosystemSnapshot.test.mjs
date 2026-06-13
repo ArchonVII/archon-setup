@@ -82,7 +82,7 @@ test("assembleSnapshot joins per-repo friction by ledger path (#233)", () => {
     noLedger: 1,
     sources: [],
     byPath: {
-      "C:\\GitHub\\with-ledger\\.claude\\friction.md": {
+      "C:/GitHub/with-ledger/.claude/friction.md": {
         state: "present",
         count: 1,
         byCategory: { tooling: 1, docs: 0, skill: 0, hook: 0, ci: 0, env: 0 },

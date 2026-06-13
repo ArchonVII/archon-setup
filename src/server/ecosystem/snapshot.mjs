@@ -46,6 +46,16 @@ export function joinPortReservations(portRows, registryRepositories) {
   });
 }
 
+function normalizePathKey(path) {
+  return String(path ?? "").replaceAll("\\", "/");
+}
+
+function frictionByNormalizedPath(friction) {
+  return new Map(
+    Object.entries(friction?.byPath ?? {}).map(([ledgerPath, summary]) => [normalizePathKey(ledgerPath), summary]),
+  );
+}
+
 // Pure: combine collector results into the schemaVersion-1 snapshot object.
 // `events` and `maintenance` are optional for backward compatibility — when
 // absent, events defaults to an empty green section and repos pass through
@@ -66,10 +76,13 @@ export function assembleSnapshot({ ports, repos, governance, amber, signals, eve
   const repoRows = maintenance?.byId
     ? (repos.repos ?? []).map((row) => ({ ...row, maintenance: maintenance.byId[row.id] ?? null }))
     : repos.repos ?? [];
-  const repoRowsWithFriction = friction?.byPath
+  const frictionLookup = friction?.byPath ? frictionByNormalizedPath(friction) : null;
+  const repoRowsWithFriction = frictionLookup
     ? repoRows.map((row) => ({
         ...row,
-        friction: row.path ? friction.byPath[join(row.path, ".claude", "friction.md")] ?? noLedgerFrictionSummary() : null,
+        friction: row.path
+          ? frictionLookup.get(normalizePathKey(join(row.path, ".claude", "friction.md"))) ?? noLedgerFrictionSummary()
+          : null,
       }))
     : repoRows;
 
