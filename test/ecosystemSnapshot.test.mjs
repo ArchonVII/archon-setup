@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { assembleSnapshot, joinPortReservations } from "../src/server/ecosystem/snapshot.mjs";
+import { mkdtemp, mkdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { assembleSnapshot, joinPortReservations, repoSignalPaths } from "../src/server/ecosystem/snapshot.mjs";
 
 test("assembleSnapshot builds summary and merges payloads", () => {
   const snap = assembleSnapshot({
@@ -189,4 +192,21 @@ test("assembleSnapshot tolerates a missing events section (backward compatible)"
   }, "2026-06-02T00:00:00.000Z");
   assert.equal(snap.summary.green, 5);
   assert.deepEqual(snap.events, { id: "events", status: "green", detail: "0 events", count: 0, recent: [] });
+});
+
+test("repoSignalPaths (no registry) keeps only git work trees, matching collectRepos (#233)", async () => {
+  const root = await mkdtemp(join(tmpdir(), "archon-signal-paths-"));
+  await mkdir(join(root, "real-repo"));
+  await mkdir(join(root, "_worktrees")); // scratch pool — must be excluded
+  await mkdir(join(root, "plain-dir")); // not a git work tree — must be excluded
+
+  // Fake git: only `real-repo` answers `rev-parse --is-inside-work-tree` as true.
+  const runCommand = (_cmd, args) => {
+    const repoPath = args[1]; // ["-C", <path>, "rev-parse", "--is-inside-work-tree"]
+    const inside = repoPath.endsWith("real-repo");
+    return Promise.resolve({ code: inside ? 0 : 128, stdout: inside ? "true\n" : "" });
+  };
+
+  const paths = await repoSignalPaths(root, null, runCommand);
+  assert.deepEqual(paths, [join(root, "real-repo")]);
 });

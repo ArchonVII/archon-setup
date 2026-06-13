@@ -1,6 +1,6 @@
 // src/server/ecosystem/snapshot.mjs
 import { collectPorts } from "./collectPorts.mjs";
-import { collectRepos } from "./collectRepos.mjs";
+import { collectRepos, isGitWorkTree } from "./collectRepos.mjs";
 import { collectGovernance } from "./collectGovernance.mjs";
 import { collectAmber } from "./collectAmber.mjs";
 import { collectSignals } from "./collectSignals.mjs";
@@ -12,6 +12,7 @@ import { loadEffectiveRegistry } from "./registryStore.mjs";
 import { FORBIDDEN_PORTS } from "./portPolicy.mjs";
 import { join } from "node:path";
 import { readdir } from "node:fs/promises";
+import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
 
 const EMPTY_EVENTS = { id: "events", status: "green", detail: "0 events", count: 0, recent: [] };
 
@@ -102,14 +103,25 @@ export function assembleSnapshot({ ports, repos, governance, amber, signals, eve
   return snapshot;
 }
 
-async function repoSignalPaths(githubRoot, registry) {
+export async function repoSignalPaths(githubRoot, registry, runCommand = defaultRunCommand) {
   if (registry) return activeRepoEntries(registry).map((entry) => entry.path).filter(Boolean);
+  let entries;
   try {
-    const dirs = (await readdir(githubRoot, { withFileTypes: true })).filter((e) => e.isDirectory());
-    return dirs.map((e) => join(githubRoot, e.name));
+    entries = await readdir(githubRoot, { withFileTypes: true });
   } catch {
     return [];
   }
+  // Match collectRepos' no-registry enumeration: skip worktree-pool / scratch
+  // dirs (leading "_") and keep only real git work trees. An unfiltered readdir
+  // feeds scratch dirs like _worktrees into collectFriction, inflating
+  // friction.noLedger past the repos collectRepos actually reports (#233 review).
+  const candidates = entries.filter((e) => e.isDirectory() && !e.name.startsWith("_"));
+  const paths = [];
+  for (const e of candidates) {
+    const repoPath = join(githubRoot, e.name);
+    if (await isGitWorkTree(repoPath, runCommand)) paths.push(repoPath);
+  }
+  return paths;
 }
 
 // Thin I/O wrapper: runs all collectors in parallel, joins the maintenance
