@@ -111,6 +111,22 @@
     "advancedDescription": "Copied from repo-template snapshots with repo-template-internal references scrubbed. Includes the F19 checkout-role worktree guard (feature commits blocked in the primary checkout). core.hooksPath is activated by git-init when safe."
   },
   {
+    "id": "foundation.friction-ledger",
+    "label": "Friction ledger",
+    "group": "foundations",
+    "default": true,
+    "locked": true,
+    "requires": [
+      "foundation.agents",
+      "foundation.gitignore",
+      "foundation.hooks"
+    ],
+    "creates": [".claude/friction.md"],
+    "tasks": ["writeFrictionLedger"],
+    "beginnerDescription": "Adds a structured .claude/friction.md ledger for non-bug workflow hiccups.",
+    "advancedDescription": "Seeds the repo-template friction ledger, ensures the .gitignore exception, and relies on the required AGENTS.md and owner-maintenance hook baselines for the instruction line and append-log allowlist."
+  },
+  {
     "id": "foundation.gitattributes",
     "label": ".gitattributes",
     "group": "foundations",

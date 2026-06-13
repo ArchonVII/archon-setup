@@ -11,6 +11,7 @@ import * as writeCheckMap from "../tasks/writeCheckMap.mjs";
 import * as writeCoordinationReadme from "../tasks/writeCoordinationReadme.mjs";
 import * as writeCoordinationBoard from "../tasks/writeCoordinationBoard.mjs";
 import * as writeGithooks from "../tasks/writeGithooks.mjs";
+import * as writeFrictionLedger from "../tasks/writeFrictionLedger.mjs";
 import * as writeGitattributes from "../tasks/writeGitattributes.mjs";
 import * as writeChangelog from "../tasks/writeChangelog.mjs";
 import * as writeCodeowners from "../tasks/writeCodeowners.mjs";
@@ -38,6 +39,7 @@ const TASKS = {
   writeCoordinationReadme,
   writeCoordinationBoard,
   writeGithooks,
+  writeFrictionLedger,
   writeGitattributes,
   writeChangelog,
   writeCodeowners,

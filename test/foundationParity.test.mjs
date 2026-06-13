@@ -22,6 +22,7 @@ const LOCAL_BASELINE_FILES = [
   "README.md",
   "LICENSE",
   ".gitignore",
+  ".claude/friction.md",
   "AGENTS.md",
   "docs/repo-update-log.md",
   "CLAUDE.md",

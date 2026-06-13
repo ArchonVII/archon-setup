@@ -66,3 +66,9 @@ the headless CLI) — the gate is in the UI.
 3. Register the task in `src/server/executor/executePlan.mjs`'s `TASKS` map.
 4. If it references a new workflow snapshot, run `npm run refresh-snapshots`.
 5. Add a golden-file test under `test/golden/`.
+
+Default foundation features may compose existing baseline tasks through
+`requires`. For example, `foundation.friction-ledger` owns only
+`.claude/friction.md`; it requires `foundation.agents`, `foundation.gitignore`,
+and `foundation.hooks` because those tasks carry the AGENTS.md instruction,
+ignore exception, and owner-maintenance append-log allowlist.
