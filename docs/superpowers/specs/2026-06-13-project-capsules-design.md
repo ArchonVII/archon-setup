@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-13
 - **Author:** Claude (Opus 4.8), via owner brainstorming + a 4-persona council red-team (decisions recorded below).
-- **Status:** DRAFT — for owner review. This doc is the review gate before the lanes implement it.
+- **Status:** APPROVED 2026-06-13 — owner sign-off after the council red-team (rev 2). This doc is the design gate; implementation may proceed, starting with lane L1a.
 - **Revision:** **rev 2** — re-scoped to **convention-first** after a council red-team found the original (engine-first, 6-lane) plan assumed document-policy infrastructure that is **specified but not yet built**. See §0.
 - **Tracking issue:** [archon-setup #245](https://github.com/ArchonVII/archon-setup/issues/245) (epic; one sub-issue per lane).
 - **PR:** [archon-setup #246](https://github.com/ArchonVII/archon-setup/pull/246) (draft, spec-only).
