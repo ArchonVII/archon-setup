@@ -10,8 +10,8 @@
     "repoTemplate": {
       "source": "ArchonVII/repo-template",
       "ref": "main",
-      "sha": "78531751357787eeb28fe9a96f5a48c2faaa446c",
-      "capturedAt": "2026-06-12T21:46:17.533Z",
+      "sha": "6d64ca2c54a823b8312cd80d1f80a61bfbd38585",
+      "capturedAt": "2026-06-14T03:51:44.016Z",
       "path": "src/snapshots/repo-template/"
     },
     "orgDefaults": {

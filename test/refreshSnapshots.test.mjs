@@ -10,6 +10,7 @@ import {
   expectedRef,
   formatDivergenceReport,
   refreshSnapshots,
+  resolveProviderKeys,
   SOURCES,
   validateSourceCheckout,
   verifySnapshots,
@@ -308,4 +309,64 @@ test("a snapshot file deleted by hand is divergence (missing) and blocks refresh
 
   await refreshSnapshots({ sources, snapshotRoot, acceptSnapshotDivergence: true });
   assert.equal(await readFile(join(snapshotRoot, "github-workflows", "second.yml"), "utf8"), "second v1\n");
+});
+
+test("resolveProviderKeys accepts keys and aliases, dedupes, and rejects unknown", () => {
+  assert.deepEqual(resolveProviderKeys(["repo-template"]), ["repoTemplate"]);
+  assert.deepEqual(resolveProviderKeys(["github-workflows", ".github"]), ["githubWorkflows", "orgDefaults"]);
+  // A key and its alias collapse to one.
+  assert.deepEqual(resolveProviderKeys(["repoTemplate", "repo-template"]), ["repoTemplate"]);
+  assert.throws(() => resolveProviderKeys(["bogus"]), /unknown --only provider "bogus"/);
+});
+
+test("scoped refresh (--only) updates one provider, preserves others' pins, and ignores off-ref providers", async () => {
+  // Provider A: github-workflows at v1.
+  const rootA = await initRepo();
+  await commitFile(rootA, "examples/gate.yml", "gateA v1\n", "first");
+  gitQuiet(rootA, ["tag", "v1"]);
+  const srcA = workflowSource(rootA);
+
+  // Provider B: org-defaults at main (a clone whose local main can drift).
+  const { local: rootB } = await cloneWithOrigin();
+  const srcB = {
+    key: "orgDefaults",
+    source: "ArchonVII/.github",
+    localPath: rootB,
+    copyFiles: ["STARTER.md"],
+    snapshotDir: "org-defaults",
+    ref: "main",
+  };
+
+  const snapshotRoot = await tempDir("archon-refresh-snap-");
+  // Full refresh captures both.
+  await refreshSnapshots({
+    sources: [srcA, srcB],
+    snapshotRoot,
+    now: () => new Date("2026-06-01T00:00:00.000Z"),
+  });
+  const afterFull = JSON.parse(await readFile(join(snapshotRoot, "manifest.json"), "utf8"));
+  assert.deepEqual(Object.keys(afterFull.snapshots).sort(), ["githubWorkflows", "orgDefaults"]);
+  const preservedB = afterFull.snapshots.orgDefaults;
+  const bFileBefore = await readFile(join(snapshotRoot, "org-defaults", "STARTER.md"), "utf8");
+
+  // Drift provider B's checkout ahead of origin/main — this would block a FULL
+  // refresh, but a scoped refresh of A must not validate or touch B.
+  await commitFile(rootB, "STARTER.md", "drift\n", "local drift");
+
+  await refreshSnapshots({
+    sources: [srcA, srcB],
+    snapshotRoot,
+    only: ["githubWorkflows"],
+    now: () => new Date("2026-06-02T00:00:00.000Z"),
+  });
+
+  const merged = JSON.parse(await readFile(join(snapshotRoot, "manifest.json"), "utf8"));
+  // Both providers still present (manifest merged, not rebuilt).
+  assert.deepEqual(Object.keys(merged.snapshots).sort(), ["githubWorkflows", "orgDefaults"]);
+  // B preserved byte-for-byte (sha + capturedAt unchanged).
+  assert.deepEqual(merged.snapshots.orgDefaults, preservedB);
+  // A re-captured at the scoped run's timestamp.
+  assert.equal(merged.snapshots.githubWorkflows.capturedAt, "2026-06-02T00:00:00.000Z");
+  // B's snapshot content is untouched by the scoped refresh.
+  assert.equal(await readFile(join(snapshotRoot, "org-defaults", "STARTER.md"), "utf8"), bFileBefore);
 });

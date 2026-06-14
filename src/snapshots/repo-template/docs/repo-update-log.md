@@ -15,6 +15,24 @@ This log records agent-visible repository changes that should be easy to audit l
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-13 - Project capsules convention (v1)
+
+- **Issue/PR:** #86 / (pending)
+- **Branch:** agent/claude/86-project-capsules-convention
+- **Changed paths:** docs/agent-process/project-capsules.md, projects/README.md, AGENTS.md, docs/plans/README.md, docs/repo-update-log.md
+- **What changed:** Added the convention-first v1 of project capsules — `projects/<slug>/PLAN.md` as the guessable per-feature front door — per the approved design spec (ArchonVII/archon-setup#246, lane L1a). Adds the `docs/agent-process/project-capsules.md` policy + trimmed PLAN.md template, a ≤5-line AGENTS `## Project capsules` contract, a Projects pointer in the managed Start Map (within the single existing block; `docs/plans/` demoted to loose/cross-cutting in both the Start Map and `docs/plans/README.md`), and a seed `projects/README.md`. No lifecycle engine, no `foundation.projects` feature, no new AGENTS.md writer — those are the gated v2.
+- **Verification:** Doc-only change (all files `*.md`). `npm test` passed 119/119 (startup-baseline, plans-README, managed-start-map friction, anomaly-triage, and PR-contract suites all green after the AGENTS.md edits). `git diff --check` clean (no whitespace/CRLF errors).
+- **Propagation:** pending archon-setup snapshot refresh (lane L1a′) so onboarded repos receive the convention; coordinate the AGENTS Start Map edit with the still-unbuilt document-policy lane 1b so its future section-order skeleton preserves the Projects lines.
+
+## 2026-06-13 - Close-scan deletions in scope + per-file hook syntax
+
+- **Issue/PR:** #84 / (pending)
+- **Branch:** fix/close-scan-deletions-and-multi-hook
+- **Changed paths:** scripts/close/scan-complete.mjs, test/close-scan.test.mjs, .changelog/unreleased/84-close-scan-deletions-and-multi-hook.md, docs/repo-update-log.md
+- **What changed:** Fixed two P2 close-scan findings raised by the Codex bot on archon-setup PR #237. (1) `collectChangedFiles` now derives scope from `git diff --name-status -M` with no `--diff-filter`, so deletions (D) count toward scope and both the old and new path of a rename are included — a PR that deletes code/hook files while changing docs no longer under-runs as docs-only. (2) `checkHookSyntax` runs `bash -n` once per hook file instead of `bash -n a b c` (which only parses the first file and treats the rest as positional args), so every hook is syntax-checked and any failing file is reported. `parseNameStatus`/`checkHookSyntax` are exported behind a `process.argv[1]` entry-point guard for unit testing.
+- **Verification:** `npm test` passed (119/119, up from 115 by 4 new regression tests covering: rename both-sides parsing, deletion-only diff classifying into the wider non-docs scope, a multi-hook fixture where the SECOND file has a syntax error and is caught, and an all-valid multi-hook pass). `node --check scripts/close/scan-complete.mjs` passed. `npm run close:scan:complete -- --repo ArchonVII/repo-template --pr <n> ...` ran green on a clean lane.
+- **Propagation:** pending archon-setup snapshot refresh after merge.
+
 ## 2026-06-12 - Friction append-log ledger
 
 - **Issue/PR:** #78 / (pending)

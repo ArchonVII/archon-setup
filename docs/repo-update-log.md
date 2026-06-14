@@ -18,7 +18,14 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
-## 2026-06-12 - Repo-template Stage 0/1 snapshot refresh
+## 2026-06-14 - Provider-scoped snapshot refresh + repo-template L1a'
+
+- **Issue/PR:** #255 / (pending)
+- **Branch:** agent/claude/255-provider-scoped-refresh
+- **Changed paths:** scripts/refresh-snapshots.mjs, test/refreshSnapshots.test.mjs, scripts/close/scan-complete.mjs (root twin re-synced via `npm run agent:self-apply`), src/snapshots/repo-template/**, src/snapshots/manifest.json, docs/ecosystem-overview.md, .changelog/unreleased/255-provider-scoped-refresh.md, docs/repo-update-log.md
+- **What changed:** Added `--only <provider>` to `refresh-snapshots.mjs` (scoped validation + manifest-merge so unselected providers' pins survive), then refreshed **only** the `repo-template` snapshot to current `main`. Propagates the project-capsules convention v1 (ArchonVII/repo-template#87, lane L1a') plus repo-template's other pending snapshot drift (#84 close-scan, dependabot, changelog README). Regenerated `docs/ecosystem-overview.md` to match the updated manifest.
+- **Verification:** `node --test test/refreshSnapshots.test.mjs` 17/17 (incl. 2 new: provider-key resolution; scoped refresh preserves other pins + ignores an off-ref provider). `node scripts/refresh-snapshots.mjs --verify` → all three `ok` (repoTemplate@6d64ca2, githubWorkflows@ae00ba3, orgDefaults@3187457). Full `node --test test/*.test.mjs` = 573 pass / 6 fail, where the 6 are identical to the pre-change baseline (Windows-CRLF byte-identical/startup tests + gh/git integration tests; green on CI/LF).
+- **Propagation:** completed — repo-template snapshot now at `main`. `github-workflows`/`.github` snapshots intentionally untouched (their pins preserved).
 
 - **Issue/PR:** #232 / pending
 - **Branch:** agent/codex/232-chore-snapshots-refresh-provider-snapshots-once
