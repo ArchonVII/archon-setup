@@ -1,45 +1,55 @@
-# Project capsules: per-feature PLAN.md front door & lifecycle engine — design spec
+# Project capsules: per-feature PLAN.md front door (convention-first) — design spec
 
 - **Date:** 2026-06-13
-- **Author:** Claude (Opus 4.8), via owner brainstorming session (decisions recorded below).
+- **Author:** Claude (Opus 4.8), via owner brainstorming + a 4-persona council red-team (decisions recorded below).
 - **Status:** DRAFT — for owner review. This doc is the review gate before the lanes implement it.
+- **Revision:** **rev 2** — re-scoped to **convention-first** after a council red-team found the original (engine-first, 6-lane) plan assumed document-policy infrastructure that is **specified but not yet built**. See §0.
 - **Tracking issue:** [archon-setup #245](https://github.com/ArchonVII/archon-setup/issues/245) (epic; one sub-issue per lane).
+- **PR:** [archon-setup #246](https://github.com/ArchonVII/archon-setup/pull/246) (draft, spec-only).
 - **Branch / worktree:** `agent/claude/245-project-capsules-spec` at `C:\GitHub\archon-setup-245-project-capsules-spec`.
-- **Builds on:** [archon-setup #223](https://github.com/ArchonVII/archon-setup/issues/223) (document-policy: charters, `VISION.md`, decision-log, doc-health), [archon-setup #212](https://github.com/ArchonVII/archon-setup/issues/212) (ecosystem-registry + maintenance engine), `repo-template/docs/agent-process/doc-sweep.md` + the `scripts/doc-sweep/` and `scripts/doc-health/` engine pattern, `pattern-tool-agnostic-capability`, `playbook-ecosystem-capability-rollout`.
+- **Builds toward (NOT yet shipped — see §0):** [archon-setup #223](https://github.com/ArchonVII/archon-setup/issues/223) document-policy (charters, `VISION.md`, decision-log, doc-health), [archon-setup #212](https://github.com/ArchonVII/archon-setup/issues/212) ecosystem-registry + maintenance engine. **Builds on (shipped):** `repo-template/docs/agent-process/doc-sweep.md` + `scripts/doc-sweep/` (the engine shape), `repo-template/AGENTS.md` Start Map, `pattern-tool-agnostic-capability`, `playbook-ecosystem-capability-rollout`.
 
 ---
 
+## 0. Dependency reality (read first)
+
+A council red-team verified the following against the live repos on 2026-06-13 — and it changes the rollout:
+
+- **document-policy merged as a *spec only*.** PR #224 landed `docs/superpowers/specs/2026-06-12-document-policy-design.md` "before the lanes implement it." Its implementation lanes are **open / unbuilt**: there is **no** `repo-template/docs/agent-process/document-policy.md` (lane 1b), **no** `repo-template/scripts/doc-health/` (lane 3a), **no** `VISION.md` template (lane 2a), and **no** `foundation.vision` in `archon-setup`'s feature registry (lane 2b). Verified: `repo-template/scripts/` contains only `doc-sweep/`, `agent/`, `close/`; `repo-template/docs/agent-process/` contains only `doc-sweep.md`; `archon-setup/src` has zero `foundation.vision` / `doc-health` / `document-policy` references.
+- **`repo-template/AGENTS.md` still points agents at `docs/plans/`** (`AGENTS.md:18` — `- Plans: \`docs/plans/\``), not `projects/`.
+- **`AGENTS.md` has a single managed Start Map region** owned by `foundation.agents` (`archon-setup/src/server/tasks/writeAgentsMd.mjs` reconciles exactly one block near the top). A second feature that also writes the Start Map would collide with no defined protocol.
+
+**Consequence:** the original plan — import `doc-health`'s validator lib, amend a document-policy charter row, follow the `foundation.vision` precedent — referenced a floor that does not exist. This rev re-scopes to a **convention-first v1** that ships standalone, assumes no unbuilt infrastructure, and reuses the single existing AGENTS.md writer. The lifecycle engine, the `foundation.projects` registry feature, and all doc-health / doc-sweep / startup-baseline / maintenance-engine wiring move to a **gated v2** (§5).
+
 ## 1. Problem
 
-Document-policy (#223) gives each repo a single **repo-level** intent layer — root `VISION.md` (what experience we're building / scope / drift tripwires) plus an append-only `docs/decisions/decision-log.md`. It deliberately stops at the repo level.
+Document-policy (when built) gives each repo a single **repo-level** intent layer — root `VISION.md` + an append-only `docs/decisions/decision-log.md`. There is no **per-feature** orientation layer. An agent assigned a task still reconstructs context by hunting across `docs/plans/`, `docs/superpowers/specs/`, `docs/adr/`, `docs/research/` — none a guaranteed, guessable, single entry point.
 
-There is no **per-feature** orientation layer. An agent assigned a task on, say, the inventory screen still has to reconstruct the feature's context by hunting across four chartered homes — `docs/plans/`, `docs/superpowers/specs/`, `docs/adr/`, `docs/research/` — none of which is a guaranteed, guessable, single entry point. The information needed before safely touching code ("what is this, where is it in its arc, what must not change, what changed from the original idea, what's the next safe action") is scattered or absent.
-
-This spec adds a **per-project capsule**: `projects/<slug>/PLAN.md` as the required, guessable "front door" for one feature/effort, plus a deterministic lifecycle engine that owns capsule state transitions and archival. It mirrors the proven doc-sweep/doc-health shape: deterministic engine in `repo-template`, a short `AGENTS.md` contract, a full policy doc under `docs/agent-process/`, and a thin CLI-agnostic skill front-end.
+This spec adds a **per-project capsule**: `projects/<slug>/PLAN.md` as the required, guessable front door for one feature/effort — its why, staged plan, invariants, pivots, and current state. **v1 is the convention itself** (the file, the policy doc, the Start Map pointer). The deterministic lifecycle engine that would automate state transitions and archival is a **deferred v2** that must earn its existence through proven pain.
 
 ## 2. Understanding summary
 
-- **What:** a repo-local per-project capsule convention — `projects/<slug>/PLAN.md` as the canonical front door for one feature's why / staged plan / invariants / pivots / current state — plus a lifecycle engine (`scripts/project-plan/`) that validates, transitions, and moves capsules to `projects/_finished/` (shipped) or `projects/_archive/` (abandoned/superseded).
-- **Why:** documents are the agents' operating surface; without a per-feature anchor, orientation is reconstructed from scratch each session, and `docs/plans/` (flat, loose) is not a guessable single home.
-- **Who:** agents author/update `PLAN.md` and run lifecycle moves; the owner reads it and approves pivots (same split as `VISION.md` + decision-log); doc-health flags stale capsules; a future **Project Atlas** consumes capsules as its data source.
-- **Boundary / non-goals:** `PLAN.md` **links out** to specs/ADRs/research/issues — it never replaces their chartered homes ("one home per fact"). No dependency graph, `progress`, `confidence`, or Atlas wiring in this scope (deferred). Not a global mega-file — **one `PLAN.md` per capsule**. No GitHub Projects sync.
-- **Key shift:** `projects/**` is not a plain folder — it becomes a **durable, automation-aware surface** that document-policy, doc-health, doc-sweep, startup-baseline, and owner-maintenance safe-paths must all be taught about.
+- **What (v1):** a repo-local convention — `projects/<slug>/PLAN.md` as the canonical front door for one feature — plus a short policy/contract doc and an AGENTS Start Map pointer. Lifecycle in v1 is manual (`git mv` + a frontmatter `status` edit), documented in the policy.
+- **What (v2, deferred):** a deterministic engine (`scripts/project-plan/`) that validates/transitions/moves capsules and regenerates an index; a `foundation.projects` registry feature; doc-health capsule checks; migration tooling.
+- **Why:** documents are the agents' operating surface; without a per-feature anchor, orientation is rebuilt every session, and `docs/plans/` (flat, loose) is not a guessable single home.
+- **Who:** agents author/update `PLAN.md`; the owner reads it and approves pivots (same split as `VISION.md` + decision-log).
+- **Boundary / non-goals:** `PLAN.md` **links out** to specs/ADRs/research/issues — never replaces them ("one home per fact"). No dependency graph / `progress` / `confidence` / Atlas wiring (deferred). One `PLAN.md` per capsule. v1 assumes **no** unbuilt document-policy infrastructure.
 
 ## 3. Owner decisions (2026-06-13)
 
-| # | Decision | Rejected alternatives | Why |
-| --- | --- | --- | --- |
-| PCD1 | Canonical home = root `projects/<slug>/PLAN.md` | `docs/plans/<feature>/`, `docs/projects/` | "Guessable front door" is the core requirement; `docs/plans/` reads as internal docs. `docs/plans/**` becomes legacy/fallback (PCD9). |
-| PCD2 | Lean frontmatter: `id` (bare slug), `title`, `status`, `created`, `updated` (+ optional `issue` only if validated) | Full Atlas-ready frontmatter now (`depends_on`/`blocked_by`/`progress`/`confidence`/`atlas_include`) | Hand-maintained graph fields that nothing reads rot and mislead — the drift doc-health exists to catch. Atlas fields land later under an `atlas:` block. |
-| PCD3 | One required `PLAN.md`; `decisions.md`/`research.md` split **only on growth**, as rollups that link to (not replace) ADR/research | Multi-file from day one; ADR substitute | skill.md-style instant orientation; YAGNI; preserves one-home-per-fact. |
-| PCD4 | Statuses `intake \| active \| paused \| finished \| archived`; transitions per §5.2; `_finished/`+`_archive/` date-prefixed; "blocked" is a body note | doc-policy 6-state vocab; convention-only manual `mv`; `blocked` as a status | Execution-oriented and finite; reliable across Claude/Codex/Gemini; keeps deferred graph state out of frontmatter. |
-| PCD5 | Deterministic engine `repo-template/scripts/project-plan/` (CLI/lib split, `--dry-run`/`--json`, idempotent, writes-only never commits, scoped dirty-tree refusal) | skill-only logic; whole-tree dirty refusal; auto-commit | Fixture-testable, reusable by doc-health, no personal-CLI trap, compatible with hooks/owner-maintenance/PR lanes. |
-| PCD6 | Durable policy `repo-template/docs/agent-process/project-capsules.md` + ≤5-line AGENTS contract + Start Map line; separate `shared/project-plan` skill wraps the engine | absorb into `project-intake`; long AGENTS section | Different granularity/cadence from repo-level VISION intake; contract+detail-doc pattern; above-the-fold pointers. |
-| PCD7 | `foundation.projects` registry feature = **default-on, unlocked**; feature owns its entire surface; opt-out leaves no dangling expectations | locked like `foundation.agents`; folded into `foundation.agents` | Matches `foundation.vision`/OD5 (providers can opt out); avoids false adoption in repos that decline. |
-| PCD8 | `projects/**` wired into document-policy charter, doc-health, doc-sweep eligibility, startup-baseline, owner-maintenance safe-paths; owner-safe = markdown + images only | treat as plain folder; allow code/config | Else the first user hits hook/sweep friction; prevents `projects/` becoming a code/config loophole. |
-| PCD9 | `projects/README.md` regenerated from frontmatter into a **managed block**; migration conservative (no bulk move) | hand-maintained index; bulk-migrate `docs/plans/**` | Link hygiene on moves; avoids churn over stale historical plans. |
+The decisions are unchanged in intent; the **Phase** column records what ships in v1 vs what is deferred to the gated v2.
 
-Cadence default (tunable in lane PRs without re-review): a `status: active` capsule whose `updated` is older than **30 days** is flagged stale by doc-health (mirrors document-policy's active-plan cadence).
+| # | Decision | Phase | Rejected alternatives / notes |
+| --- | --- | --- | --- |
+| PCD1 | Canonical home = root `projects/<slug>/PLAN.md`; `docs/plans/**` → legacy/fallback | **v1** | `docs/plans/<feature>/`, `docs/projects/` — "guessable front door" is the core requirement |
+| PCD2 | Lean frontmatter: `id` (bare slug), `title`, `status`, `created`, `updated` (+ optional `issue`) | **v1** | Graph/progress/confidence deferred to a future `atlas:` block |
+| PCD3 | One required `PLAN.md`; `decisions.md`/`research.md` split **only on growth**, as rollups that link to ADR/research | **v1** | Multi-file day one; ADR substitute |
+| PCD4 | Statuses `intake \| active \| paused \| finished \| archived`; `_finished/`+`_archive/` date-prefixed; "blocked" is a body note | **v1** (manual moves) | Transitions are documented and applied by `git mv`+edit in v1; **enforced by the engine in v2** |
+| PCD5 | Deterministic lifecycle engine `repo-template/scripts/project-plan/` (CLI/lib split, `--dry-run`/`--json`, idempotent, writes-only, scoped dirty-tree refusal) | **v2 (deferred)** | Must be earned by proven `mv`+index-drift pain (council: Pragmatist, High) |
+| PCD6 | Durable policy `repo-template/docs/agent-process/project-capsules.md` + ≤5-line AGENTS contract | **policy/contract = v1** | The separate `project-plan` **skill = v2** (it wraps the v2 engine) |
+| PCD7 | A `foundation.projects` registry feature, default-on + unlocked, owning its whole surface | **v2 (deferred, blocked)** | Blocked on the AGENTS.md multi-tenant ownership protocol (§4.5). In v1 the Start Map line is owned by the existing `foundation.agents` writer — no second writer |
+| PCD8 | `projects/**` wired into document-policy charter, doc-health, doc-sweep, startup-baseline, owner-maintenance safe-paths | **AGENTS Start Map = v1; rest = v2/blocked** | doc-health/charter floors do not exist yet; `projects/**` stays **out** of doc-sweep auto-commit in v1 (council: Skeptic, High) |
+| PCD9 | `projects/README.md` regenerated from frontmatter into a managed block; conservative migration | **README: v1 hand-maintained, v2 generated** | Regeneration needs the engine; migration command is v2 |
 
 ## 4. Design
 
@@ -47,26 +57,23 @@ Cadence default (tunable in lane PRs without re-review): a `status: active` caps
 
 ```text
 projects/
-  README.md                      # generated index (managed block) + optional human prose
+  README.md                      # v1: optional, hand-maintained index. v2: engine-generated (managed block)
   <slug>/                        # active / intake / paused capsules
     PLAN.md                      # REQUIRED front door
     decisions.md                 # OPTIONAL — only once Decisions/Pivots outgrows PLAN.md
     research.md                  # OPTIONAL — only once research outgrows PLAN.md
     assets/                      # OPTIONAL — images/diagrams only
-  _finished/
-    2026-06-13-vendor-register/  # shipped, date-prefixed
-      PLAN.md
-  _archive/
-    2026-06-13-old-sync-proto/   # abandoned/superseded, date-prefixed
-      PLAN.md
+  _finished/2026-06-13-<slug>/   # shipped (v1: manual git mv; v2: `finish` command)
+  _archive/2026-06-13-<slug>/    # abandoned/superseded (v1: manual git mv; v2: `archive` command)
 ```
 
-- **Slug** = bare, human, guessable (`inventory-screen`), **not** typed (`FEAT-inventory-screen`). Active slugs are unique within `projects/`; collisions take a short qualifier (`inventory-screen-v2`), not a numeric counter. `_finished/`/`_archive/` may hold date-prefixed historical copies of a slug.
-- **Split files are rollups, not substitutes:** `decisions.md` records project-level owner/product decisions and links to `docs/adr/**` for technical decisions; `research.md` summarizes findings and links to canonical `docs/research/**`. After a split, `PLAN.md` retains a summary + pointer.
+- **Slug** = bare, human, guessable (`inventory-screen`), not typed (`FEAT-…`). Active slugs unique within `projects/`; collisions take a short qualifier (`-v2`).
+- **Split files are rollups, not substitutes:** `decisions.md` links to `docs/adr/**`; `research.md` links to `docs/research/**`. After a split, `PLAN.md` keeps a summary + pointer.
+- **Adoption signal (revised — council: Skeptic/Advocate):** a repo has adopted capsules when **at least one `projects/<slug>/PLAN.md` actually exists** — *not* merely when a registry feature was selected. An empty `projects/README.md` is not adoption.
 
-### 4.2 `PLAN.md` template
+### 4.2 `PLAN.md` template (trimmed — council: Advocate)
 
-Lean frontmatter (PCD2); the human-readable dependency/blocker/arc tables live in the **body**, not machine frontmatter, until the Atlas exists.
+The template is cut to skill.md weight to avoid empty-section graveyards. **Required** sections are the orientation core; everything else is **optional / on-growth**.
 
 ```markdown
 ---
@@ -75,201 +82,114 @@ title: Inventory Screen
 status: intake          # intake | active | paused | finished | archived
 created: 2026-06-13
 updated: 2026-06-13
-issue: 234              # optional; include only if the engine validates it
+issue: 234              # optional
 ---
 
 # Inventory Screen — PLAN
 
-## Agent Quickload
+## Agent Quickload            <!-- REQUIRED -->
 - **Current state:** <one line>
 - **Next safe action:** <one line>
-- **Main blocker (if any):** <one line, or "none">
+- **Main blocker:** <one line, or "none">
 - **Do not change:** <invariants in one line>
-- **Read first:** <links to the deep specs/ADRs/code below>
+- **Read first:** <links to the deep specs/ADRs/code>
 
-## Why / what was asked for
+## Why / what was asked for   <!-- REQUIRED -->
 <the experience requested and why this exists>
 
-## End-to-end plan (staged)
-<stages; later stages may be outlined-but-unplanned>
+## Scope                      <!-- REQUIRED -->
+- **In:** … · **Out:** … · **Later:** …
 
-## Scope
-- **In:** …
-- **Out:** …
-- **Later:** …
-
-## Invariants (do not break without updating this PLAN + the decision log)
+## Invariants                 <!-- REQUIRED — do not break without updating this PLAN -->
 - …
 
-## Dependencies & blockers   <!-- human-readable; machine graph deferred to Atlas -->
-| Depends on | Why | Status |
-| Blocks | Why |
-| Blocker | Needed to unblock | Owner | Link |
+## Source links               <!-- REQUIRED — summarize + point; never duplicate -->
+- Specs: `docs/superpowers/specs/…` · ADRs: `docs/adr/…` · Research: `docs/research/…` · Issues/PRs: #…
 
-## Decisions & pivots (added vs removed)
-| Date | Decision | Reason | Link |
+## Agent handoff              <!-- REQUIRED -->
+Before working here: read this PLAN, check the blocker, preserve invariants.
+After meaningful changes: update Current state + `updated:`.
 
-## Source links (one home per fact — summarize + point, never duplicate)
-- Specs: `docs/superpowers/specs/…`
-- ADRs: `docs/adr/…`
-- Research: `docs/research/…`
-- Issues/PRs: #…
-
-## Agent handoff
-Before working here: read this PLAN, check blockers, check linked issues, preserve invariants.
-After meaningful changes: update Current state + Decisions/pivots + `updated:` (run `npm run project-plan -- touch <slug>` or the lifecycle command).
+<!-- OPTIONAL / on-growth (add a section only when it has real content): -->
+<!-- ## End-to-end plan (staged)  -->
+<!-- ## Dependencies & blockers   (tables) -->
+<!-- ## Decisions & pivots        (table) -->
 ```
 
-### 4.3 Lifecycle engine — `repo-template/scripts/project-plan/`
+### 4.3 Lifecycle — **v1 manual, v2 engine (deferred)**
 
-Layout (mirrors `scripts/doc-health/`):
+**v1:** lifecycle is documented in `project-capsules.md`, applied by hand:
+- create a capsule by copying the template to `projects/<slug>/PLAN.md` with `status: intake`;
+- change state by editing the `status:` field and bumping `updated:`;
+- finish/archive by `git mv projects/<slug>/ projects/_finished/<date>-<slug>/` (or `_archive/`) and setting `status`.
 
-```text
-scripts/project-plan/
-  index.mjs       # CLI parser/dispatch only
-  lib.mjs         # PURE: transition legality, frontmatter parse/validate, slug rules, index render
-  fs.mjs          # filesystem/move helpers (no git)
-  lib.test.mjs    # fixtures: clean → zero findings; seeded violations → exact findings
-```
+**v2 (deferred — PCD5):** a deterministic engine at `repo-template/scripts/project-plan/` (`index.mjs` CLI / `lib.mjs` pure validators / `lib.test.mjs`) provides `new / activate / pause / resume / finish / archive / reopen / touch / index / validate`, each with `--dry-run` + `--json`, idempotent, **writes files only (never `git add`/`commit`)**, with dirty-tree refusal scoped to the target capsule / `projects/README.md` managed area / move destination (unrelated dirt = warning). Legal transitions: `intake→active|archived`; `active→paused|finished|archived`; `paused→active|archived`; `finished→archived` (correction); `archived→active` (explicit `reopen <archive-path> [--as <slug>]`, which must also resolve `_finished/` slug collisions). The engine is built **only after** the convention proves orientation value and manual `mv`/index-drift proves painful.
 
-`package.json` wrappers (so agents never type `node scripts/...`):
+### 4.4 `projects/README.md`
 
-```json
-{
-  "scripts": {
-    "project-plan": "node scripts/project-plan/index.mjs",
-    "project-plan:validate": "node scripts/project-plan/index.mjs validate",
-    "project-plan:index": "node scripts/project-plan/index.mjs index"
-  }
-}
-```
+- **v1:** optional, hand-maintained simple index (or omitted — the AGENTS Start Map + a `projects/` listing suffice while capsule counts are tiny).
+- **v2:** regenerated from `PLAN.md` frontmatter into a managed block (`<!-- BEGIN/END MANAGED PROJECT INDEX -->`), human prose preserved outside it. **CRLF discipline:** the regenerator must normalize with `\r?\n` (archon-setup CI gotcha: snapshots are CRLF locally / LF on CI) or it will thrash the index every run.
 
-**Subcommands × transitions × writes:**
+### 4.5 AGENTS.md Start Map — single-writer protocol (council: Architect)
 
-| Command | Legal from → to | Writes |
+`foundation.agents`'s `writeAgentsMd.mjs` owns the **one** managed Start Map region. v1 introduces **no second writer**:
+
+- The Start Map line change is made in **`repo-template/AGENTS.md`** (the source `foundation.agents` already snapshots), **replacing** the single `- Plans: \`docs/plans/\`` line (`AGENTS.md:18`) with:
+  ```
+  - Projects (active feature work): `projects/<slug>/PLAN.md`
+  - Plans (legacy / loose): `docs/plans/`
+  ```
+  This is a content edit inside the existing managed block — not a new managed block, not a competing task.
+- **Coordination risk:** document-policy lane 1b (unbuilt) also edits the AGENTS.md Start Map (its "fixed section order"). L1a must land the projects line in a way 1b preserves when it ships; coordinate in #223 before branching (and if 1b lands first, fold the projects line into its skeleton).
+- **v2 only:** if `foundation.projects` becomes a separate toggleable feature, it must **first** define a multi-tenant managed-block protocol (one block, multiple contributing features, deterministic order) or remain folded into `foundation.agents`. No competing single-region writers.
+
+### 4.6 Automation integration
+
+| Surface | v1 | v2 / blocked |
 | --- | --- | --- |
-| `new <slug> --title <t> [--issue N]` | — → `intake` | creates `projects/<slug>/PLAN.md`; regenerates index. Refuses slug collision. |
-| `activate <slug>` | `intake` → `active` | `status`, `updated` |
-| `pause <slug>` | `active` → `paused` | `status`, `updated` (no move) |
-| `resume <slug>` | `paused` → `active` | `status`, `updated` |
-| `finish <slug>` | `active` → `finished` | `status`, `updated`; move → `_finished/YYYY-MM-DD-<slug>/`; regenerate index |
-| `archive <slug>` | `intake\|active\|paused` → `archived` | `status`, `updated`; move → `_archive/YYYY-MM-DD-<slug>/`; regenerate index |
-| `reopen <archive-path> [--as <slug>]` | `archived` → `active` | move out of `_archive/`; `status`, `updated`; regenerate index. **Explicit path required**; `--as` required on active-slug collision |
-| `touch <slug>` | (any) | bumps `updated:` only |
-| `index` | — | rewrites `projects/README.md` managed block from frontmatter (deterministic) |
-| `validate [--json]` | — | read-only; the validator doc-health imports |
+| AGENTS Start Map | ✅ projects line via `foundation.agents` (§4.5) | — |
+| `docs/agent-process/project-capsules.md` policy | ✅ ships standalone (does **not** require the unbuilt document-policy charter) | when document-policy lane 1b lands, its charter table gains a `projects/` row pointing here |
+| doc-sweep eligibility | ❌ **excluded** — keep `projects/**` out of auto-commit until a validator can tell a complete capsule from a placeholder (council: Skeptic) | v2: include only frontmatter-complete capsules |
+| doc-health capsule checks | ❌ blocked — `scripts/doc-health/` does not exist | v2: add checks (invalid frontmatter, illegal status, `active` past cadence, location≠status, index drift); **`paused` is exempt from staleness** |
+| startup-baseline | ❌ deferred | v2: expect `project-capsules.md` (+ engine when built) |
+| owner-maintenance safe-paths | optional v1 note: `*.md` + images only under `projects/**` | v2: enforce; never code/config/scripts/workflows/manifests/locks/binaries/env/secrets |
+| maintenance engine (#212) | ❌ deferred | v2: per-repo capsule health |
 
-`finished → archived` is a correction-only path (explicit `archive` on a finished capsule). Cross-cutting rules:
+### 4.7 Migration (conservative — unchanged)
 
-- **Flags:** every mutator supports `--dry-run` and `--json`.
-- **Idempotent:** re-running a command already in its target state is a clean no-op (e.g. `finish` on a capsule already under `_finished/...` with `status: finished`). Fixture-tested.
-- **Writes files only — never `git add`/`git commit`.** Staging/commit belongs to the branch/PR or owner-maintenance lane.
-- **Scoped dirty-tree refusal (R3):** the command refuses only on conflicting uncommitted changes in (a) the target capsule folder, (b) `projects/README.md` outside the managed-block regeneration, or (c) any destination folder it would move into/overwrite. **Unrelated dirty files elsewhere are reported as warnings, not blockers** — so an agent mid-feature with `src/**` edits can still `finish`/`archive` a capsule.
-
-### 4.4 `projects/README.md` — generated index
-
-Regenerated from each capsule's `PLAN.md` frontmatter into a managed block; human prose outside the markers is preserved.
-
-```markdown
-# Projects
-
-<!-- BEGIN MANAGED PROJECT INDEX -->
-## Active
-| Project | Status | Updated | Issue |
-| --- | --- | --- | --- |
-| [Inventory Screen](inventory-screen/PLAN.md) | active | 2026-06-13 | #234 |
-
-## Finished
-| Project | Finished | Link |
-
-## Archived
-| Project | Archived | Link |
-<!-- END MANAGED PROJECT INDEX -->
-```
-
-No `progress`/`confidence`/dependency columns until the Atlas exists.
-
-### 4.5 Distribution — `foundation.projects` registry feature
-
-**Default-on, unlocked** (PCD7 — matches `foundation.vision`/OD5). The feature **owns its entire surface** so a deselected repo has no dangling expectations:
-
-```jsonc
-{
-  "id": "foundation.projects",
-  "label": "Project capsules",
-  "group": "foundations",
-  "default": true,
-  "locked": false,
-  "creates": [
-    "projects/README.md",
-    "docs/agent-process/project-capsules.md",
-    "scripts/project-plan/index.mjs",
-    "scripts/project-plan/lib.mjs",
-    "scripts/project-plan/fs.mjs"
-  ],
-  "tasks": [
-    "writeProjectPlanScripts",       // engine + package.json wrapper entries
-    "writeProjectCapsulesPolicy",    // docs/agent-process/project-capsules.md
-    "writeProjectsReadmeSeed",       // projects/README.md with empty managed block
-    "wireProjectCapsulesAgents",     // AGENTS.md managed block + Start Map line
-    "wireProjectCapsulesBaseline"    // .agent/startup-baseline.json entries
-  ]
-}
-```
-
-`foundation.agents` must **not** reference `projects/` unconditionally — the Start Map line, startup-baseline entries, and AGENTS managed block are all owned by `foundation.projects` and only emitted when it is selected.
-
-### 4.6 Automation integration (PCD8)
-
-| Surface | Required wiring |
-| --- | --- |
-| document-policy charter (`repo-template/docs/agent-process/document-policy.md`) | add a `projects/` charter row (owner: agents; budget: PLAN.md lean; above-the-fold = Agent Quickload); redefine `docs/plans/**` as **legacy/fallback** |
-| AGENTS Start Map | `Projects / active: projects/`; `Legacy plans: docs/plans/` |
-| `.agent/startup-baseline.json` | expect `projects/README.md`, `docs/agent-process/project-capsules.md`, `scripts/project-plan/*` (only when `foundation.projects` selected) |
-| doc-sweep eligibility | include add-only `projects/**/*.md` and owner-safe images; carry the hard exclusions below |
-| owner-maintenance safe-paths | allow **only** `*.md` + images (`png/jpg/jpeg/gif/webp/svg`, `drawio`) under `projects/**`; **never** code/config/scripts/workflows/manifests/locks/binaries/env/secrets |
-| doc-health | import `scripts/project-plan/lib.mjs` validators; checks = invalid/missing required frontmatter, illegal status value, `status: active` past 30-day cadence, capsule whose location disagrees with status (e.g. `finished` still in `projects/<slug>/`), `projects/README.md` managed block out of sync with the filesystem, slug collision |
-| archon-setup audit / maintenance engine (#212) | detect adoption (PCD-adoption signal) and stale/missing capsule baseline per `lifecycle: active` repo |
-| `project-plan` skill | call the engine via `npm run project-plan -- …`; never reimplement rules |
-
-**Adoption signal:** a repo has adopted project capsules when `projects/README.md` exists **and** the AGENTS Start Map points active work to `projects/`.
-
-### 4.7 Migration behaviour (PCD9)
-
-Conservative — no bulk move:
-
-- Existing `docs/plans/**` files are historical/fallback and remain valid until explicitly migrated.
-- Do **not** create new `docs/plans/**` files once a repo has adopted `projects/`.
-- `migrate <docs/plans/path> --as <slug>` migrates one active or actively-referenced plan at a time; stale historical plans are left in place.
-- Inbound links are preserved by updating `projects/README.md`, not by creating redirect stubs (add stubs only if link rot becomes painful). **Migration is deferrable to v1.1** if v1 is already large.
+`docs/plans/**` files are historical/fallback and remain valid. **Do not create new `docs/plans/**` files** once a repo adopts `projects/`. Migrate one active or actively-referenced plan at a time (manual in v1; `migrate <path> --as <slug>` command in v2). No bulk move. Note (council: Skeptic): a manual move can dead-link cross-references inside `docs/plans/`; when migrating an actively-referenced plan, grep for inbound links and update them in the same change.
 
 ## 5. Lane decomposition
 
-| Lane | Title | Repo | Deps |
-| --- | --- | --- | --- |
-| L0 | `spec(design)`: project-capsules rollout design — **this lane** | archon-setup | — |
-| L1 | `feat(engine)`: `project-plan` engine + `project-capsules.md` policy + AGENTS contract + Start Map line + `projects/README.md` seed + npm wrappers | repo-template | document-policy lane 1b (charter), L0 |
-| L2 | `feat(registry)`: `foundation.projects` (default-on, unlocked, owns full surface) + snapshot refresh + audit/startup-baseline | archon-setup | L1 |
-| L3 | `feat(skill)`: `shared/project-plan` skill (scaffold + lifecycle wrapper) | jma-skill-review | L1, L2 |
-| L4 | `feat(doc-health)`: capsule checks via imported `lib.mjs` validators (+ optional monthly cron) | repo-template / github-workflows | L1, document-policy lane 3a |
-| L5 | `feat(migrate)`: `docs/plans/**` one-at-a-time migration command | repo-template | L1 (v1.1, deferrable) |
+| Lane | Title | Repo | Phase | Deps |
+| --- | --- | --- | --- | --- |
+| L0 | `spec(design)`: this document | archon-setup | — | — |
+| **L1a** | `feat(projects)`: convention v1 — `project-capsules.md` policy + trimmed PLAN.md template + AGENTS Start Map line (in the `foundation.agents` block) + optional `projects/README.md` seed | repo-template | **v1 (ships now)** | L0; coordinate with document-policy lane 1b on the AGENTS Start Map |
+| L1a′ | `chore(snapshots)`: refresh archon-setup snapshots so onboarded repos receive L1a | archon-setup | **v1** | L1a |
+| L2 | `feat(engine)`: `project-plan` lifecycle engine (PCD5) | repo-template | **v2 (gated)** | L1a + proven `mv`/index pain |
+| L3 | `feat(registry)`: `foundation.projects` feature — **only after** the AGENTS multi-tenant protocol (§4.5) | archon-setup | **v2 (gated)** | L2; AGENTS protocol |
+| L4 | `feat(skill)`: `project-plan` skill wrapping the engine | jma-skill-review | **v2** | L2 |
+| L5 | `feat(doc-health)`: capsule checks via imported `lib.mjs` | repo-template / github-workflows | **v2 (blocked)** | document-policy lane 3a must ship `scripts/doc-health/` first |
+| L6 | `feat(migrate)`: `docs/plans/**` one-at-a-time migration command | repo-template | **v2** | L2 |
 
-**Order:** L0 → L1 → L2 → L3; L4 after L1 (coordinate with document-policy lane 3a in #223); L5 last / optional.
+**Order:** L1a → L1a′ now. Everything else is a gated v2: build L2 only after the convention proves value; L3 only after the AGENTS protocol; L5 only after doc-health exists.
 
-**Risks:** L1 amends the document-policy charter + AGENTS Start Map — a distributed managed surface; land the charter-row edit as its own commit and coordinate with document-policy lane 1b before branching. The 30-day staleness cadence may need tuning (it is a flag, not a block).
+**Risks:** L1a touches the AGENTS.md Start Map (a distributed managed surface that document-policy lane 1b also touches) — land it as its own commit and coordinate in #223.
 
-## 6. Verification (per lane; recorded in each PR)
+## 6. Verification
 
-- **L1:** `lib.test.mjs` fixtures — clean tree → zero findings; each seeded violation → exact finding; every transition (legal + illegal) covered; idempotent re-runs are no-ops; `--dry-run` writes nothing; `--json` shape stable; engine never invokes git; `project-capsules.md` renders and the AGENTS contract stays ≤5 lines; `npm test` green in repo-template.
-- **L2:** `npm run refresh-snapshots` + `snapshots:verify` green; `foundation.projects` plan/apply idempotent (re-run = no duplicate state); registry tests assert default-on + unlocked + the full `creates`/`tasks` surface; a repo that deselects the feature ends with **no** `projects/` Start Map line, baseline entry, or AGENTS block.
-- **L3:** skill walkthrough scaffolds a valid capsule in a scratch repo and runs `finish`/`archive`/`reopen` via the engine (no rule reimplementation).
-- **L4:** doc-health fixtures for each capsule check; report-only (no writes outside the report path); scoped `actionlint` + integration test on any cron workflow (permissions block, tag-ref alignment, integration-test presence).
-- **L5:** `migrate` moves one plan, updates the index, leaves stale plans untouched; no bulk move.
+- **L1a:** `project-capsules.md` + the trimmed template render; the AGENTS Start Map shows the `projects/` lines and **replaces** (not duplicates) the `docs/plans/` line; AGENTS.md still has exactly one managed Start Map region (no second writer); `npm test` green in repo-template; AGENTS.md stays within its budget.
+- **L1a′:** `npm run refresh-snapshots` + `snapshots:verify` green; root baseline == snapshot byte-for-byte; no `foundation.*` schema change (v1 adds no feature).
+- **v2 lanes (when reached):** engine fixtures (clean → zero findings; each seeded violation → exact finding; every legal+illegal transition; idempotent re-runs; `--dry-run` writes nothing; never invokes git); `foundation.projects` plan/apply idempotent + adoption requires a real capsule; doc-health report-only.
 
 ## 7. Out of scope / deferred
 
-The **Project Atlas** — the roadmap compiler that reads capsules (+ GitHub Issues/Projects) and generates Mermaid Gantt / dependency graph / release map / `AGENT_CONTEXT` — is the deferred follow-on. This spec only makes `projects/<slug>/PLAN.md` a real, automation-aware surface and ships its lifecycle engine. When the Atlas is built, the graph/progress/confidence fields land under a reserved `atlas:` frontmatter block (clean migration; no rework of the lean fields).
+- **The Project Atlas** (Gantt / dependency graph / release map / `AGENT_CONTEXT`) — future; lands graph fields under a reserved `atlas:` block.
+- **The lifecycle engine, `foundation.projects`, the `project-plan` skill, and all doc-health / doc-sweep / startup-baseline / maintenance-engine wiring** — gated v2 (§5), built after the convention proves value and the document-policy floor exists.
 
-## 8. Decision log (preserved from the brainstorming session)
+## 8. Decision log (preserved)
 
-DL1 root `projects/<slug>/PLAN.md` · DL2 one PLAN.md, split-on-growth rollups · DL3 PLAN.md indexes/links out · DL4 statuses + command-owned validated moves · DL5 lean frontmatter, Atlas deferred · DL6 `docs/plans/**` legacy/fallback · DL7 `projects/**` durable surface · DL8 `projects/README.md` index updated with moves · DL9 legal transitions (§4.3) · DL10 adoption signal · DL11 owner-safe allowlist · DL12 conservative migration · DL13 spec transient in archon-setup, durable policy in repo-template · DL14 capsule trigger (>1 session/PR or owner-facing scope/invariants) · DL15 `id` = bare slug · DL16 separate `project-plan` skill · DL17 slug uniqueness · DL18 explicit `foundation.projects` (default-on, **unlocked**, owns full surface) · DL19 npm wrappers · DL20 `--dry-run`/`--json` · DL21 CLI/lib split, doc-health imports lib · DL22 writes-only, scoped dirty-tree refusal · DL23 idempotent subcommands · DL24 explicit reopen path + `--as` on collision · DL25 managed-block index regeneration · DL26 conservative one-at-a-time migration · DL27 engine ("Project Capsules Engine") + finalized subcommand set + rollout order.
+DL1 root `projects/<slug>/PLAN.md` · DL2 one PLAN.md, split-on-growth · DL3 PLAN.md indexes/links out · DL4 statuses + (v2) command-owned moves · DL5 lean frontmatter, Atlas deferred · DL6 `docs/plans/**` legacy/fallback · DL7 `projects/**` durable surface · DL8 index updated with moves · DL9 transitions · DL10 adoption signal · DL11 owner-safe allowlist · DL12 conservative migration · DL13 spec transient, durable policy in repo-template · DL14 capsule trigger · DL15 `id` = bare slug · DL16 separate `project-plan` skill (v2) · DL17 slug uniqueness · DL18 `foundation.projects` default-on/unlocked (v2) · DL19 npm wrappers (v2) · DL20 `--dry-run`/`--json` (v2) · DL21 CLI/lib split (v2) · DL22 writes-only, scoped dirty-tree (v2) · DL23 idempotent (v2) · DL24 explicit reopen path + `--as` (v2) · DL25 managed-block index regen (v2) · DL26 conservative migration (v2) · DL27 engine + subcommands + order.
+
+**Council red-team revisions (2026-06-13, rev 2):**
+DL28 **convention-first v1; engine/feature/skill/doc-health deferred to a gated v2** (Pragmatist, High). DL29 **document-policy is spec-only; its lanes (1b/2a/2b/3a) are unbuilt** — v1 assumes none of them (Skeptic+Architect, verified). DL30 **AGENTS.md has one managed Start Map writer (`foundation.agents`); v1 adds no second writer**, and the `docs/plans/` line is **replaced, not duplicated** (Architect, High). DL31 **adoption = a real `PLAN.md` exists**, not feature-selection (Skeptic/Advocate). DL32 **PLAN.md template trimmed** to required (Quickload/Why/Scope/Invariants/Source links/Handoff) + optional-on-growth tables (Advocate). DL33 **`projects/**` excluded from doc-sweep auto-commit in v1** until completeness is detectable (Skeptic). DL34 **`paused` exempt from staleness; `reopen` must resolve `_finished/` collisions; CRLF `\r?\n` discipline on README regen** (Skeptic + orchestrator). DL35 **`foundation.projects` requires a multi-tenant AGENTS managed-block protocol before it can exist** (Architect).
