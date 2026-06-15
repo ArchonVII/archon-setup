@@ -56,7 +56,7 @@ Spec PR [#224](https://github.com/ArchonVII/archon-setup/pull/224) **MERGED** 20
 
 ## Epic #245 - Project Capsules
 
-Spec PR [#246](https://github.com/ArchonVII/archon-setup/pull/246) **MERGED**. Convention lane [repo-template#87](https://github.com/ArchonVII/repo-template/issues/87) drafted (not merged). Engine / `foundation.projects` / doc-health deferred to a gated v2 (council red-team outcome).
+Spec PR [#246](https://github.com/ArchonVII/archon-setup/pull/246) **MERGED**. Convention lane [repo-template#87](https://github.com/ArchonVII/repo-template/issues/87) **MERGED** 2026-06-14 (the snapshot carries it; installer wiring for generated repos is a follow-up — see #263). Engine / `foundation.projects` / doc-health deferred to a gated v2 (council red-team outcome).
 
 ## Epic #244 - Fable-derived practices
 
@@ -66,7 +66,7 @@ Discussion only ([#244](https://github.com/ArchonVII/archon-setup/issues/244)). 
 
 - repo-template **full Librarian wiki** MERGED ([repo-template#95](https://github.com/ArchonVII/repo-template/pull/95)).
 - Front-door re-sync rule MERGED to [hudson-bend#209](https://github.com/ArchonVII/hudson-bend/pull/209) + [jma-history#329](https://github.com/ArchonVII/jma-history/pull/329).
-- **Leg 1 (onboarding wiring):** wiki front-door paths staged into `repoTemplate.copyFiles` in [PR #256](https://github.com/ArchonVII/archon-setup/pull/256) (Option A — **contract only, NOT activated**). Activation is BLOCKED on [#257](https://github.com/ArchonVII/archon-setup/issues/257) (complete repo-template#90 startup-baseline wiring, then a post-#95 `--only repo-template` refresh). A naive pin bump breaks 5 fixtures, so it is a deliberate follow-up.
+- **Leg 1 (onboarding wiring):** wiki front-door paths added to `repoTemplate.copyFiles` in [PR #256](https://github.com/ArchonVII/archon-setup/pull/256) (**MERGED** 2026-06-15, Option A — **contract only; NOT yet activated in the snapshot**; the copy loop now tolerates not-yet-present entries). Activation is BLOCKED on [#257](https://github.com/ArchonVII/archon-setup/issues/257) (complete repo-template#90 startup-baseline wiring, then a post-#95 `--only repo-template` refresh). A naive pin bump breaks 5 fixtures, so it is a deliberate follow-up.
 - **Legs 2-3** (archon-setup's own wiki; github-workflows' own wiki): planned; do github-workflows first (lowest collision risk).
 
 ## Skills - Epic #200 (three-layer governance) - NEW
@@ -77,18 +77,18 @@ Discussion only ([#244](https://github.com/ArchonVII/archon-setup/issues/244)). 
 
 | Item | State | Gate |
 | --- | --- | --- |
-| [#238](https://github.com/ArchonVII/archon-setup/issues/238) Stage 1 OS-core rollout | Decision packet ready ([PR #259](https://github.com/ArchonVII/archon-setup/pull/259)) | Owner authorization — starts the telemetry clock |
+| [#238](https://github.com/ArchonVII/archon-setup/issues/238) Stage 1 OS-core rollout | Decision packet on main ([PR #259](https://github.com/ArchonVII/archon-setup/pull/259) MERGED) | Owner authorization — starts the telemetry clock; then dry-run |
 | [#258](https://github.com/ArchonVII/archon-setup/issues/258) archon first-party fleet rollout | Proposed | Owner ratifies fleet taxonomy + authorizes #238 first |
-| [PR #256](https://github.com/ArchonVII/archon-setup/pull/256) | Ready; Option A (wiki contract staged, pushed) | Merge decision; then #257 to activate |
-| Document Policy [#223](https://github.com/ArchonVII/archon-setup/issues/223) | Spec merged, lanes unbuilt | Dispatch now vs keep parked behind friction data |
+| Wiki Leg 1 activation | #256 merged (contract only); [#257](https://github.com/ArchonVII/archon-setup/issues/257) is the activation lane | Land #257 (#90 wiring + post-#95 refresh) |
+| Document Policy [#223](https://github.com/ArchonVII/archon-setup/issues/223) | Spec merged, lanes unbuilt (agents active on lanes) | Dispatch now vs keep parked behind friction data |
 
 **No longer held (corrected from prior maps):** `github-workflows@v1` retag DONE 2026-06-12 (v1 -> `ae00ba3`, owner-approved). Spec PR #224 MERGED. jma-skill-review #180/#183/#184 merged.
 
 ## Open PRs (OS layer)
 
-- [archon-setup#256](https://github.com/ArchonVII/archon-setup/pull/256) — provider-scoped refresh + wiki copyFiles (ready).
-- [archon-setup#259](https://github.com/ArchonVII/archon-setup/pull/259) — Stage 1 decision packet (this batch).
-- [archon-setup#243](https://github.com/ArchonVII/archon-setup/pull/243) — **SUPERSEDED** by this rebuild; recommend closing.
+- [archon-setup#256](https://github.com/ArchonVII/archon-setup/pull/256) — provider-scoped refresh + wiki copyFiles — **MERGED 2026-06-15**.
+- [archon-setup#259](https://github.com/ArchonVII/archon-setup/pull/259) — Stage 1 decision packet — **MERGED 2026-06-15**.
+- [archon-setup#243](https://github.com/ArchonVII/archon-setup/pull/243) — **SUPERSEDED** by this PR (#260); recommend closing.
 - [repo-template#88](https://github.com/ArchonVII/repo-template/pull/88) — close-scan run-once-per-HEAD (ready).
 - [github-workflows#68](https://github.com/ArchonVII/github-workflows/pull/68) — Dependabot actions bump (vitest was failing; fix before merge).
 - [jma-skill-review#197](https://github.com/ArchonVII/jma-skill-review/pull/197) (status refresh), [#187](https://github.com/ArchonVII/jma-skill-review/pull/187) (Dependabot).
@@ -99,3 +99,4 @@ Discussion only ([#244](https://github.com/ArchonVII/archon-setup/issues/244)). 
 - **Pre-launch gates** [#114](https://github.com/ArchonVII/archon-setup/issues/114)-[#121](https://github.com/ArchonVII/archon-setup/issues/121): parked (npm publish on hold).
 - **Worktree prune debt** (merged lanes): archon-setup #233 / #234; repo-template #28 / #76; github-workflows #65. Run `npm run agent:prune`.
 - **#90 repo-update-log snapshot wiring incomplete** → [#257](https://github.com/ArchonVII/archon-setup/issues/257) (blocks clean wiki activation).
+- **#256 review follow-ups** → [#263](https://github.com/ArchonVII/archon-setup/issues/263) (scoped-refresh false-success, empty `--only`, project-capsules installer wiring).
