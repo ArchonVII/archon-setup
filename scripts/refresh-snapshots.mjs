@@ -403,6 +403,12 @@ export async function refreshSnapshots({
       await cp(join(s.localPath, s.copyFrom), dest, { recursive: true });
     } else if (s.copyFiles) {
       for (const f of s.copyFiles) {
+        // The copyFiles config may be ahead of the checkout (e.g. front-door
+        // paths staged before the provider pin that introduces them). Skip what
+        // the source does not have, mirroring expectedSnapshotFiles()'s
+        // existsAtPin tolerance so refresh and verify stay symmetric instead of
+        // ENOENT-crashing on a not-yet-present entry.
+        if (!existsSync(join(s.localPath, f))) continue;
         await mkdir(dirname(join(dest, f)), { recursive: true });
         await cp(join(s.localPath, f), join(dest, f), { recursive: false });
       }
