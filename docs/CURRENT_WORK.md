@@ -1,76 +1,102 @@
 # Current Work - ArchonVII Agent OS
 
-Updated: 2026-06-12 by ArchonVII/archon-setup#232.
+Updated: 2026-06-15 by ArchonVII/archon-setup#242 (full rebuild from live state; supersedes the stale 2026-06-13 draft [PR #243](https://github.com/ArchonVII/archon-setup/pull/243)).
 
 Update rule: update this file in the same PR whenever a lane merges, a lane issue is filed, or a decision gate changes. Keep it as the single current-work map; detailed history belongs in the linked issue, PR, roadmap, or `docs/ecosystem-status.md`.
 
 Roadmap source: [`docs/plans/2026-06-12-os-roadmap.md`](./plans/2026-06-12-os-roadmap.md).
 
-## Snapshot
+## Orientation (60-second map)
 
-- ArchonVII/archon-setup#212 lanes 0-2 shipped on 2026-06-12: spec PR ArchonVII/archon-setup#213, registry/port policy PR ArchonVII/archon-setup#222, maintenance status PR ArchonVII/archon-setup#228.
-- ArchonVII/archon-setup#223 is gated by draft spec PR ArchonVII/archon-setup#224. Start its implementation lanes only after that spec merges.
-- ArchonVII/archon-setup#229 Stage 0 provider lanes are merged: repo-template PRs #80 (#75), #79 (#76), #81 (#77), #82 (#28), and #83 (#78). This #232 lane refreshes the `repo-template` snapshot once across the merged batch.
-- ArchonVII/archon-setup#230 and #231 merged on 2026-06-12 via PRs #236 and #235.
-- `docs/ecosystem-overview.md` is generated from `config/ecosystem-map.json` and `src/snapshots/manifest.json`; this lane regenerates it after the snapshot refresh.
+The Agent OS is **five meta repos** — `.github` (org defaults), `github-workflows` (reusable workflows `@v1`), `repo-template` (template + AGENTS contract), `archon-setup` (the hub: feature registry + ecosystem registry + maintenance engine + onboarding wizard), and `jma-skill-review` / `jma-skills-data` (skills tooling + content) — plus their consumers. `archon` (the flagship AI-native terminal) is the **heaviest consumer and a first-party fleet candidate, not OS-core** (see Stage 1 / [#258](https://github.com/ArchonVII/archon-setup/issues/258)).
 
-## Epic #212 - Registry, Maintenance, Dashboard
-
-| Lane | Issue / PR | Status | Blocked by |
-| --- | --- | --- | --- |
-| 3 - registry CRUD RPC + repo.audit | [ArchonVII/archon-setup#216](https://github.com/ArchonVII/archon-setup/issues/216) | Open; unblocked | Lanes 1 and 2 are merged |
-| 4 - React shell scaffold | [ArchonVII/archon-setup#217](https://github.com/ArchonVII/archon-setup/issues/217) | Open; parallelizable | None |
-| 5 - Dashboard tab v1 | [ArchonVII/archon-setup#218](https://github.com/ArchonVII/archon-setup/issues/218) | Open | [ArchonVII/archon-setup#216](https://github.com/ArchonVII/archon-setup/issues/216), [ArchonVII/archon-setup#217](https://github.com/ArchonVII/archon-setup/issues/217) |
-| 6 - 10 Commandments + session reporting + port discipline | [ArchonVII/repo-template#70](https://github.com/ArchonVII/repo-template/issues/70) | Open; parallelizable | None |
-| 7a - docs/milestones/ convention | [ArchonVII/repo-template#71](https://github.com/ArchonVII/repo-template/issues/71) | Open; parallelizable | None |
-| 7b - milestones feature-registry entry | [ArchonVII/archon-setup#221](https://github.com/ArchonVII/archon-setup/issues/221) | Open | [ArchonVII/repo-template#71](https://github.com/ArchonVII/repo-template/issues/71), snapshot refresh lane [ArchonVII/archon-setup#219](https://github.com/ArchonVII/archon-setup/issues/219) |
-| 8 - snapshot refresh + distributor regions + owner-confirmed distribution | [ArchonVII/archon-setup#219](https://github.com/ArchonVII/archon-setup/issues/219) | Open; owner-gated apply | [ArchonVII/repo-template#70](https://github.com/ArchonVII/repo-template/issues/70), [ArchonVII/repo-template#71](https://github.com/ArchonVII/repo-template/issues/71), explicit owner confirmation before fleet apply |
-| 9 - React parity, retire vanilla UI | [ArchonVII/archon-setup#220](https://github.com/ArchonVII/archon-setup/issues/220) | Open; last | [ArchonVII/archon-setup#217](https://github.com/ArchonVII/archon-setup/issues/217), [ArchonVII/archon-setup#218](https://github.com/ArchonVII/archon-setup/issues/218) |
-
-## Epic #223 - Document Policy
-
-| Lane | Issue / PR | Status | Blocked by |
-| --- | --- | --- | --- |
-| 0 - spec review gate | [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) | Draft PR; held for owner review | Owner review |
-| 1a - STARTER.md charter index | [ArchonVII/.github#27](https://github.com/ArchonVII/.github/issues/27) | Open | Spec PR [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) |
-| 1b - document-policy.md charters + placement rules | [ArchonVII/repo-template#72](https://github.com/ArchonVII/repo-template/issues/72) | Open | Spec PR [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) |
-| 1c - snapshot refresh + foundation.agents wiring | [ArchonVII/archon-setup#225](https://github.com/ArchonVII/archon-setup/issues/225) | Open | [ArchonVII/.github#27](https://github.com/ArchonVII/.github/issues/27), [ArchonVII/repo-template#72](https://github.com/ArchonVII/repo-template/issues/72), spec PR [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) |
-| 2a - VISION.md + decision-log + drift duties | [ArchonVII/repo-template#73](https://github.com/ArchonVII/repo-template/issues/73) | Open | [ArchonVII/repo-template#72](https://github.com/ArchonVII/repo-template/issues/72), spec PR [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) |
-| 2b - foundation.vision feature | [ArchonVII/archon-setup#226](https://github.com/ArchonVII/archon-setup/issues/226) | Open | [ArchonVII/repo-template#73](https://github.com/ArchonVII/repo-template/issues/73), snapshot refresh, spec PR [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) |
-| 2c - project-intake skill | [ArchonVII/jma-skill-review#178](https://github.com/ArchonVII/jma-skill-review/issues/178) | Open | [ArchonVII/repo-template#73](https://github.com/ArchonVII/repo-template/issues/73), spec PR [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) |
-| 2d - backfill vision interviews | No issue yet; owner-paced | Not started | [ArchonVII/jma-skill-review#178](https://github.com/ArchonVII/jma-skill-review/issues/178) |
-| 3a - deterministic doc-health checker | [ArchonVII/repo-template#74](https://github.com/ArchonVII/repo-template/issues/74) | Open | [ArchonVII/repo-template#72](https://github.com/ArchonVII/repo-template/issues/72), spec PR [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) |
-| 3b - doc-health maintenance signal | [ArchonVII/archon-setup#227](https://github.com/ArchonVII/archon-setup/issues/227) | Open | [ArchonVII/repo-template#74](https://github.com/ArchonVII/repo-template/issues/74); [ArchonVII/archon-setup#215](https://github.com/ArchonVII/archon-setup/issues/215) is satisfied |
-| 3c - monthly semantic doc-health audit caller | [ArchonVII/github-workflows#69](https://github.com/ArchonVII/github-workflows/issues/69) | Open | [ArchonVII/repo-template#74](https://github.com/ArchonVII/repo-template/issues/74), spec PR [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) |
-| 4 - doc-policy-lint warning-only workflow | [ArchonVII/github-workflows#70](https://github.com/ArchonVII/github-workflows/issues/70) | Open | [ArchonVII/repo-template#72](https://github.com/ArchonVII/repo-template/issues/72), spec PR [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) |
+North star: an OS that survives model/tooling change and is *visually inspectable* — a live workflow graph generated from real config (epic [#212](https://github.com/ArchonVII/archon-setup/issues/212) → roadmap Stage 3).
 
 ## Epic #229 - Agent OS Roadmap
 
-| Stage / lane | Issue / PR | Status | Blocked by |
-| --- | --- | --- | --- |
-| Stage 0 - anomaly ledger path + caller | [ArchonVII/repo-template#75](https://github.com/ArchonVII/repo-template/issues/75) / [PR #80](https://github.com/ArchonVII/repo-template/pull/80) | Merged on 2026-06-12 (`5e7ff7a`) | None |
-| Stage 0 - doc-orphan-detector cron caller | [ArchonVII/repo-template#76](https://github.com/ArchonVII/repo-template/issues/76) / [PR #79](https://github.com/ArchonVII/repo-template/pull/79) | Merged on 2026-06-12 (`996f69e`) | None |
-| Stage 0 - hook default-branch + docs/phase2 refs | [ArchonVII/repo-template#77](https://github.com/ArchonVII/repo-template/issues/77) / [PR #81](https://github.com/ArchonVII/repo-template/pull/81) | Merged on 2026-06-12 (`9c6c0e8`) | None |
-| Stage 0 - close-scan local delivery guard | [ArchonVII/repo-template#28](https://github.com/ArchonVII/repo-template/issues/28) / [PR #82](https://github.com/ArchonVII/repo-template/pull/82) | Merged on 2026-06-12 (`4c2ff73`) | None |
-| Stage 0 - current-work map + roadmap doc | [ArchonVII/archon-setup#230](https://github.com/ArchonVII/archon-setup/issues/230) / [PR #236](https://github.com/ArchonVII/archon-setup/pull/236) | Merged on 2026-06-12 (`b15e245`) | None |
-| Stage 0 - skills source in ecosystem map | [ArchonVII/archon-setup#231](https://github.com/ArchonVII/archon-setup/issues/231) / [PR #235](https://github.com/ArchonVII/archon-setup/pull/235) | Merged on 2026-06-12 (`b338224`) | None |
-| Stage 0 - provider snapshot refresh | [ArchonVII/archon-setup#232](https://github.com/ArchonVII/archon-setup/issues/232) | In progress in this branch; provider blockers satisfied; `repoTemplate` pin refreshed to `7853175` | None |
-| Stage 1 - friction ledger contract | [ArchonVII/repo-template#78](https://github.com/ArchonVII/repo-template/issues/78) / [PR #83](https://github.com/ArchonVII/repo-template/pull/83) | Merged on 2026-06-12 (`7853175`) | None |
-| Stage 1 - friction collector | [ArchonVII/archon-setup#233](https://github.com/ArchonVII/archon-setup/issues/233) | Open; provider contract merged | Coordinate with registry RPC lane [ArchonVII/archon-setup#216](https://github.com/ArchonVII/archon-setup/issues/216) |
-| Stage 1 - friction-ledger feature entry | [ArchonVII/archon-setup#234](https://github.com/ArchonVII/archon-setup/issues/234) | Open; provider contract merged | Snapshot lane [ArchonVII/archon-setup#232](https://github.com/ArchonVII/archon-setup/issues/232) must merge first |
-| Stage 1 - weekly page-gm digest | No code issue | Ritual after collection starts | Friction data from Stage 1 lanes |
+| Stage | Status |
+| --- | --- |
+| Stage 0 - stabilize & decide | **COMPLETE** (all provider lanes merged 2026-06-12) |
+| Stage 1 - friction telemetry | **BUILT BUT INERT** — see below |
+| Stages 2-4 - process layer / graph / edit-in-place | **NOT FILED** (by design; file after ~2 weeks of friction data) |
 
-Stages 2-4 from the roadmap are not filed yet; file those after Stage 1 friction data ranks what process data to encode first.
+**Stage 1 detail — telemetry is built but NOT live:**
+- Contract merged: friction ledger on repo-template main ([repo-template#83](https://github.com/ArchonVII/repo-template/pull/83)).
+- Collector MERGED: [#233](https://github.com/ArchonVII/archon-setup/issues/233).
+- New-repo wiring MERGED: [#234](https://github.com/ArchonVII/archon-setup/issues/234).
+- **HARD RULE:** Stage 1 telemetry does NOT start when #233/#234 land. It starts only when [#238](https://github.com/ArchonVII/archon-setup/issues/238)'s owner-gated rollout to existing repos verifies and **records a start timestamp** (here + on #229). No status doc may claim "telemetry live" before that.
+- [#238](https://github.com/ArchonVII/archon-setup/issues/238) (OS-core rollout) is OPEN, owner-gated. Decision packet: [PR #259](https://github.com/ArchonVII/archon-setup/pull/259) (pointer comment on #238).
+- First-party fleet rollout (`archon` first) = [#258](https://github.com/ArchonVII/archon-setup/issues/258) — proposed, gated on #238 + taxonomy ratification.
+- Weekly `page-gm` friction digest = ritual once data flows.
+
+Stages 2-4 are effectively gated on #238 (they need friction data to rank what to encode first).
+
+## Epic #212 - Registry, Maintenance, Dashboard
+
+Lanes 0-2 shipped 2026-06-12 (PRs #213, #222, #228). Remaining:
+
+| Lane | Issue | Status |
+| --- | --- | --- |
+| 3 - registry CRUD RPC + repo.audit | [#216](https://github.com/ArchonVII/archon-setup/issues/216) | Open; unblocked |
+| 4 - React+Vite shell scaffold | [#217](https://github.com/ArchonVII/archon-setup/issues/217) | Open; parallelizable |
+| 5 - Dashboard tab v1 | [#218](https://github.com/ArchonVII/archon-setup/issues/218) | Open; blocked by 3, 4 |
+| 6 - 10 Commandments + session reporting + port discipline | [repo-template#70](https://github.com/ArchonVII/repo-template/issues/70) | Open; parallelizable |
+| 7a - docs/milestones/ convention | [repo-template#71](https://github.com/ArchonVII/repo-template/issues/71) | Open; parallelizable |
+| 7b - milestones feature-registry entry | [#221](https://github.com/ArchonVII/archon-setup/issues/221) | Open |
+| 8 - snapshot refresh + distributor + owner-confirmed distribution | [#219](https://github.com/ArchonVII/archon-setup/issues/219) | Open; owner-gated apply |
+| 9 - React parity, retire vanilla UI | [#220](https://github.com/ArchonVII/archon-setup/issues/220) | Open; last |
+
+Lanes 3 + 4 are the unblocked, parallelizable path toward the north-star process-graph view.
+
+## Epic #223 - Document Policy - PARKED (not dormant-by-neglect)
+
+Spec PR [#224](https://github.com/ArchonVII/archon-setup/pull/224) **MERGED** 2026-06-12. All implementation lanes are OPEN and unbuilt: [.github#27](https://github.com/ArchonVII/.github/issues/27) (1a), [repo-template#72](https://github.com/ArchonVII/repo-template/issues/72) (1b), [#225](https://github.com/ArchonVII/archon-setup/issues/225) (1c), [repo-template#73](https://github.com/ArchonVII/repo-template/issues/73) (2a), [#226](https://github.com/ArchonVII/archon-setup/issues/226) (2b), [jma-skill-review#178](https://github.com/ArchonVII/jma-skill-review/issues/178) (2c), [repo-template#74](https://github.com/ArchonVII/repo-template/issues/74) (3a), [#227](https://github.com/ArchonVII/archon-setup/issues/227) (3b), [github-workflows#69](https://github.com/ArchonVII/github-workflows/issues/69) (3c), [github-workflows#70](https://github.com/ArchonVII/github-workflows/issues/70) (4).
+
+**Status: unblocked (spec merged) but PARKED** pending the Stage 1 telemetry decision / explicit owner reprioritization. The roadmap frames friction data as the signal that should rank future process work, so the lanes wait rather than dispatch now.
+
+## Epic #245 - Project Capsules
+
+Spec PR [#246](https://github.com/ArchonVII/archon-setup/pull/246) **MERGED**. Convention lane [repo-template#87](https://github.com/ArchonVII/repo-template/issues/87) **MERGED** 2026-06-14 (the snapshot carries it; installer wiring for generated repos is a follow-up — see #263). Engine / `foundation.projects` / doc-health deferred to a gated v2 (council red-team outcome).
+
+## Epic #244 - Fable-derived practices
+
+Discussion only ([#244](https://github.com/ArchonVII/archon-setup/issues/244)). Lanes: [jma-skill-review#189](https://github.com/ArchonVII/jma-skill-review/issues/189) (skills Tier 1-2 + dispatching rewrite), [github-workflows#71](https://github.com/ArchonVII/github-workflows/issues/71) (CI test-count canary). Tier 3 (contract/policy: AGENTS.md + CLAUDE.md) deferred to its own owner-gated lane. All proposed; owner authorizes per item.
+
+## Wiki rollout (Librarian) - NEW workstream 2026-06-15
+
+- repo-template **full Librarian wiki** MERGED ([repo-template#95](https://github.com/ArchonVII/repo-template/pull/95)).
+- Front-door re-sync rule MERGED to [hudson-bend#209](https://github.com/ArchonVII/hudson-bend/pull/209) + [jma-history#329](https://github.com/ArchonVII/jma-history/pull/329).
+- **Leg 1 (onboarding wiring):** wiki front-door paths added to `repoTemplate.copyFiles` in [PR #256](https://github.com/ArchonVII/archon-setup/pull/256) (**MERGED** 2026-06-15, Option A — **contract only; NOT yet activated in the snapshot**; the copy loop now tolerates not-yet-present entries). Activation is BLOCKED on [#257](https://github.com/ArchonVII/archon-setup/issues/257) (complete repo-template#90 startup-baseline wiring, then a post-#95 `--only repo-template` refresh). A naive pin bump breaks 5 fixtures, so it is a deliberate follow-up.
+- **Legs 2-3** (archon-setup's own wiki; github-workflows' own wiki): planned; do github-workflows first (lowest collision risk).
+
+## Skills - Epic #200 (three-layer governance) - NEW
+
+[jma-skill-review#200](https://github.com/ArchonVII/jma-skill-review/issues/200): separate runtime / source / repo governance for skills. Postdates the 2026-06-12 roadmap and likely reshapes Stage 2's "publish `skills-manifest.json`" assumption. **Reconcile #200 with roadmap Stage 2 before encoding the skills layer.**
 
 ## Held For Owner / Decision Gates
 
-| Item | Current state | Gate |
+| Item | State | Gate |
 | --- | --- | --- |
-| [ArchonVII/archon-setup#224](https://github.com/ArchonVII/archon-setup/pull/224) | Draft document-policy spec PR | Owner review; gates all ArchonVII/archon-setup#223 implementation lanes |
-| `github-workflows@v1` retag | Held since the PR-template drift-guard rollout | Owner go before moving the public major tag |
-| [ArchonVII/github-workflows#66](https://github.com/ArchonVII/github-workflows/pull/66) | Open README refresh PR | Owner/review path |
-| [ArchonVII/github-workflows#68](https://github.com/ArchonVII/github-workflows/pull/68) | Open Dependabot PR; `vitest` failed on 2026-06-11 | Fix or review the failing check before merge |
-| [ArchonVII/.github#29](https://github.com/ArchonVII/.github/pull/29) | Draft profile refresh PR | Owner feedback |
-| [ArchonVII/jma-skill-review#180](https://github.com/ArchonVII/jma-skill-review/pull/180) | Open description lint gate PR | Review/merge path |
+| [#238](https://github.com/ArchonVII/archon-setup/issues/238) Stage 1 OS-core rollout | Decision packet on main ([PR #259](https://github.com/ArchonVII/archon-setup/pull/259) MERGED) | Owner authorization — starts the telemetry clock; then dry-run |
+| [#258](https://github.com/ArchonVII/archon-setup/issues/258) archon first-party fleet rollout | Proposed | Owner ratifies fleet taxonomy + authorizes #238 first |
+| Wiki Leg 1 activation | #256 merged (contract only); [#257](https://github.com/ArchonVII/archon-setup/issues/257) is the activation lane | Land #257 (#90 wiring + post-#95 refresh) |
+| Document Policy [#223](https://github.com/ArchonVII/archon-setup/issues/223) | Spec merged, lanes unbuilt (agents active on lanes) | Dispatch now vs keep parked behind friction data |
 
-No longer held as of this update: [ArchonVII/jma-skill-review#183](https://github.com/ArchonVII/jma-skill-review/pull/183) and [ArchonVII/jma-skill-review#184](https://github.com/ArchonVII/jma-skill-review/pull/184) merged on 2026-06-12.
+**No longer held (corrected from prior maps):** `github-workflows@v1` retag DONE 2026-06-12 (v1 -> `ae00ba3`, owner-approved). Spec PR #224 MERGED. jma-skill-review #180/#183/#184 merged.
+
+## Open PRs (OS layer)
+
+- [archon-setup#256](https://github.com/ArchonVII/archon-setup/pull/256) — provider-scoped refresh + wiki copyFiles — **MERGED 2026-06-15**.
+- [archon-setup#259](https://github.com/ArchonVII/archon-setup/pull/259) — Stage 1 decision packet — **MERGED 2026-06-15**.
+- [archon-setup#243](https://github.com/ArchonVII/archon-setup/pull/243) — **SUPERSEDED** by this PR (#260); recommend closing.
+- [repo-template#88](https://github.com/ArchonVII/repo-template/pull/88) — close-scan run-once-per-HEAD (ready).
+- [github-workflows#68](https://github.com/ArchonVII/github-workflows/pull/68) — Dependabot actions bump (vitest was failing; fix before merge).
+- [jma-skill-review#197](https://github.com/ArchonVII/jma-skill-review/pull/197) (status refresh), [#187](https://github.com/ArchonVII/jma-skill-review/pull/187) (Dependabot).
+
+## Hygiene / debt
+
+- **AI-discovered backlog untriaged:** archon-setup [#247](https://github.com/ArchonVII/archon-setup/issues/247)-[#254](https://github.com/ArchonVII/archon-setup/issues/254) (8) + #198 / #153 / #123. The anomaly system produces signal; the triage loop is not clearing it.
+- **Pre-launch gates** [#114](https://github.com/ArchonVII/archon-setup/issues/114)-[#121](https://github.com/ArchonVII/archon-setup/issues/121): parked (npm publish on hold).
+- **Worktree prune debt** (merged lanes): archon-setup #233 / #234; repo-template #28 / #76; github-workflows #65. Run `npm run agent:prune`.
+- **#90 repo-update-log snapshot wiring incomplete** → [#257](https://github.com/ArchonVII/archon-setup/issues/257) (blocks clean wiki activation).
+- **#256 review follow-ups** → [#263](https://github.com/ArchonVII/archon-setup/issues/263) (scoped-refresh false-success, empty `--only`, project-capsules installer wiring).
