@@ -1,6 +1,6 @@
 # Current Work - ArchonVII Agent OS
 
-Updated: 2026-06-15 by ArchonVII/archon-setup#242 (full rebuild from live state; supersedes the stale 2026-06-13 draft [PR #243](https://github.com/ArchonVII/archon-setup/pull/243)).
+Updated: 2026-06-15 — **Stage 1 friction telemetry is LIVE** (clock started 2026-06-15T20:14:07Z; #238 applied + verified + closed). Base rebuild: archon-setup#242 (supersedes [PR #243](https://github.com/ArchonVII/archon-setup/pull/243)).
 
 Update rule: update this file in the same PR whenever a lane merges, a lane issue is filed, or a decision gate changes. Keep it as the single current-work map; detailed history belongs in the linked issue, PR, roadmap, or `docs/ecosystem-status.md`.
 
@@ -17,19 +17,17 @@ North star: an OS that survives model/tooling change and is *visually inspectabl
 | Stage | Status |
 | --- | --- |
 | Stage 0 - stabilize & decide | **COMPLETE** (all provider lanes merged 2026-06-12) |
-| Stage 1 - friction telemetry | **BUILT BUT INERT** — see below |
+| Stage 1 - friction telemetry | **LIVE** — clock started 2026-06-15T20:14:07Z (window ~2026-06-29); see below |
 | Stages 2-4 - process layer / graph / edit-in-place | **NOT FILED** (by design; file after ~2 weeks of friction data) |
 
-**Stage 1 detail — telemetry is built but NOT live:**
-- Contract merged: friction ledger on repo-template main ([repo-template#83](https://github.com/ArchonVII/repo-template/pull/83)).
-- Collector MERGED: [#233](https://github.com/ArchonVII/archon-setup/issues/233).
-- New-repo wiring MERGED: [#234](https://github.com/ArchonVII/archon-setup/issues/234).
-- **HARD RULE:** Stage 1 telemetry does NOT start when #233/#234 land. It starts only when [#238](https://github.com/ArchonVII/archon-setup/issues/238)'s owner-gated rollout to existing repos verifies and **records a start timestamp** (here + on #229). No status doc may claim "telemetry live" before that.
-- [#238](https://github.com/ArchonVII/archon-setup/issues/238) (OS-core rollout) is OPEN, owner-gated. Decision packet: [PR #259](https://github.com/ArchonVII/archon-setup/pull/259) (pointer comment on #238).
-- First-party fleet rollout (`archon` first) = [#258](https://github.com/ArchonVII/archon-setup/issues/258) — proposed, gated on #238 + taxonomy ratification.
-- Weekly `page-gm` friction digest = ritual once data flows.
+**Stage 1 detail — telemetry is LIVE. Clock started 2026-06-15T20:14:07Z (UTC); two-week window ends ~2026-06-29.**
+- Contract merged: friction ledger on repo-template main ([repo-template#83](https://github.com/ArchonVII/repo-template/pull/83)). Collector [#233](https://github.com/ArchonVII/archon-setup/issues/233) + new-repo wiring [#234](https://github.com/ArchonVII/archon-setup/issues/234) MERGED.
+- **OS-core rollout APPLIED + VERIFIED** ([#238](https://github.com/ArchonVII/archon-setup/issues/238) CLOSED): `github-workflows` ([#79](https://github.com/ArchonVII/github-workflows/pull/79)) + `archon-setup` self-apply ([#264](https://github.com/ArchonVII/archon-setup/pull/264)) carry the ledger + hook allowlist + gitignore exception. Direct-main ledger append verified (gw `1ec289a`, archon-setup `ffa84fd`); non-ledger `.claude/` change still blocked. `repo-template` = source (verify-only).
+- **Coverage (honest):** NOT covered this pass — `.github` (no AGENTS.md/hooks; separate governance decision), `jma-skill-review` (own governance; revisit after [#200](https://github.com/ArchonVII/jma-skill-review/issues/200)), wider fleet incl. `archon` (separate lane [#258](https://github.com/ArchonVII/archon-setup/issues/258)).
+- First-party fleet rollout (`archon` first) = [#258](https://github.com/ArchonVII/archon-setup/issues/258) — proposed, gated on taxonomy ratification.
+- Weekly `page-gm` friction digest now active; first ranked recurring list due ~2026-06-29.
 
-Stages 2-4 are effectively gated on #238 (they need friction data to rank what to encode first).
+Stages 2-4 unblock after the two-week window ranks what process to encode first.
 
 ## Epic #212 - Registry, Maintenance, Dashboard
 
@@ -77,7 +75,7 @@ Discussion only ([#244](https://github.com/ArchonVII/archon-setup/issues/244)). 
 
 | Item | State | Gate |
 | --- | --- | --- |
-| [#238](https://github.com/ArchonVII/archon-setup/issues/238) Stage 1 OS-core rollout | Decision packet on main ([PR #259](https://github.com/ArchonVII/archon-setup/pull/259) MERGED) | Owner authorization — starts the telemetry clock; then dry-run |
+| [#238](https://github.com/ArchonVII/archon-setup/issues/238) Stage 1 OS-core rollout | **DONE** — applied + verified, CLOSED; clock started 2026-06-15T20:14:07Z | — |
 | [#258](https://github.com/ArchonVII/archon-setup/issues/258) archon first-party fleet rollout | Proposed | Owner ratifies fleet taxonomy + authorizes #238 first |
 | Wiki Leg 1 activation | #256 merged (contract only); [#257](https://github.com/ArchonVII/archon-setup/issues/257) is the activation lane | Land #257 (#90 wiring + post-#95 refresh) |
 | Document Policy [#223](https://github.com/ArchonVII/archon-setup/issues/223) | Spec merged, lanes unbuilt (agents active on lanes) | Dispatch now vs keep parked behind friction data |
@@ -88,7 +86,8 @@ Discussion only ([#244](https://github.com/ArchonVII/archon-setup/issues/244)). 
 
 - [archon-setup#256](https://github.com/ArchonVII/archon-setup/pull/256) — provider-scoped refresh + wiki copyFiles — **MERGED 2026-06-15**.
 - [archon-setup#259](https://github.com/ArchonVII/archon-setup/pull/259) — Stage 1 decision packet — **MERGED 2026-06-15**.
-- [archon-setup#243](https://github.com/ArchonVII/archon-setup/pull/243) — **SUPERSEDED** by this PR (#260); recommend closing.
+- [archon-setup#264](https://github.com/ArchonVII/archon-setup/pull/264) + [github-workflows#79](https://github.com/ArchonVII/github-workflows/pull/79) — Stage 1 friction wiring — **MERGED 2026-06-15** (#238 apply).
+- [archon-setup#243](https://github.com/ArchonVII/archon-setup/pull/243) — **CLOSED** (superseded by the CURRENT_WORK rebuild #260).
 - [repo-template#88](https://github.com/ArchonVII/repo-template/pull/88) — close-scan run-once-per-HEAD (ready).
 - [github-workflows#68](https://github.com/ArchonVII/github-workflows/pull/68) — Dependabot actions bump (vitest was failing; fix before merge).
 - [jma-skill-review#197](https://github.com/ArchonVII/jma-skill-review/pull/197) (status refresh), [#187](https://github.com/ArchonVII/jma-skill-review/pull/187) (Dependabot).
