@@ -30,6 +30,9 @@ export const SOURCES = [
     localPath: process.env.ARCHON_REPO_TEMPLATE || "C:/GitHub/repo-template",
     copyFiles: [
       "README.md",
+      // Navigation front doors paired with README: llms.txt is the agent front
+      // door, README the human one (repo-template#94 Librarian wiki).
+      "llms.txt",
       "AGENTS.md",
       ".claude/friction.md",
       ".agent/startup-baseline.json",
@@ -39,6 +42,15 @@ export const SOURCES = [
       "docs/agent-process/doc-sweep.md",
       "docs/agent-process/project-capsules.md",
       "projects/README.md",
+      // Librarian wiki front-door + scaffold pages (repo-template#94). scripts/wiki/*
+      // already flows via copyDirs:"scripts"; these are the docs/ pages a new repo
+      // needs so wiki:doctor's presence checks and the front-door re-sync rule start green.
+      "docs/LIBRARIAN.md",
+      "docs/CANON.md",
+      "docs/INDEX.md",
+      "docs/project-status.md",
+      "docs/raw/README.md",
+      "docs/audits/README.md",
       "package.json",
       // repo-template is depless: it has no package-lock.json to copy. It now
       // ships a `.npmrc` (package-lock=false) instead; that is not mirrored here
@@ -64,6 +76,7 @@ export const SOURCES = [
       ".github/dependabot.yml",
       ".github/workflows/actionlint.yml",
       ".github/workflows/anomaly-triage.yml",
+      ".github/workflows/wiki-lint.yml",
     ],
     copyDirs: [
       "examples",
