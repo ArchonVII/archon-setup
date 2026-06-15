@@ -47,6 +47,7 @@ This is the action that starts the telemetry clock. [#238](https://github.com/Ar
 ```
 <!-- Log non-bug workflow hiccups here; category = tooling | docs | skill | hook | ci | env; cost = rerun | blocked | context-burn | none. Keep each cell one line. -->
 | date | category | what happened | cost | suggested fix |
+|---|---|---|---|---|
 ```
 
 **Acceptance (owner-specified on #238):** ledger present with exact header in every target; AGENTS instruction present; hook allowlist verified (ledger append passes, non-ledger `.claude/` change still blocked); clean post-apply `git status`; **timestamp recorded in `docs/CURRENT_WORK.md` and on epic #229** (this is the clock-start); explicit list of repos NOT covered in the closing comment (no false-coverage claims).
