@@ -144,3 +144,39 @@ Risks: AGENTS.md reordering (rule 2) touches a distributed managed surface — l
 - 3a: checker fixtures for every check (clean repo → zero findings; seeded violations → exact findings); report-only verified (no writes outside report path).
 - 3b: status rules unit-tested with synthetic doc-health inputs; snapshot validates against the ECOSYSTEM_STATE contract.
 - 3c/4: scoped `actionlint` on changed workflow files; integration test per the reusable-workflow review rule (permissions block, tag-ref alignment, integration-test presence).
+
+## 8. Amendment 2026-06-15 — authority/freshness via simplification
+
+**Context.** A Hudson Bend doc-cohesion review (`ArchonVII/hudson-bend` PRs [#216](https://github.com/ArchonVII/hudson-bend/pull/216)/[#218](https://github.com/ArchonVII/hudson-bend/pull/218) — caught in review, *not* shipped) confirmed the §1 gap concretely: `wiki:lint`/`wiki:doctor` prove *structure*, not *truth*. A branch can pass every documented check while a roadmap, index, `CANON.md`, or front door still carries stale current-state claims.
+
+**Decision (owner, 2026-06-15).** Close this by **reducing the number of places that may claim current truth**, not by adding review procedure. No new taxonomy, no mandatory pre-PR search ritual, no per-repo interim checklist, no blocking gates. Every item below reuses the §5.1 charters, §4 lifecycle states, and the §5 status header. This section is self-contained so the original owner-approved §1–§7 design stays intact.
+
+### 8.1 Three invariants (policy text — extends §5.1, no parallel model)
+
+These land in `repo-template/docs/agent-process/document-policy.md` as policy prose. They do **not** add an "authority classes" taxonomy — the charter "Answers" column, lifecycle states, and `Source of truth:` header already encode authority.
+
+1. **Few current-truth registers.** A repo names a small, explicit set of current-truth surfaces using the existing `Source of truth: yes` header. Everything else is navigation, decision history, evidence, or project-local context. Fewer surfaces that may say "current" means less to keep mutually consistent.
+2. **Front doors link; they don't duplicate.** `README.md`, `ROADMAP.md`, `docs/INDEX.md`, and `llms.txt` are navigation. They may link to current truth but must not restate volatile status. Before a front door labels a target "current/authoritative," that target must itself declare `Status: active` + a recent `Last reviewed:`; otherwise the front door labels it historical/contextual.
+3. **Dated plans are historical by default.** A dated `docs/plans/<date>-*.md` is a historical snapshot unless it carries `Status: active` + `Source of truth: yes`. For active per-feature work the current front door is `projects/<slug>/PLAN.md` (project-capsules convention, [repo-template #87](https://github.com/ArchonVII/repo-template/pull/87)); `docs/plans/**` are historical/fallback once a capsule exists.
+
+### 8.2 Doc-health signals (folds into lanes 3a/4 — warn-only, replaces manual steps)
+
+The "search every front door / grep stale terms / register every index before each PR" checklist is **rejected as a manual ritual** (open-ended, token-costly, inconsistently performed). Instead lane 3a's checker and lane 4's warn-only lint gain two tool-side signals that *replace* agent obligations:
+
+- **Index coherence (warn).** A durable doc that exists but is absent from its landing/index (`docs/adr/*.md` ∉ ADR index; durable `docs/**` ∉ `docs/INDEX.md`) warns. Prefer *generated* indexes where cheap (`projects/README.md` from `projects/*/PLAN.md`; changelog from `.changelog/unreleased/*`) over manual registration — manual registration is a transition state, not the target.
+- **Stale active-doc terms (warn).** When a PR changes a current-truth register, warn if nearby `active` docs still carry stale tokens (issue/migration numbers; "not deployed / next / remaining / deferred / blocked / pending"). Warning-only, never blocking; a reviewer may request it on demand.
+
+The Hudson Bend #216/#218 drift (stale roadmap claim; ADR absent from `docs/INDEX.md`; stale `CANON.md` wording) is the named **acceptance fixture** for lane 3a's seeded-violation fixtures (§7, 3a): the checker must surface exactly these, and a clean repo must yield zero findings.
+
+### 8.3 Stack-aware review (note, not a lane)
+
+One line added to the closeout/review contract (rides lane 2a; **not** a doc-policy mechanism): for stacked docs PRs, review `origin/main..HEAD`, not the narrow PR diff, so a clean top-of-stack diff cannot hide unresolved base drift.
+
+### 8.4 Lane impact
+
+- **No change to PR [repo-template #96](https://github.com/ArchonVII/repo-template/pull/96) (lane 1b).** It stays the tight charters/placement/baseline lane and is faithful to §5.1; nothing in it contradicts §8.1. Folding §8.1 into it would mix scopes.
+- §8.1 policy text folds into the next repo-template policy lane (**2a**) or a small **1d** follow-up — owner to schedule.
+- §8.2 signals are absorbed by existing lanes **3a** (checker) + **4** (warn-only lint) — no new lane.
+- §8.3 is a one-line addition to the AGENTS.md closeout/review contract (rides **2a**).
+
+**Explicitly rejected (do not re-add):** a second "authority classes" taxonomy; a mandatory per-PR search/inspection checklist; per-repo interim checklists; blocking enforcement (warn-first per the PR-template drift-guard precedent).
