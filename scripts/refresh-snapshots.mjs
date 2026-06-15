@@ -30,6 +30,9 @@ export const SOURCES = [
     localPath: process.env.ARCHON_REPO_TEMPLATE || "C:/GitHub/repo-template",
     copyFiles: [
       "README.md",
+      // Navigation front doors paired with README: llms.txt is the agent front
+      // door, README the human one (repo-template#94 Librarian wiki).
+      "llms.txt",
       "AGENTS.md",
       ".claude/friction.md",
       ".agent/startup-baseline.json",
@@ -37,6 +40,17 @@ export const SOURCES = [
       "docs/plans/README.md",
       "docs/template-library-inventory.md",
       "docs/agent-process/doc-sweep.md",
+      "docs/agent-process/project-capsules.md",
+      "projects/README.md",
+      // Librarian wiki front-door + scaffold pages (repo-template#94). scripts/wiki/*
+      // already flows via copyDirs:"scripts"; these are the docs/ pages a new repo
+      // needs so wiki:doctor's presence checks and the front-door re-sync rule start green.
+      "docs/LIBRARIAN.md",
+      "docs/CANON.md",
+      "docs/INDEX.md",
+      "docs/project-status.md",
+      "docs/raw/README.md",
+      "docs/audits/README.md",
       "package.json",
       // repo-template is depless: it has no package-lock.json to copy. It now
       // ships a `.npmrc` (package-lock=false) instead; that is not mirrored here
@@ -62,6 +76,7 @@ export const SOURCES = [
       ".github/dependabot.yml",
       ".github/workflows/actionlint.yml",
       ".github/workflows/anomaly-triage.yml",
+      ".github/workflows/wiki-lint.yml",
     ],
     copyDirs: [
       "examples",
@@ -83,6 +98,33 @@ export const SOURCES = [
     ref: "main",
   },
 ];
+
+// User-facing provider names (CLI `--only`) → source keys. A scoped refresh is
+// restricted to the known ArchonVII providers; an unknown name is rejected so a
+// typo cannot silently no-op or clobber the wrong snapshot.
+export const PROVIDER_ALIASES = {
+  "repo-template": "repoTemplate",
+  "github-workflows": "githubWorkflows",
+  ".github": "orgDefaults",
+  "org-defaults": "orgDefaults",
+};
+
+export function resolveProviderKeys(names, sources = SOURCES) {
+  const valid = new Set(sources.map((s) => s.key));
+  const keys = [];
+  for (const raw of names) {
+    const norm = String(raw).trim();
+    const key = valid.has(norm) ? norm : PROVIDER_ALIASES[norm.toLowerCase()];
+    if (!key || !valid.has(key)) {
+      throw new Error(
+        `unknown --only provider "${raw}". Known: ${[...valid].join(", ")} ` +
+          `(aliases: ${Object.keys(PROVIDER_ALIASES).join(", ")}).`
+      );
+    }
+    if (!keys.includes(key)) keys.push(key);
+  }
+  return keys;
+}
 
 export function gitOutput(path, args) {
   try {
@@ -311,8 +353,14 @@ export async function refreshSnapshots({
   snapshotRoot = SNAP,
   now = () => new Date(),
   acceptSnapshotDivergence = false,
+  only = null,
 } = {}) {
-  const planned = validateSourceCheckouts(sources);
+  const scoped = Array.isArray(only) && only.length > 0;
+  const selected = scoped ? sources.filter((s) => only.includes(s.key)) : sources;
+  if (scoped && selected.length === 0) {
+    throw new Error(`--only matched no known providers: ${only.join(", ")}`);
+  }
+  const planned = validateSourceCheckouts(selected);
 
   // Integrity gate (#200): before deleting/overwriting anything, prove the
   // existing snapshot still matches the provider at the recorded pin. A
@@ -339,7 +387,14 @@ export async function refreshSnapshots({
     if (report.status === "ok") console.log(`verified ${report.key} @ ${report.pin.slice(0, 7)} (${report.checkedFiles} files match the pin)`);
   }
 
-  const manifest = { snapshots: {} };
+  // A scoped refresh MERGES into the existing manifest so unselected providers'
+  // pins survive byte-for-byte; a full refresh rebuilds from scratch (unchanged).
+  const manifestPath = join(snapshotRoot, "manifest.json");
+  const manifest =
+    scoped && existsSync(manifestPath)
+      ? JSON.parse(await readFile(manifestPath, "utf8"))
+      : { snapshots: {} };
+  if (!manifest.snapshots) manifest.snapshots = {};
 
   for (const { source: s, checkout } of planned) {
     const dest = join(snapshotRoot, s.snapshotDir);
@@ -348,6 +403,12 @@ export async function refreshSnapshots({
       await cp(join(s.localPath, s.copyFrom), dest, { recursive: true });
     } else if (s.copyFiles) {
       for (const f of s.copyFiles) {
+        // The copyFiles config may be ahead of the checkout (e.g. front-door
+        // paths staged before the provider pin that introduces them). Skip what
+        // the source does not have, mirroring expectedSnapshotFiles()'s
+        // existsAtPin tolerance so refresh and verify stay symmetric instead of
+        // ENOENT-crashing on a not-yet-present entry.
+        if (!existsSync(join(s.localPath, f))) continue;
         await mkdir(dirname(join(dest, f)), { recursive: true });
         await cp(join(s.localPath, f), join(dest, f), { recursive: false });
       }
@@ -366,6 +427,12 @@ export async function refreshSnapshots({
     };
     console.log(`refreshed ${s.key} @ ${manifest.snapshots[s.key].sha.slice(0, 7)}`);
   }
+  if (scoped) {
+    const preserved = Object.keys(manifest.snapshots).filter((k) => !only.includes(k));
+    console.log(
+      `scope: refreshed ${only.join(", ")}; preserved ${preserved.join(", ") || "(none)"}`
+    );
+  }
   await mkdir(snapshotRoot, { recursive: true });
   await writeFile(join(snapshotRoot, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n");
   console.log("manifest written.");
@@ -373,11 +440,38 @@ export async function refreshSnapshots({
 
 if (resolve(process.argv[1] || "") === MODULE_PATH) {
   const argv = process.argv.slice(2);
-  const known = ["--verify", "--accept-snapshot-divergence"];
-  const unknown = argv.filter((arg) => !known.includes(arg));
+  const onlyNames = [];
+  const unknown = [];
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--verify" || arg === "--accept-snapshot-divergence") continue;
+    if (arg === "--only") {
+      const val = argv[++i];
+      if (!val) {
+        console.error("--only requires a provider name");
+        process.exit(2);
+      }
+      onlyNames.push(...val.split(",").map((s) => s.trim()).filter(Boolean));
+      continue;
+    }
+    if (arg.startsWith("--only=")) {
+      onlyNames.push(...arg.slice("--only=".length).split(",").map((s) => s.trim()).filter(Boolean));
+      continue;
+    }
+    unknown.push(arg);
+  }
   if (unknown.length) {
     console.error(`unknown option(s): ${unknown.join(" ")}`);
     process.exit(2);
+  }
+  let onlyKeys = null;
+  if (onlyNames.length) {
+    try {
+      onlyKeys = resolveProviderKeys(onlyNames);
+    } catch (err) {
+      console.error(err.message);
+      process.exit(2);
+    }
   }
 
   if (argv.includes("--verify")) {
@@ -404,7 +498,10 @@ if (resolve(process.argv[1] || "") === MODULE_PATH) {
         process.exit(1);
       });
   } else {
-    refreshSnapshots({ acceptSnapshotDivergence: argv.includes("--accept-snapshot-divergence") }).catch((err) => {
+    refreshSnapshots({
+      acceptSnapshotDivergence: argv.includes("--accept-snapshot-divergence"),
+      only: onlyKeys,
+    }).catch((err) => {
       console.error(err);
       process.exit(1);
     });
