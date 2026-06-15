@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-15 - Friction ledger self-apply wiring
+
+- **Issue/PR:** #238 / #264
+- **Branch:** agent/claude/238-friction-self-apply
+- **Changed paths:** .gitignore, .githooks/scripts/owner-maintenance.sh, .githooks/pre-commit, .githooks/commit-msg, .claude/friction.md, docs/repo-update-log.md
+- **What changed:** Self-applied the friction-ledger mechanism (AGENTS.md already carried the instruction): `.gitignore` exception so `.claude/friction.md` is trackable, the ledger added to the owner-maintenance direct-main allowlist (hook case + pre-commit/commit-msg help text), and the seeded ledger. Surgical — no broad hook re-sync, no snapshot pin bump. Part of the OS Stage 1 friction-telemetry rollout (#238); sibling: ArchonVII/github-workflows#79.
+- **Verification:** `node --test test/agentLifecycleScripts.test.mjs test/agentSelfApply.test.mjs test/onboardAudit.test.mjs` 17/17 (no live-hook/snapshot identity is enforced, so the friction-only hook edit is clean); `bash -n` clean on the three edited hooks.
+- **Propagation:** none (repo-local self-apply wiring; existing-repo rollout tracked on #238).
+
 ## 2026-06-14 - Provider-scoped snapshot refresh + repo-template L1a'
 
 - **Issue/PR:** #255 / (pending)

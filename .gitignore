@@ -9,3 +9,8 @@ dist/
 # agent/onboarding runtime metadata
 .agent/current-task.json
 .archon/events.jsonl
+
+# Agent-local .claude state is ignored except the friction ledger, which the
+# owner-maintenance lane lets agents append to directly on main.
+.claude/*
+!.claude/friction.md
