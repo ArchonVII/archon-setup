@@ -3,7 +3,7 @@
 // unit-tested in test/agent/lib.test.mjs. Command shims (start-task/status/prune)
 // inject git/gh output and consume these.
 
-// Branch convention: agent/<tool>/<issue>-<slug>  (AGENTS.md:15)
+// Branch convention: agent/<tool>/<issue>-<slug> (see AGENTS.md "Workflow").
 export function sanitizeSlug(value) {
   const slug = String(value)
     .toLowerCase()
@@ -206,15 +206,17 @@ export function formatStartupMap(baseline, { repoPath = '<repo>', archonSetupCom
   const legacy = Array.isArray(baseline?.legacy) ? baseline.legacy : [];
   const lines = [
     'Agent startup map:',
+    '- Document policy: docs/agent-process/document-policy.md',
     '- Plans:          docs/plans/',
     '- Agent process:  docs/agent-process/',
-    '- Repo update log: docs/repo-update-log.md',
+    '- Repo update log: docs/repo-update-log/ (one file per PR)',
     '- Check map:      .agent/check-map.yml',
     '- Coordination:   .agent/coordination/README.md',
     '- PR process:     .github/PULL_REQUEST_TEMPLATE.md',
     '- Agent scripts:  scripts/agent/',
     '- Close guards:   scripts/close/',
     '- Doc sweep:      scripts/doc-sweep/',
+    '- Doc health:     scripts/doc-health/',
   ];
   if (legacy.length) lines.push(`- Legacy plans:   ${legacy.join(', ')} (history only)`);
   if (readiness?.missing?.length) lines.push('', `Missing startup baseline paths: ${readiness.missing.join(', ')}`);

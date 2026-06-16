@@ -10,15 +10,15 @@
     "repoTemplate": {
       "source": "ArchonVII/repo-template",
       "ref": "main",
-      "sha": "6d64ca2c54a823b8312cd80d1f80a61bfbd38585",
-      "capturedAt": "2026-06-14T03:51:44.016Z",
+      "sha": "13a92657bdff00733c9d9febb569ba0923400ca9",
+      "capturedAt": "2026-06-16T02:58:39.389Z",
       "path": "src/snapshots/repo-template/"
     },
     "orgDefaults": {
       "source": "ArchonVII/.github",
       "ref": "main",
-      "sha": "31874572e5464ab26b5ed0c65d66d9cbc83804a9",
-      "capturedAt": "2026-06-12T21:46:17.535Z",
+      "sha": "fe48c2f5f9582e8344dbbc5c1ae7730268491daf",
+      "capturedAt": "2026-06-16T02:58:39.391Z",
       "path": "src/snapshots/org-defaults/"
     }
   }

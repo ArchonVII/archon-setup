@@ -120,7 +120,7 @@ test("onboard --audit reports warning-level startup readiness in JSON", async ()
   assert.equal(parsed.ok, true);
   assert.equal(parsed.mode, "audit");
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
-  assert.equal(parsed.audit.startupReadiness.baselineVersion, "2026-06-12-close-scan-guard");
+  assert.equal(parsed.audit.startupReadiness.baselineVersion, "2026-06-15-document-policy");
   assert.ok(parsed.audit.startupReadiness.missing.includes("docs/plans/README.md"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("AGENTS.md"));
   assert.ok(parsed.audit.startupReadiness.legacyDetected.includes("docs/superpowers/plans/"));
@@ -146,8 +146,12 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await mkdir(join(root, "docs"), { recursive: true });
   await mkdir(join(root, "docs", "plans"), { recursive: true });
   await mkdir(join(root, "docs", "agent-process"), { recursive: true });
+  // Per-PR repo-update-log fragments dir + doc-health runner dir are now part of
+  // the 2026-06-15-document-policy startup baseline (lane 1c snapshot bump).
+  await mkdir(join(root, "docs", "repo-update-log"), { recursive: true });
   await mkdir(join(root, "scripts", "agent"), { recursive: true });
   await mkdir(join(root, "scripts", "doc-sweep"), { recursive: true });
+  await mkdir(join(root, "scripts", "doc-health"), { recursive: true });
   await writeFile(
     join(root, "AGENTS.md"),
     `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n\n## Local workflow\n\nKeep repo-specific rules.\n`,
@@ -174,7 +178,12 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",
     "scripts/doc-sweep/sweep.mjs",
+    "scripts/doc-health/lib.mjs",
+    "scripts/doc-health/health.mjs",
     "docs/agent-process/doc-sweep.md",
+    "docs/agent-process/document-policy.md",
+    "docs/agent-process/doc-health.md",
+    "docs/repo-update-log/README.md",
   ]) {
     await copySnapshot(root, relativePath, { flipEol: relativePath.startsWith("scripts/") });
   }
@@ -190,7 +199,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.deepEqual(parsed.audit.startupReadiness.stale, []);
   assert.ok(parsed.audit.startupReadiness.present.includes("AGENTS.md"));
-  assert.ok(parsed.audit.startupReadiness.present.includes("docs/repo-update-log.md"));
+  assert.ok(parsed.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
 });
 
 test("startup readiness reports stale concrete startup tooling", async () => {
@@ -226,7 +235,13 @@ test("startup readiness reports stale concrete startup tooling", async () => {
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",
     "scripts/doc-sweep/sweep.mjs",
+    // New 2026-06-15-document-policy baseline required files (lane 1c).
+    "scripts/doc-health/lib.mjs",
+    "scripts/doc-health/health.mjs",
     "docs/agent-process/doc-sweep.md",
+    "docs/agent-process/document-policy.md",
+    "docs/agent-process/doc-health.md",
+    "docs/repo-update-log/README.md",
   ]) {
     await copySnapshot(root, relativePath);
   }
@@ -290,7 +305,15 @@ test("startup readiness reports stale same-version startup baseline contract", a
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",
     "scripts/doc-sweep/sweep.mjs",
+    // New 2026-06-15-document-policy baseline required files (lane 1c). The
+    // staleBaseline above only drops scripts/ + package.json, so the doc-side
+    // required files stay in force and must be seeded.
+    "scripts/doc-health/lib.mjs",
+    "scripts/doc-health/health.mjs",
     "docs/agent-process/doc-sweep.md",
+    "docs/agent-process/document-policy.md",
+    "docs/agent-process/doc-health.md",
+    "docs/repo-update-log/README.md",
   ]) {
     await copySnapshot(root, relativePath);
   }

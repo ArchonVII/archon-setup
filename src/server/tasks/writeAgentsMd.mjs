@@ -48,6 +48,20 @@ const PLANS_README_SNAPSHOT = join(
   "plans",
   "README.md"
 );
+// Document-policy charter + placement rules (document-policy spec §5.1, lane 1c).
+// foundation.agents distributes it alongside AGENTS.md so a new repo lands the
+// full policy the AGENTS.md Start Map points at. Frontmatter-tolerant like the
+// plans README: wiki-managed repos may prepend repo-local YAML.
+const DOCUMENT_POLICY_SNAPSHOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "snapshots",
+  "repo-template",
+  "docs",
+  "agent-process",
+  "document-policy.md"
+);
 const AGENTS_MANAGED_BLOCK_ID = "agents-start-map";
 const LEGACY_AGENTS_MANAGED_BLOCK_IDS = ["agents-workflow-contract"];
 
@@ -121,7 +135,13 @@ export async function check(ctx) {
     const startupDone = await startupBaselineCurrent(ctx.targetPath);
     const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
     const plansReadmeDone = await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/plans/README.md", plansReadme);
-    return agentsContractCurrent(current, snapshotBody) && updateLogDone && startupDone && plansReadmeDone
+    const documentPolicy = await readFile(DOCUMENT_POLICY_SNAPSHOT, "utf8");
+    const documentPolicyDone = await fileMatchesMarkdownSnapshot(
+      ctx.targetPath,
+      "docs/agent-process/document-policy.md",
+      documentPolicy
+    );
+    return agentsContractCurrent(current, snapshotBody) && updateLogDone && startupDone && plansReadmeDone && documentPolicyDone
       ? "already-done"
       : "needs-apply";
   } catch {
@@ -137,6 +157,11 @@ export async function apply(ctx) {
     ctx.targetPath,
     "docs/plans/README.md",
     await readFile(PLANS_README_SNAPSHOT, "utf8")
+  );
+  const documentPolicy = await snapshotBodyPreservingFrontmatter(
+    ctx.targetPath,
+    "docs/agent-process/document-policy.md",
+    await readFile(DOCUMENT_POLICY_SNAPSHOT, "utf8")
   );
 
   let agentsResult;
@@ -179,6 +204,12 @@ export async function apply(ctx) {
     plansReadme,
     { overwrite: true }
   );
+  const documentPolicyResult = await safeWriteFile(
+    ctx.targetPath,
+    "docs/agent-process/document-policy.md",
+    documentPolicy,
+    { overwrite: true }
+  );
   recordCreatedFile(ctx, agentsResult, {
     path: "AGENTS.md",
     source: "snapshot:repo-template/AGENTS.md",
@@ -195,7 +226,11 @@ export async function apply(ctx) {
     path: "docs/plans/README.md",
     source: "snapshot:repo-template/docs/plans/README.md",
   });
-  return [agentsResult, updateLogResult, startupBaselineResult, plansReadmeResult];
+  recordCreatedOnly(ctx, documentPolicyResult, {
+    path: "docs/agent-process/document-policy.md",
+    source: "snapshot:repo-template/docs/agent-process/document-policy.md",
+  });
+  return [agentsResult, updateLogResult, startupBaselineResult, plansReadmeResult, documentPolicyResult];
 }
 
 export async function verify(ctx) {
@@ -213,6 +248,10 @@ export async function verify(ctx) {
     if (!(await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/plans/README.md", plansReadme))) {
       return { ok: false, error: "docs/plans/README.md is missing or stale" };
     }
+    const documentPolicy = await readFile(DOCUMENT_POLICY_SNAPSHOT, "utf8");
+    if (!(await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/agent-process/document-policy.md", documentPolicy))) {
+      return { ok: false, error: "docs/agent-process/document-policy.md is missing or stale" };
+    }
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err.message };
@@ -220,7 +259,7 @@ export async function verify(ctx) {
 }
 
 export function rollbackHint(ctx) {
-  return `Delete ${ctx.targetPath}/AGENTS.md, ${ctx.targetPath}/docs/repo-update-log.md, ${ctx.targetPath}/.agent/startup-baseline.json, and ${ctx.targetPath}/docs/plans/README.md to retry.`;
+  return `Delete ${ctx.targetPath}/AGENTS.md, ${ctx.targetPath}/docs/repo-update-log.md, ${ctx.targetPath}/.agent/startup-baseline.json, ${ctx.targetPath}/docs/plans/README.md, and ${ctx.targetPath}/docs/agent-process/document-policy.md to retry.`;
 }
 
 function recordCreatedOnly(ctx, result, entry) {
