@@ -56,6 +56,15 @@ async function expectedBodyFor({ path, unit, context }) {
           body: await repoTemplateBody(join("docs", "plans", "README.md")),
         };
       }
+      if (path === "docs/agent-process/document-policy.md") {
+        // Document-policy charter (document-policy spec §5.1, lane 1c). Like the
+        // plans README it tolerates repo-local YAML frontmatter in wiki-managed
+        // repos, so it gets the markdown-frontmatter comparison.
+        return {
+          comparison: "markdown-frontmatter",
+          body: await repoTemplateBody(join("docs", "agent-process", "document-policy.md")),
+        };
+      }
       return null;
     case "writeClaudeMd":
       return CLAUDE_TEMPLATE;

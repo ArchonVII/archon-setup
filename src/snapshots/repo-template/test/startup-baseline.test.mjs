@@ -8,15 +8,17 @@ const ROOT = dirname(fileURLToPath(new URL('../package.json', import.meta.url)))
 
 test('startup baseline contract names canonical startup files and legacy plan path', async () => {
   const baseline = JSON.parse(await readFile(join(ROOT, '.agent', 'startup-baseline.json'), 'utf8'));
-  assert.equal(baseline.version, '2026-06-12-close-scan-guard');
+  assert.equal(baseline.version, '2026-06-15-document-policy');
   for (const path of [
     'AGENTS.md',
     'docs/plans/README.md',
+    'docs/agent-process/document-policy.md',
+    'docs/agent-process/doc-health.md',
     '.agent/check-map.yml',
     '.agent/coordination/README.md',
     '.github/PULL_REQUEST_TEMPLATE.md',
     '.github/workflows/anomaly-triage.yml',
-    'docs/repo-update-log.md',
+    'docs/repo-update-log/README.md',
     'package.json',
     'scripts/agent/lib.mjs',
     'scripts/agent/start-task.mjs',
@@ -29,11 +31,13 @@ test('startup baseline contract names canonical startup files and legacy plan pa
     'scripts/doc-sweep/lib.mjs',
     'scripts/doc-sweep/git.mjs',
     'scripts/doc-sweep/sweep.mjs',
+    'scripts/doc-health/lib.mjs',
+    'scripts/doc-health/health.mjs',
     'docs/agent-process/doc-sweep.md',
   ]) {
     assert.ok(baseline.required.includes(path), `baseline required should include ${path}`);
   }
-  for (const path of ['docs/plans/', 'docs/agent-process/', 'scripts/agent/', 'scripts/close/', 'scripts/doc-sweep/']) {
+  for (const path of ['docs/plans/', 'docs/agent-process/', 'docs/repo-update-log/', 'scripts/agent/', 'scripts/close/', 'scripts/doc-sweep/', 'scripts/doc-health/']) {
     assert.ok(baseline.expectedDirectories.includes(path), `baseline directories should include ${path}`);
   }
   assert.ok(baseline.legacy.includes('docs/superpowers/plans/'));
@@ -54,8 +58,71 @@ test('AGENTS exposes the startup map before workflow details', async () => {
   assert.ok(workflowIndex > -1, 'AGENTS.md should include Workflow');
   assert.ok(startupIndex < workflowIndex, 'Agent Start Map should appear before workflow details');
   assert.match(body, /docs\/plans\//);
+  assert.match(body, /docs\/agent-process\/document-policy\.md/);
+  assert.match(body, /docs\/agent-process\/doc-health\.md/);
+  assert.match(body, /scripts\/doc-health\//);
   assert.match(body, /scripts\/close\//);
   assert.match(body, /node <path-to-archon-setup>\/bin\/onboard\.mjs <repo> --audit/);
+});
+
+test('AGENTS doc-health contract is report-only and points to the runner', async () => {
+  const body = await readFile(join(ROOT, 'AGENTS.md'), 'utf8');
+  assert.match(body, /## Doc Health/);
+  assert.match(body, /scripts\/doc-health\/health\.mjs/);
+  assert.match(body, /report-only/);
+  assert.match(body, /never edits docs/);
+});
+
+test('AGENTS stays within the document-policy line budget', async () => {
+  const body = await readFile(join(ROOT, 'AGENTS.md'), 'utf8');
+  const lineCount = body.split(/\r?\n/).length;
+  assert.ok(lineCount <= 300, `AGENTS.md should be <=300 lines; got ${lineCount}`);
+});
+
+test('VISION template satisfies the owner-intent charter', async () => {
+  const body = await readFile(join(ROOT, 'VISION.md'), 'utf8');
+  const lineCount = body.split(/\r?\n/).length;
+  assert.ok(lineCount <= 120, `VISION.md should be <=120 lines; got ${lineCount}`);
+  assert.match(body, /^> \*\*Status:\*\* draft$/m);
+  assert.match(body, /^> \*\*Owner:\*\* human$/m);
+  assert.match(body, /^> \*\*Last reviewed:\*\* YYYY-MM-DD$/m);
+
+  const sections = [
+    '## Experience',
+    '## North Star',
+    '## Scope',
+    '### Must-Have',
+    '### Nice-To-Have',
+    '### Explicitly Not',
+    '## Current Horizon',
+    '## Drift Tripwires',
+  ];
+  let previous = -1;
+  for (const section of sections) {
+    const index = body.indexOf(section);
+    assert.ok(index > previous, `${section} should appear in charter order`);
+    previous = index;
+  }
+});
+
+test('decision log template satisfies the append-only owner-intent charter', async () => {
+  const body = await readFile(join(ROOT, 'docs', 'decisions', 'decision-log.md'), 'utf8');
+  assert.match(body, /^> \*\*Status:\*\* active$/m);
+  assert.match(body, /^> \*\*Owner:\*\* human, agent-appended$/m);
+  assert.match(body, /Append owner intent decisions below, newest first\./);
+  assert.match(body, /^## YYYY-MM-DD - <decision title>$/m);
+  assert.match(body, /^- \*\*Decision:\*\* <one line>$/m);
+  assert.match(body, /^- \*\*Lane:\*\* <issue\/PR URL>$/m);
+  assert.match(body, /^- \*\*Why:\*\* <one line>$/m);
+});
+
+test('AGENTS declares vision drift duties and stacked docs review scope', async () => {
+  const body = await readFile(join(ROOT, 'AGENTS.md'), 'utf8');
+  assert.match(body, /## Vision Drift Duties/);
+  assert.match(body, /read `VISION\.md` when present/);
+  assert.match(body, /Scope \/ explicitly-not/);
+  assert.match(body, /`docs\/decisions\/decision-log\.md`/);
+  assert.match(body, /For stacked docs PRs, review `origin\/main\.\.HEAD`, not only the narrow PR diff; guidance only, not a gate\./);
 });
 
 test('AGENTS managed start map includes the friction ledger instruction', async () => {

@@ -37,10 +37,25 @@ export const SOURCES = [
       ".claude/friction.md",
       ".agent/startup-baseline.json",
       "docs/repo-update-log.md",
+      // Per-PR repo-update-log fragments front door (repo-template#89). The
+      // refreshed startup-baseline.json (2026-06-15-document-policy) requires
+      // docs/repo-update-log/README.md and the docs/repo-update-log/ directory,
+      // so the snapshot must ship the README to satisfy its own baseline. Only
+      // the README is mirrored; historical fragments stay in the provider.
+      "docs/repo-update-log/README.md",
       "docs/plans/README.md",
       "docs/template-library-inventory.md",
       "docs/agent-process/doc-sweep.md",
       "docs/agent-process/project-capsules.md",
+      // Document-policy charter + placement rules (repo-template#96, lane 1b;
+      // document-policy spec §5.1). foundation.agents distributes this into new
+      // repos via the writeAgentsMd task, so the snapshot path must pull it.
+      "docs/agent-process/document-policy.md",
+      // Doc-health checker spec (repo-template#74). Required by the refreshed
+      // startup-baseline.json (2026-06-15-document-policy); the scripts/doc-health
+      // runner already flows via copyDirs:"scripts", so the snapshot must also
+      // ship the companion spec to satisfy its own baseline.
+      "docs/agent-process/doc-health.md",
       "projects/README.md",
       // Librarian wiki front-door + scaffold pages (repo-template#94). scripts/wiki/*
       // already flows via copyDirs:"scripts"; these are the docs/ pages a new repo

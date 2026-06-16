@@ -20,15 +20,19 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
   const updateLog = await readFile(join(targetPath, "docs", "repo-update-log.md"), "utf8");
   const startupBaseline = await readFile(join(targetPath, ".agent", "startup-baseline.json"), "utf8");
   const plansReadme = await readFile(join(targetPath, "docs", "plans", "README.md"), "utf8");
+  // document-policy spec §5.1, lane 1c: foundation.agents now distributes the
+  // document-policy charter alongside AGENTS.md.
+  const documentPolicy = await readFile(join(targetPath, "docs", "agent-process", "document-policy.md"), "utf8");
 
   assert.match(agents, /Repo update log/);
   assert.match(agents, /Agent Start Map/);
   assert.match(updateLog, /# Repository Update Log/);
-  assert.equal(JSON.parse(startupBaseline).version, "2026-06-12-close-scan-guard");
+  assert.equal(JSON.parse(startupBaseline).version, "2026-06-15-document-policy");
   assert.match(plansReadme, /docs\/plans\/YYYY-MM-DD-<slug>\.md/);
+  assert.ok(documentPolicy.length > 0, "document-policy.md is written");
   assert.deepEqual(
     ctx.manifest.createdFiles.map((file) => file.path),
-    ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md"],
+    ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md"],
   );
 });
 

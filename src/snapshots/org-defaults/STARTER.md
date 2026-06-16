@@ -8,22 +8,44 @@ These conventions are **enforced** in some cases (CI gates `## Verification` and
 
 ## The doc set
 
-| File                         | When to add                                                               | What it answers                                                                |
-| ---------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `README.md`                  | **Always**, on first commit                                               | What is this and how do I run it?                                              |
-| `LICENSE`                    | **Always**, on first commit                                               | What can I do with this?                                                       |
-| `.gitignore`                 | **Always**, on first commit                                               | What should never be committed?                                                |
-| `AGENTS.md`                  | When AI agents (Claude, Codex, Copilot) will touch the repo               | How should AI agents work in this repo?                                        |
-| `CLAUDE.md` / `GEMINI.md`    | When Claude- or Gemini-specific behavior needs codifying beyond AGENTS.md | Per-tool addenda                                                               |
-| `ARCHITECTURE.md`            | When the directory layout stops being obvious from a glance               | Where does each subsystem live?                                                |
-| `CONTRIBUTING.md`            | If you accept outside PRs                                                 | How do I propose a change?                                                     |
-| `SECURITY.md`                | If the repo handles untrusted input or auth                               | How do I report a vulnerability? (Default inherited from `ArchonVII/.github`.) |
-| `CODEOWNERS` (in `.github/`) | When reviewers should auto-assign on a PR                                 | Who reviews what?                                                              |
-| `CHANGELOG.md`               | When something other than you needs to track history                      | What shipped, and when?                                                        |
-| `TODO.md`                    | **Only** when GitHub issues are too heavy for your backlog                | What's queued that isn't on the issue tracker?                                 |
-| `.changelog/unreleased/`     | When `CHANGELOG.md` is too high-contention for parallel PRs               | (See "CHANGELOG" below)                                                        |
-| `docs/`                      | When the README starts to outgrow itself                                  | Deep references, tutorials, specs                                              |
-| `docs/adr/NNN-*.md`          | When a decision needs a paper trail                                       | Why was X chosen over Y?                                                       |
+The **Owner** and **Budget** columns set who is accountable for each document and the
+above-which-detail-moves-down line limit. Budgets follow epic Owner-Decision 4
+(README ≤150, AGENTS ≤300, CLAUDE/GEMINI stubs ≤25, VISION ≤120 lines); `as needed`
+means no fixed line cap. These are the human-facing summary — the full charter table,
+above-the-fold requirements, and hard exclusions live in the policy linked below.
+
+| File                                | When to add                                                               | What it answers                                                                | Owner             | Budget                |
+| ----------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ----------------- | --------------------- |
+| `README.md`                         | **Always**, on first commit                                               | What is this and how do I run it?                                              | human             | ≤150 lines            |
+| `LICENSE`                           | **Always**, on first commit                                               | What can I do with this?                                                       | human             | as needed             |
+| `.gitignore`                        | **Always**, on first commit                                               | What should never be committed?                                                | human             | as needed             |
+| `VISION.md`                         | When the repo needs a north star beyond the README's one-liner            | What experience are we building, and what is out of scope?                     | human             | ≤120 lines            |
+| `AGENTS.md`                         | When AI agents (Claude, Codex, Copilot) will touch the repo               | How should AI agents work in this repo?                                        | ecosystem         | ≤300 lines            |
+| `CLAUDE.md` / `GEMINI.md`           | When Claude- or Gemini-specific behavior needs codifying beyond AGENTS.md | Per-tool addenda                                                               | ecosystem         | ≤25 lines             |
+| `ARCHITECTURE.md`                   | When the directory layout stops being obvious from a glance               | Where does each subsystem live?                                                | agents            | as needed             |
+| `CONTRIBUTING.md`                   | If you accept outside PRs                                                 | How do I propose a change?                                                     | human             | as needed             |
+| `SECURITY.md`                       | If the repo handles untrusted input or auth                               | How do I report a vulnerability? (Default inherited from `ArchonVII/.github`.) | human             | as needed             |
+| `CODEOWNERS` (in `.github/`)        | When reviewers should auto-assign on a PR                                 | Who reviews what?                                                              | human             | as needed             |
+| `CHANGELOG.md`                      | When something other than you needs to track history                      | What shipped, and when?                                                        | agents            | as needed             |
+| `docs/decisions/decision-log.md`    | When the owner's intent needs an append-only paper trail                  | What did the owner decide, when? (one line per decision, newest first)         | human, agent-appended | append-only       |
+| `TODO.md`                           | **Only** when GitHub issues are too heavy for your backlog                | What's queued that isn't on the issue tracker?                                 | human             | as needed             |
+| `.changelog/unreleased/`            | When `CHANGELOG.md` is too high-contention for parallel PRs               | (See "CHANGELOG" below)                                                        | agents            | one fragment per PR   |
+| `docs/`                             | When the README starts to outgrow itself                                  | Deep references, tutorials, specs                                              | agents            | as needed             |
+| `docs/adr/NNN-*.md`                 | When a decision needs a paper trail                                       | Why was X chosen over Y?                                                       | agents            | as needed             |
+
+### Full document policy
+
+This table is the human-facing index. The full per-repo document-control contract —
+the complete charter table (above-the-fold requirements, hard exclusions), the
+source-of-truth hierarchy, lifecycle states, the status-header format, placement
+priority, and doc-health duties — lives in
+[`repo-template/docs/agent-process/document-policy.md`](https://github.com/ArchonVII/repo-template/blob/main/docs/agent-process/document-policy.md).
+Read it before changing how a repo organizes its durable docs. One home per fact: this
+file does not restate those rules.
+
+**Status headers:** durable `docs/**` files carry a small status header (see the policy
+above). Do **not** force that header onto `README.md`, `AGENTS.md`, `CHANGELOG.md`,
+`CLAUDE.md` / `GEMINI.md` stubs, or `.github` templates — their own conventions govern.
 
 ---
 

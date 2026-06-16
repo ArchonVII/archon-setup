@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-15 - Document-policy snapshot refresh + foundation.agents wiring (lane 1c)
+
+- **Issue/PR:** #225 / (this PR) — also closes ArchonVII/github-workflows#63
+- **Branch:** agent/claude/225-snapshot-refresh-foundation-agents
+- **Changed paths:** scripts/refresh-snapshots.mjs, src/registry/features.json, src/server/tasks/writeAgentsMd.mjs, src/server/onboard/auditPlan.mjs, src/snapshots/manifest.json, src/snapshots/org-defaults/STARTER.md, src/snapshots/repo-template/**, .agent/startup-baseline.json + scripts/agent/** + scripts/close/** + package.json (root twins re-synced via `npm run agent:self-apply`), docs/ecosystem-overview.md, test/{writeAgentsMd,manifestAccuracy,onboardAudit}.test.mjs, .changelog/unreleased/225-document-policy-snapshot-wiring.md, docs/repo-update-log.md
+- **What changed:** Integrator leg of the document-policy rollout (epic #223, spec §5.1). Scoped refresh (`--only repo-template,.github`) bumped repoTemplate `6d64ca2`→`13a9265` and orgDefaults `3187457`→`fe48c2f` (lane 1a STARTER.md charter columns), preserving the `github-workflows` snapshot byte-for-byte (`ae00ba3`). `foundation.agents` `creates` now distributes `docs/agent-process/document-policy.md` via the `writeAgentsMd` task (frontmatter-tolerant, audited by `markdown-frontmatter`). The refresh `copyFiles` list also gained `docs/agent-process/doc-health.md` and `docs/repo-update-log/README.md` so the snapshot is self-consistent with the new `2026-06-15-document-policy` startup baseline it now ships.
+- **Verification:** `npm run snapshots:verify` ok for all three (githubWorkflows @ ae00ba3 18 files; repoTemplate @ 13a9265 114 files; orgDefaults @ fe48c2f 1 file); refresh scope line `refreshed repoTemplate, orgDefaults; preserved githubWorkflows`; idempotent re-run produced a byte-identical working-tree (only the manifest `capturedAt` re-stamps, by design); `node --test --test-concurrency=1 "test/*.test.mjs"` passed 579/579 (2 skipped). Note: the default parallel `npm test` intermittently trips a rotating subset of the git-subprocess lifecycle tests (`prLaneRollback`, `smokeFreshRepo`) under concurrency — all 22 pass in isolation; pre-existing flake, logged to `.claude/noticed.md`.
+- **Propagation:** none in this PR (repo-local snapshot + wiring); consumer distribution flows on the next `archon-setup` snapshot/publish per the rollout sequence.
+
 ## 2026-06-15 - Friction ledger self-apply wiring
 
 - **Issue/PR:** #238 / #264
