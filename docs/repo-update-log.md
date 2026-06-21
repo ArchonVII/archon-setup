@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-06-20 - Repo-update-log fragment guard snapshot refresh
+
+- **Issue/PR:** #270 / pending
+- **Branch:** agent/codex/270-repo-update-log-fragment-snapshots
+- **Changed paths:** scripts/refresh-snapshots.mjs, scripts/agent-self-apply.mjs, src/registry/features.json, test/refreshSnapshots.test.mjs, test/agentSelfApply.test.mjs, test/registry.test.mjs, test/onboardHeadless.test.mjs, test/onboardAudit.test.mjs, .github/workflows/repo-update-log-fragment.yml, .agent/startup-baseline.json, scripts/close/**, src/snapshots/manifest.json, src/snapshots/github-workflows/**, src/snapshots/repo-template/**, README.md, CHANGELOG.md, docs/ecosystem-overview.md, docs/ecosystem-status.md, docs/repo-update-log.md
+- **What changed:** Refreshed the `githubWorkflows` snapshot from `ae00ba3` to `db5a917` after the reusable repo-update-log fragment guard landed and `v1` moved, and refreshed the `repoTemplate` snapshot from `13a9265` to `98a08fa` after the template caller/local close-scan guard landed. The self-apply path now repairs the root `repo-update-log-fragment.yml` caller from the snapshot, matching the refreshed startup baseline, and the registry now exposes it as a locked default local onboarding feature so generated repos receive the required caller.
+- **Verification:** `npm run snapshots:verify` passed (`githubWorkflows@db5a917`, `repoTemplate@98a08fa`, `orgDefaults@fe48c2f`); `npm run agent:self-apply -- --check` reported all five tasks already done; `actionlint .github/workflows/repo-update-log-fragment.yml` passed; `node --check` passed for `scripts/refresh-snapshots.mjs`, `scripts/agent-self-apply.mjs`, `scripts/close/lib.mjs`, `scripts/close/scan-complete.mjs`, and `src/registry/features.json`; `node --test test/refreshSnapshots.test.mjs test/agentSelfApply.test.mjs test/agentLifecycleScripts.test.mjs test/prLanePrBodyContract.test.mjs test/packageManifest.test.mjs test/registry.test.mjs test/onboardHeadless.test.mjs test/onboardAudit.test.mjs` passed 86/86; `npm test` passed 581 with 2 skipped; `git diff --check` passed with Windows LF-to-CRLF warnings only. TDD checkpoints covered `node --test test/refreshSnapshots.test.mjs` (17/17 after the copy-list fix), `node --test test/agentSelfApply.test.mjs` (4/4 after adding the self-apply task), and `node --test test/registry.test.mjs test/onboardHeadless.test.mjs test/onboardAudit.test.mjs` red (3 expected failures for the missing feature) then green (53/53 after registry wiring).
+- **Propagation:** completed for archon-setup snapshots/root baseline; Hudson Bend consumer wiring remains the next repo-local lane.
+
 ## 2026-06-15 - Document-policy snapshot refresh + foundation.agents wiring (lane 1c)
 
 - **Issue/PR:** #225 / (this PR) — also closes ArchonVII/github-workflows#63

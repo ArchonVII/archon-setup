@@ -52,6 +52,22 @@ test("agent-workflow.anomaly-triage is a runtime feature, not coupled to repo-cr
   assert.ok(group, "agent-workflow group missing from groups.json");
 });
 
+test("agent-workflow.repo-update-log-fragment is a locked runtime baseline caller", async () => {
+  const { features } = await loadRegistry();
+  const ledger = features.find((f) => f.id === "agent-workflow.repo-update-log-fragment");
+
+  assert.ok(ledger, "repo-update-log fragment feature missing");
+  assert.equal(ledger.group, "agent-workflow");
+  assert.equal(ledger.default, true);
+  assert.equal(ledger.locked, true);
+  assert.equal(ledger.remoteRequirement, "runtime");
+  assert.ok(!(ledger.requires || []).includes("remote.github"));
+  assert.ok(ledger.creates.includes(".github/workflows/repo-update-log-fragment.yml"));
+  assert.deepEqual(ledger.tasks, ["installWorkflow"]);
+  assert.equal(ledger.options.workflowName.value, "repo-update-log-fragment");
+  assert.equal(ledger.options.snapshotSource.value, "repo-template");
+});
+
 test("foundation.agents plans the repo update log with AGENTS.md", async () => {
   const { features } = await loadRegistry();
   const agents = features.find((f) => f.id === "foundation.agents");
@@ -124,6 +140,24 @@ test("planning anomaly-triage plans the workflow without repo-create", async () 
   assert.ok(
     plan.files.some((f) => f.path === ".github/workflows/anomaly-triage.yml"),
     "anomaly-triage workflow should be planned for creation"
+  );
+});
+
+test("planning repo-update-log fragment guard plans the workflow without repo-create", async () => {
+  const plan = await buildPlan({
+    selection: ["agent-workflow.repo-update-log-fragment"],
+    options: {},
+    context: { targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {} },
+  });
+  assert.ok(!plan.selectedFeatureIds.includes("remote.github"));
+  assert.ok(!plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
+  assert.ok(
+    plan.files.some((f) => f.path === ".github/workflows/repo-update-log-fragment.yml"),
+    "repo-update-log fragment workflow should be planned for creation"
+  );
+  assert.equal(
+    plan.ordered.find((u) => u.featureId === "agent-workflow.repo-update-log-fragment")?.options?.snapshotSource,
+    "repo-template"
   );
 });
 

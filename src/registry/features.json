@@ -305,6 +305,23 @@
     "advancedDescription": "Caller to ArchonVII/github-workflows/anomaly-triage.yml@v1. Pairs with the AGENTS.md contract section documenting `.archon/anomalies-thispr.md` (shipped by repo-template). Idempotent across PR re-syncs via fingerprint markers."
   },
   {
+    "id": "agent-workflow.repo-update-log-fragment",
+    "label": "Repo update log guard",
+    "group": "agent-workflow",
+    "default": true,
+    "locked": true,
+    "remoteRequirement": "runtime",
+    "creates": [".github/workflows/repo-update-log-fragment.yml"],
+    "tasks": ["installWorkflow"],
+    "options": {
+      "workflowName": { "type": "constant", "value": "repo-update-log-fragment" },
+      "snapshotSource": { "type": "constant", "value": "repo-template" }
+    },
+    "validations": ["workflowReferencesPinnedV1"],
+    "beginnerDescription": "Checks applicable PRs for a repo update log fragment so operational history is not silently skipped.",
+    "advancedDescription": "Caller to ArchonVII/github-workflows/repo-update-log-fragment.yml@v1, installed from the repo-template caller snapshot so it matches the startup baseline. The workflow is a non-required leaf guard; the stable branch-protection surface remains repo-required-gate / decision."
+  },
+  {
     "id": "workflow.pr-policy",
     "label": "pr-policy.yml",
     "group": "workflows.pr-contract",

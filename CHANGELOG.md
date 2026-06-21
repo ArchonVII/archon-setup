@@ -69,6 +69,15 @@
 
 ### Changed
 
+- Refreshed the `github-workflows` snapshot to `v1` commit `db5a917` and the
+  `repo-template` snapshot to `main` commit `98a08fa`, carrying the reusable
+  repo-update-log fragment guard, the template caller, and the local close-scan
+  `repo-update-log` decision check. `agent:self-apply` now installs/repairs the
+  root `.github/workflows/repo-update-log-fragment.yml` caller alongside the
+  existing anomaly triage workflow, and generated repos get the same caller via
+  the new locked default `agent-workflow.repo-update-log-fragment` feature.
+  (#270, pairs with github-workflows#92/#93 and repo-template#111/#112)
+
 - Refreshed the `repo-template` snapshot to `main` commit `7853175`, carrying
   the Stage 0/1 Agent OS provider batch: anomaly triage caller (#75),
   doc-orphan detector wiring (#76), default-branch hook repair (#77), local

@@ -98,7 +98,8 @@ npm run onboard -- <targetPath> [options]
 
 `--dry-run` shows exactly what the wizard's Review screen would, and onboarding
 writes the same baseline — including the F19-scrubbed `.githooks/` and local
-runtime workflow callers such as `repo-required-gate.yml`. This is the
+runtime workflow callers such as `repo-required-gate.yml` and
+`repo-update-log-fragment.yml`. This is the
 first-class version of the one-off script used to onboard existing repos during
 the F19 rollout.
 
@@ -288,9 +289,9 @@ Existing agent-facing capabilities:
   `docs/plans/README.md`, `AGENTS.md`, and `agent:status` give agents one
   canonical first-stop map for plans, process files, coordination, PR flow, and
   repair actions.
-- **Repo update log** - generated repos receive `docs/repo-update-log.md` so
-  agents can leave durable operational history separate from user-facing release
-  notes.
+- **Repo update log** - generated repos receive the repo update log guidance and
+  the `repo-update-log-fragment.yml` caller so applicable PRs leave durable
+  operational history separate from user-facing release notes.
 - **Global update records** - archon-setup records shared agent/workflow fixes
   that may need ecosystem-wide dissemination, exposes them in the Ecosystem UI,
   and logs per-repo distribution results.

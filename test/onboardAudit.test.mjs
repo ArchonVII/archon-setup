@@ -167,6 +167,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
 
   for (const relativePath of [
     ".github/workflows/anomaly-triage.yml",
+    ".github/workflows/repo-update-log-fragment.yml",
     "scripts/agent/lib.mjs",
     "scripts/agent/start-task.mjs",
     "scripts/agent/status.mjs",
@@ -200,6 +201,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   assert.deepEqual(parsed.audit.startupReadiness.stale, []);
   assert.ok(parsed.audit.startupReadiness.present.includes("AGENTS.md"));
   assert.ok(parsed.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
+  assert.ok(parsed.audit.startupReadiness.present.includes(".github/workflows/repo-update-log-fragment.yml"));
 });
 
 test("startup readiness reports stale concrete startup tooling", async () => {
@@ -226,6 +228,7 @@ test("startup readiness reports stale concrete startup tooling", async () => {
     ".agent/startup-baseline.json",
     "docs/plans/README.md",
     ".github/workflows/anomaly-triage.yml",
+    ".github/workflows/repo-update-log-fragment.yml",
     "scripts/agent/lib.mjs",
     "scripts/agent/start-task.mjs",
     "scripts/agent/prune.mjs",
@@ -294,6 +297,7 @@ test("startup readiness reports stale same-version startup baseline contract", a
   for (const relativePath of [
     "docs/plans/README.md",
     ".github/workflows/anomaly-triage.yml",
+    ".github/workflows/repo-update-log-fragment.yml",
     "scripts/agent/lib.mjs",
     "scripts/agent/start-task.mjs",
     "scripts/agent/status.mjs",
