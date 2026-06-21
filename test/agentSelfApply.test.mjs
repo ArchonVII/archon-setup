@@ -13,6 +13,7 @@ import { REPO_TEMPLATE_SNAPSHOT, normalizeSnapshotText } from "../src/server/tas
 const BASELINE_FILES = [
   ".agent/startup-baseline.json",
   ".github/workflows/anomaly-triage.yml",
+  ".github/workflows/repo-update-log-fragment.yml",
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",
@@ -78,6 +79,7 @@ test("selfApply repairs drifted root copies back to the snapshot (post-refresh u
   const drifted = [
     ".agent/startup-baseline.json",
     ".github/workflows/anomaly-triage.yml",
+    ".github/workflows/repo-update-log-fragment.yml",
     "scripts/agent/lib.mjs",
     "scripts/doc-sweep/sweep.mjs",
   ];

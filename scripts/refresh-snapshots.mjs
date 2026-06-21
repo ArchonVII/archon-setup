@@ -91,6 +91,7 @@ export const SOURCES = [
       ".github/dependabot.yml",
       ".github/workflows/actionlint.yml",
       ".github/workflows/anomaly-triage.yml",
+      ".github/workflows/repo-update-log-fragment.yml",
       ".github/workflows/wiki-lint.yml",
     ],
     copyDirs: [

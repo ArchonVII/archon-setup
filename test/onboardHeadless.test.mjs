@@ -28,6 +28,7 @@ const BASELINE_FILES = [
   ".github/dependabot.yml",
   ".github/PULL_REQUEST_TEMPLATE.md",
   ".github/workflows/anomaly-triage.yml",
+  ".github/workflows/repo-update-log-fragment.yml",
   ".github/workflows/repo-required-gate.yml",
   ".github/archon-setup.json",
   "scripts/close/lib.mjs",

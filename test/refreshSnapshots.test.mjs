@@ -86,6 +86,10 @@ test("repo-template snapshot source includes startup-baseline workflow callers",
     repoTemplate.copyFiles.includes(".github/workflows/anomaly-triage.yml"),
     "repo-template anomaly caller must be snapshotted because startup-baseline.json requires it"
   );
+  assert.ok(
+    repoTemplate.copyFiles.includes(".github/workflows/repo-update-log-fragment.yml"),
+    "repo-template repo-update-log fragment caller must be snapshotted because startup-baseline.json requires it"
+  );
 });
 
 test("expectedRef maps moving release refs to concrete local git refs", () => {

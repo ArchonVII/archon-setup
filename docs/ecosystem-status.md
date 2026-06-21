@@ -1,6 +1,6 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-06-12 by Codex (repo-template Stage 0/1 snapshot refresh lane #232)_
+_Last updated: 2026-06-20 by Codex (repo-update-log fragment guard rollout lane #270)_
 
 The canonical "what is the ecosystem doing right now?" document for the core ArchonVII source-of-truth repos and the active local health set. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
 
@@ -139,6 +139,17 @@ Review note, 2026-06-12: no F-number status transition was identified during the
 
 ## Recently completed
 
+- **2026-06-20** — Repo-update-log fragment enforcement shipped through the
+  source chain: `github-workflows` issue [#92](https://github.com/ArchonVII/github-workflows/issues/92)
+  / PR [#93](https://github.com/ArchonVII/github-workflows/pull/93) added the
+  reusable guard and moved `v1` to `db5a917`; `repo-template` issue
+  [#111](https://github.com/ArchonVII/repo-template/issues/111) / PR
+  [#112](https://github.com/ArchonVII/repo-template/pull/112) added the
+  template caller and local close-scan `repo-update-log` check; `archon-setup`
+  issue [#270](https://github.com/ArchonVII/archon-setup/issues/270) refreshes
+  snapshots to `githubWorkflows@db5a917` and `repoTemplate@98a08fa`, then
+  self-applies the new workflow caller into the integrator root baseline and
+  registers it as a locked default onboarding feature.
 - **2026-06-12** — Agent OS Stage 0/1 repo-template provider batch merged and is being snapshotted by `archon-setup` [#232](https://github.com/ArchonVII/archon-setup/issues/232): anomaly triage caller (`repo-template` PR [#80](https://github.com/ArchonVII/repo-template/pull/80)), doc-orphan detector wiring (PR [#79](https://github.com/ArchonVII/repo-template/pull/79)), default-branch hook repair (PR [#81](https://github.com/ArchonVII/repo-template/pull/81)), local close-scan guard (PR [#82](https://github.com/ArchonVII/repo-template/pull/82)), and friction ledger contract (PR [#83](https://github.com/ArchonVII/repo-template/pull/83)).
 - **2026-06-12** — Agent OS Stage 0 `archon-setup` lanes [#230](https://github.com/ArchonVII/archon-setup/issues/230) and [#231](https://github.com/ArchonVII/archon-setup/issues/231) merged via PRs [#236](https://github.com/ArchonVII/archon-setup/pull/236) and [#235](https://github.com/ArchonVII/archon-setup/pull/235).
 - **2026-06-12** — Ecosystem registry and maintenance rollout lanes 0-2 shipped in `archon-setup`: spec PR [#213](https://github.com/ArchonVII/archon-setup/pull/213) (`3fe47b0`), registry seed/overlay + port policy + maintenance contract PR [#222](https://github.com/ArchonVII/archon-setup/pull/222) (`4d00804`, closed [#214](https://github.com/ArchonVII/archon-setup/issues/214)), and maintenance status engine + fastStatus + snapshot wiring PR [#228](https://github.com/ArchonVII/archon-setup/pull/228) (`f67a081`, closed [#215](https://github.com/ArchonVII/archon-setup/issues/215)).

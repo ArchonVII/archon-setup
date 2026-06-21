@@ -1,0 +1,29 @@
+# Copy to `.github/workflows/doc-policy-lint.yml`.
+#
+# Warning-only document-policy lint. It emits annotations for durable docs/**
+# status headers, charter budgets, supersession links, active-doc placeholders,
+# index coherence, and stale active-doc terms. Do not make this a required
+# branch-protection check during the warning-first rollout.
+
+name: Doc Policy Lint
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - ".changelog/**"
+      - "README.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "GEMINI.md"
+      - "VISION.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  doc-policy-lint:
+    uses: ArchonVII/github-workflows/.github/workflows/doc-policy-lint.yml@v1
+    with:
+      workflow-library-ref: v1
