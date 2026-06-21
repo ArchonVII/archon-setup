@@ -20,7 +20,7 @@ repository-policy changes in `archon-setup`.
 
 ## 2026-06-20 - Repo-update-log fragment guard snapshot refresh
 
-- **Issue/PR:** #270 / pending
+- **Issue/PR:** #270 / #271
 - **Branch:** agent/codex/270-repo-update-log-fragment-snapshots
 - **Changed paths:** scripts/refresh-snapshots.mjs, scripts/agent-self-apply.mjs, src/registry/features.json, test/refreshSnapshots.test.mjs, test/agentSelfApply.test.mjs, test/registry.test.mjs, test/onboardHeadless.test.mjs, test/onboardAudit.test.mjs, .github/workflows/repo-update-log-fragment.yml, .agent/startup-baseline.json, scripts/close/**, src/snapshots/manifest.json, src/snapshots/github-workflows/**, src/snapshots/repo-template/**, README.md, CHANGELOG.md, docs/ecosystem-overview.md, docs/ecosystem-status.md, docs/repo-update-log.md
 - **What changed:** Refreshed the `githubWorkflows` snapshot from `ae00ba3` to `db5a917` after the reusable repo-update-log fragment guard landed and `v1` moved, and refreshed the `repoTemplate` snapshot from `13a9265` to `98a08fa` after the template caller/local close-scan guard landed. The self-apply path now repairs the root `repo-update-log-fragment.yml` caller from the snapshot, matching the refreshed startup baseline, and the registry now exposes it as a locked default local onboarding feature so generated repos receive the required caller.

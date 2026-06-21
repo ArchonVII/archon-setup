@@ -1,0 +1,8 @@
+# 2026-06-20 - Repo-update-log fragment guard snapshot refresh
+
+- **Issue/PR:** #270 / #271
+- **Branch:** agent/codex/270-repo-update-log-fragment-snapshots
+- **Changed paths:** `scripts/refresh-snapshots.mjs`, `scripts/agent-self-apply.mjs`, `src/registry/features.json`, `test/refreshSnapshots.test.mjs`, `test/agentSelfApply.test.mjs`, `test/registry.test.mjs`, `test/onboardHeadless.test.mjs`, `test/onboardAudit.test.mjs`, `.github/workflows/repo-update-log-fragment.yml`, `.agent/startup-baseline.json`, `scripts/close/**`, `src/snapshots/manifest.json`, `src/snapshots/github-workflows/**`, `src/snapshots/repo-template/**`, `README.md`, `CHANGELOG.md`, `docs/ecosystem-overview.md`, `docs/ecosystem-status.md`, `docs/repo-update-log.md`, `docs/repo-update-log/2026-06-20-270-repo-update-log-fragment-snapshots.md`.
+- **What changed:** Refreshed the `githubWorkflows` snapshot from `ae00ba3` to `db5a917` and `repoTemplate` from `13a9265` to `98a08fa`, self-applied the new root `repo-update-log-fragment.yml` caller, and registered the caller as a locked default local onboarding feature so generated repos receive the required guard.
+- **Verification:** `npm run snapshots:verify`, `npm run agent:self-apply -- --check`, `actionlint .github/workflows/repo-update-log-fragment.yml`, touched-file `node --check` commands, focused `node --test` regression set (86/86), full `npm test` (581 pass / 2 skipped), and `git diff --check` all passed before PR creation. PR CI then proved the new guard was active by failing until this per-PR fragment was added.
+- **Propagation:** completed for archon-setup snapshots/root baseline; Hudson Bend consumer wiring remains the next repo-local lane.
