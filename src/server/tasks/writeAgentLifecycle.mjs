@@ -17,6 +17,10 @@ const SCRIPT_FILES = [
   "scripts/agent/status.mjs",
   "scripts/agent/prune.mjs",
   "scripts/agent/pr-body.mjs",
+  // scripts/close/{scan-complete,ci-guard}.mjs `import ../pr-contract.mjs`, so the
+  // dependency must be written BEFORE its importers or onboarded repos hit
+  // ERR_MODULE_NOT_FOUND at close-scan runtime (issue #252).
+  "scripts/pr-contract.mjs",
   "scripts/close/lib.mjs",
   "scripts/close/scan-complete.mjs",
   "scripts/close/ci-guard.mjs",

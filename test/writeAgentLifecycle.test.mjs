@@ -1,8 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, writeFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import * as writeAgentLifecycle from "../src/server/tasks/writeAgentLifecycle.mjs";
 import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
@@ -14,6 +16,7 @@ const SCRIPT_FILES = [
   "scripts/agent/status.mjs",
   "scripts/agent/prune.mjs",
   "scripts/agent/pr-body.mjs",
+  "scripts/pr-contract.mjs",
   "scripts/close/lib.mjs",
   "scripts/close/scan-complete.mjs",
   "scripts/close/ci-guard.mjs",
@@ -137,6 +140,48 @@ test("AGENT_SCRIPTS exports the current lifecycle entries", () => {
     "close:scan:complete": "node scripts/close/scan-complete.mjs",
     "close:ci:guard": "node scripts/close/ci-guard.mjs",
   });
+});
+
+// Regression for #252: the close scripts `import ../pr-contract.mjs`, so the task
+// must install scripts/pr-contract.mjs. Apply into a temp dir, then have a child
+// node process import the installed scripts/close/ci-guard.mjs and report whether
+// the import graph resolves. A missing dependency surfaces as ERR_MODULE_NOT_FOUND
+// at import-resolution time (before ci-guard's main() ever runs), which is the
+// exact failure onboarded repos hit. ci-guard.mjs calls main() unconditionally, so
+// its own git/gh runtime errors are expected and tolerated — only a module-
+// resolution failure is the bug under test.
+test("installed close scripts resolve their pr-contract.mjs dependency (no ERR_MODULE_NOT_FOUND, #252)", async () => {
+  const target = await makeTarget();
+  await writeAgentLifecycle.apply(makeCtx(target));
+
+  const ciGuard = join(target, "scripts/close/ci-guard.mjs");
+  assert.ok((await stat(ciGuard)).isFile(), "ci-guard.mjs should be installed");
+  assert.ok(
+    (await stat(join(target, "scripts/pr-contract.mjs"))).isFile(),
+    "pr-contract.mjs (the close-script dependency) should be installed",
+  );
+
+  const probe = [
+    `const url = ${JSON.stringify(pathToFileURL(ciGuard).href)};`,
+    "try { await import(url); }",
+    "catch (err) {",
+    "  if (err && err.code === 'ERR_MODULE_NOT_FOUND') {",
+    "    console.error(err.message); process.exit(2);",
+    "  }",
+    "  // Any other error (e.g. ci-guard main() failing with no git/gh) means the",
+    "  // import graph resolved, which is all this test asserts.",
+    "}",
+  ].join(String.fromCharCode(10));
+
+  const result = spawnSync(process.execPath, ["--input-type=module", "--eval", probe], {
+    cwd: target,
+    encoding: "utf8",
+  });
+  assert.notEqual(
+    result.status,
+    2,
+    `installed close script failed to resolve pr-contract.mjs: ${result.stderr}`,
+  );
 });
 
 test("apply records the installed scripts and the merged package.json in the manifest", async () => {
