@@ -501,6 +501,7 @@
       "scripts/agent/status.mjs",
       "scripts/agent/prune.mjs",
       "scripts/agent/pr-body.mjs",
+      "scripts/pr-contract.mjs",
       "scripts/close/lib.mjs",
       "scripts/close/scan-complete.mjs",
       "scripts/close/ci-guard.mjs",
@@ -508,7 +509,7 @@
     ],
     "tasks": ["writeAgentLifecycle"],
     "beginnerDescription": "Installs the agent worktree-lifecycle and close-guard scripts, then wires their npm script entries.",
-    "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune,pr-body}.mjs and scripts/close/{lib,scan-complete,ci-guard}.mjs from the repo-template snapshot and idempotently MERGES the managed agent:* and close:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison."
+    "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune,pr-body}.mjs, scripts/pr-contract.mjs (the dependency the close scripts import), and scripts/close/{lib,scan-complete,ci-guard}.mjs from the repo-template snapshot and idempotently MERGES the managed agent:* and close:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison."
   },
   {
     "id": "agent-workflow.doc-sweep",
