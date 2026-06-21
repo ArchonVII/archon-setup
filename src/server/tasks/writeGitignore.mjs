@@ -4,8 +4,29 @@ import { recordCreatedFile } from "../lib/manifest.mjs";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 
+// Test-only fixture seam, mirroring the commandRunner ARCHON_GH_BIN seam
+// (archon-setup#43 / #153). When ARCHON_GITIGNORE_BODY_JSON is set to a JSON
+// object mapping template name (e.g. "Node", "Python") -> body, a matching
+// entry short-circuits the real network fetch so the "hermetic / no network"
+// smoke tests are truly network-free (the unauthenticated api.github.com path
+// is 403-flaky under the 60/hr rate limit). Pure no-op when the env var is
+// absent or has no entry for `lang`, so production keeps hitting GitHub.
+function fixtureGitignore(lang) {
+  const raw = process.env.ARCHON_GITIGNORE_BODY_JSON;
+  if (!raw) return undefined;
+  let map;
+  try {
+    map = JSON.parse(raw);
+  } catch {
+    throw new Error("ARCHON_GITIGNORE_BODY_JSON must be a JSON object of template -> body");
+  }
+  return map?.[lang];
+}
+
 async function fetchGitignore(lang) {
   if (lang === "None") return "";
+  const fixture = fixtureGitignore(lang);
+  if (fixture !== undefined) return fixture;
   const res = await fetch(`https://api.github.com/gitignore/templates/${lang}`, {
     headers: { Accept: "application/vnd.github+json" },
     signal: AbortSignal.timeout(10_000),

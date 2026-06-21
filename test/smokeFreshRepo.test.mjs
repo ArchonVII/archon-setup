@@ -30,6 +30,11 @@ async function withMockGh(remoteDir, fn) {
     "GIT_AUTHOR_EMAIL",
     "GIT_COMMITTER_NAME",
     "GIT_COMMITTER_EMAIL",
+    // Fixture seams (#153): keep the foundation.license / foundation.gitignore
+    // tasks off the unauthenticated api.github.com path, which is 403-flaky
+    // under the 60/hr rate limit and made these "hermetic" tests hit the net.
+    "ARCHON_LICENSE_BODY_JSON",
+    "ARCHON_GITIGNORE_BODY_JSON",
   ];
   const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
   process.env.ARCHON_GH_BIN = process.execPath; // run the mock with node
@@ -39,6 +44,19 @@ async function withMockGh(remoteDir, fn) {
   process.env.GIT_AUTHOR_EMAIL = "smoke@archonvii.test";
   process.env.GIT_COMMITTER_NAME = "Archon Smoke";
   process.env.GIT_COMMITTER_EMAIL = "smoke@archonvii.test";
+  // Minimal offline bodies so writeLicense/writeGitignore short-circuit before
+  // the real fetch. Content is intentionally tiny - the smoke tests only assert
+  // the file is written, not its exact license/template text. Keys cover the
+  // foundation defaults (MIT / Node) plus the other smoke-reachable choices.
+  process.env.ARCHON_LICENSE_BODY_JSON = JSON.stringify({
+    MIT: "MIT License\n\nCopyright (c) [year] [fullname]\n",
+    "Apache-2.0": "Apache License 2.0\n\nCopyright [year] [fullname]\n",
+  });
+  process.env.ARCHON_GITIGNORE_BODY_JSON = JSON.stringify({
+    Node: "node_modules/\n",
+    Python: "__pycache__/\n",
+  });
+
   try {
     return await fn();
   } finally {
