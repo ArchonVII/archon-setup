@@ -52,10 +52,10 @@
     "group": "foundations",
     "default": true,
     "locked": true,
-    "creates": ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md"],
+    "creates": ["AGENTS.md", "docs/repo-update-log.md", "docs/repo-update-log/README.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md"],
     "tasks": ["writeAgentsMd"],
     "beginnerDescription": "The cross-tool contract for AI agents (Claude, Codex, Gemini) working in this repo.",
-    "advancedDescription": "Copied from snapshots of ArchonVII/repo-template/AGENTS.md, docs/repo-update-log.md, and the docs/agent-process/document-policy.md charter (document-policy spec §5.1, lane 1c) with the CHANGELOG-mode placeholder resolved."
+    "advancedDescription": "Copied from snapshots of ArchonVII/repo-template/AGENTS.md, docs/repo-update-log.md, the docs/repo-update-log/README.md per-PR fragments guide, and the docs/agent-process/document-policy.md charter (document-policy spec §5.1, lane 1c) with the CHANGELOG-mode placeholder resolved."
   },
   {
     "id": "foundation.claude-md",
@@ -526,6 +526,21 @@
     "tasks": ["writeDocSweep"],
     "beginnerDescription": "Installs the doc-sweep runner so agents recover and preserve docs across sessions (sweep-on-open / flush-on-close) instead of stranding them when a session dies.",
     "advancedDescription": "Copies scripts/doc-sweep/{lib,git,sweep}.mjs and docs/agent-process/doc-sweep.md from the repo-template snapshot, content-aware (drift-repairing, shares the agent-lifecycle checkAllMatch/verifyAllMatch helpers). The `## Doc Sweep-Up` AGENTS.md contract ships via the repo-template AGENTS.md snapshot; the github-workflows `doc-orphan-detector.yml@v1` cron backstop is a separate opt-in. Full spec: docs/agent-process/doc-sweep.md."
+  },
+  {
+    "id": "agent-workflow.doc-health",
+    "label": "Doc Health",
+    "group": "agent-workflow",
+    "default": true,
+    "locked": true,
+    "creates": [
+      "scripts/doc-health/lib.mjs",
+      "scripts/doc-health/health.mjs",
+      "docs/agent-process/doc-health.md"
+    ],
+    "tasks": ["writeDocHealth"],
+    "beginnerDescription": "Installs the report-only doc-health runner so agents can find document drift (stale charters, dangling links, missing index entries) and turn it into the normal issue -> branch -> PR lane instead of silent rot.",
+    "advancedDescription": "Copies scripts/doc-health/{lib,health}.mjs and docs/agent-process/doc-health.md from the repo-template snapshot, content-aware (drift-repairing) and mirroring agent-workflow.doc-sweep. These files are named by the 2026-06-15-document-policy startup baseline; without this feature a fresh onboard reported startup readiness 'incomplete'. The deterministic report-only companion to the document policy — it never fixes, it reports. Full spec: docs/agent-process/doc-health.md."
   },
   {
     "id": "agent-workflow.doc-orphan-detector",

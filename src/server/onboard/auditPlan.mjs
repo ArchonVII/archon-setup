@@ -47,6 +47,14 @@ async function expectedBodyFor({ path, unit, context }) {
       if (path === "docs/repo-update-log.md") {
         return repoTemplateBody(join("docs", "repo-update-log.md"));
       }
+      if (path === "docs/repo-update-log/README.md") {
+        // Per-PR fragments guide. Like the plans README it tolerates repo-local
+        // YAML frontmatter in wiki-managed repos.
+        return {
+          comparison: "markdown-frontmatter",
+          body: await repoTemplateBody(join("docs", "repo-update-log", "README.md")),
+        };
+      }
       if (path === ".agent/startup-baseline.json") {
         return repoTemplateBody(join(".agent", "startup-baseline.json"));
       }
@@ -98,6 +106,16 @@ async function expectedBodyFor({ path, unit, context }) {
       // Runner scripts are exact snapshot copies; the markdown spec may carry
       // repo-local frontmatter in wiki-managed repos.
       if (path === "docs/agent-process/doc-sweep.md") {
+        return {
+          comparison: "markdown-frontmatter",
+          body: await repoTemplateBody(path),
+        };
+      }
+      return repoTemplateBody(path);
+    case "writeDocHealth":
+      // Mirrors writeDocSweep: runner scripts are exact snapshot copies; the
+      // markdown spec may carry repo-local frontmatter in wiki-managed repos.
+      if (path === "docs/agent-process/doc-health.md") {
         return {
           comparison: "markdown-frontmatter",
           body: await repoTemplateBody(path),
@@ -301,15 +319,19 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
       return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     case "docs/repo-update-log.md":
       return (await fileMatches(root, relativePath, /^# Repository Update Log/m)) ? "present" : "stale";
+    case "docs/repo-update-log/README.md":
+      return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     case "package.json":
       return (await packageHasAgentScripts(root)) ? "present" : "stale";
     case "docs/agent-process/doc-sweep.md":
+    case "docs/agent-process/doc-health.md":
       return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     default:
       if (
         relativePath.startsWith("scripts/agent/") ||
         relativePath.startsWith("scripts/close/") ||
-        relativePath.startsWith("scripts/doc-sweep/")
+        relativePath.startsWith("scripts/doc-sweep/") ||
+        relativePath.startsWith("scripts/doc-health/")
       ) {
         return (await fileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
       }
