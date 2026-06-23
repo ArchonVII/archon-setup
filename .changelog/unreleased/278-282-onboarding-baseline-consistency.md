@@ -29,3 +29,6 @@
   `scripts/close/scan-complete.mjs` skips `node-test` when the repo has no
   `test` script (#282). `refresh-snapshots` now mirrors
   `docs/agent-process/message-protocol.md` into the `repo-template` snapshot.
+- `bin/onboard.mjs` prints a post-install "Next steps" note when the required
+  gate is installed, explaining that dependency review is off by default and how
+  to enable it (Dependency Graph + `run-dependency-review: true`). (#281)

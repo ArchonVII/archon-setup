@@ -184,6 +184,17 @@ async function main() {
     console.error(`\nOnboarding failed at ${failed?.unit?.taskId || "unknown task"}: ${failed?.error || failed?.status}`);
     process.exit(1);
   }
+  // #281: the required-gate scaffold ships with dependency review OFF, since a
+  // freshly created repo has no GitHub Dependency Graph. Surface the opt-in path
+  // so the owner can turn it on once the feature is enabled, rather than
+  // discovering the disabled lane later.
+  if (res.plan?.selectedFeatureIds?.includes("workflow.required-gate")) {
+    console.log("\nNext steps:");
+    console.log("  • Dependency review is OFF by default in .github/workflows/repo-required-gate.yml");
+    console.log("    (a fresh repo has no GitHub Dependency Graph). To enable it: turn on Dependency");
+    console.log("    Graph under the repo's Settings -> Code security and analysis (private repos");
+    console.log("    also need GitHub Advanced Security), then set `run-dependency-review: true`.");
+  }
   console.log("\nDone.");
   process.exit(0);
 }
