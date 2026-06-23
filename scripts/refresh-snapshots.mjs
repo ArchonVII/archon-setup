@@ -51,6 +51,12 @@ export const SOURCES = [
       // document-policy spec §5.1). foundation.agents distributes this into new
       // repos via the writeAgentsMd task, so the snapshot path must pull it.
       "docs/agent-process/document-policy.md",
+      // Message-protocol charter (repo-template#106). AGENTS.md's `## Message
+      // protocol` section links to docs/agent-process/message-protocol.md, so the
+      // snapshot must ship it for foundation.agents (writeAgentsMd) to distribute
+      // it into new repos — otherwise every onboarded repo carries a dangling
+      // relative link that doc-health flags (archon-setup#278).
+      "docs/agent-process/message-protocol.md",
       // Doc-health checker spec (repo-template#74). Required by the refreshed
       // startup-baseline.json (2026-06-15-document-policy); the scripts/doc-health
       // runner already flows via copyDirs:"scripts", so the snapshot must also

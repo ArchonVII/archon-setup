@@ -76,6 +76,21 @@ const DOCUMENT_POLICY_SNAPSHOT = join(
   "agent-process",
   "document-policy.md"
 );
+// Message-protocol charter (status-tag vocabulary, For you / My work lanes,
+// machine-backed SAFE TO CLEAR rule). AGENTS.md's `## Message protocol` section
+// links here, so distributing it alongside AGENTS.md clears the dangling
+// relative link doc-health flags in every onboarded repo (#278). Frontmatter-
+// tolerant like document-policy: wiki-managed repos may prepend repo-local YAML.
+const MESSAGE_PROTOCOL_SNAPSHOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "snapshots",
+  "repo-template",
+  "docs",
+  "agent-process",
+  "message-protocol.md"
+);
 const AGENTS_MANAGED_BLOCK_ID = "agents-start-map";
 const LEGACY_AGENTS_MANAGED_BLOCK_IDS = ["agents-workflow-contract"];
 
@@ -161,7 +176,13 @@ export async function check(ctx) {
       "docs/agent-process/document-policy.md",
       documentPolicy
     );
-    return agentsContractCurrent(current, snapshotBody) && updateLogDone && updateLogReadmeDone && startupDone && plansReadmeDone && documentPolicyDone
+    const messageProtocol = await readFile(MESSAGE_PROTOCOL_SNAPSHOT, "utf8");
+    const messageProtocolDone = await fileMatchesMarkdownSnapshot(
+      ctx.targetPath,
+      "docs/agent-process/message-protocol.md",
+      messageProtocol
+    );
+    return agentsContractCurrent(current, snapshotBody) && updateLogDone && updateLogReadmeDone && startupDone && plansReadmeDone && documentPolicyDone && messageProtocolDone
       ? "already-done"
       : "needs-apply";
   } catch {
@@ -187,6 +208,11 @@ export async function apply(ctx) {
     ctx.targetPath,
     "docs/agent-process/document-policy.md",
     await readFile(DOCUMENT_POLICY_SNAPSHOT, "utf8")
+  );
+  const messageProtocol = await snapshotBodyPreservingFrontmatter(
+    ctx.targetPath,
+    "docs/agent-process/message-protocol.md",
+    await readFile(MESSAGE_PROTOCOL_SNAPSHOT, "utf8")
   );
 
   let agentsResult;
@@ -241,6 +267,12 @@ export async function apply(ctx) {
     documentPolicy,
     { overwrite: true }
   );
+  const messageProtocolResult = await safeWriteFile(
+    ctx.targetPath,
+    "docs/agent-process/message-protocol.md",
+    messageProtocol,
+    { overwrite: true }
+  );
   recordCreatedFile(ctx, agentsResult, {
     path: "AGENTS.md",
     source: "snapshot:repo-template/AGENTS.md",
@@ -265,7 +297,11 @@ export async function apply(ctx) {
     path: "docs/agent-process/document-policy.md",
     source: "snapshot:repo-template/docs/agent-process/document-policy.md",
   });
-  return [agentsResult, updateLogResult, updateLogReadmeResult, startupBaselineResult, plansReadmeResult, documentPolicyResult];
+  recordCreatedOnly(ctx, messageProtocolResult, {
+    path: "docs/agent-process/message-protocol.md",
+    source: "snapshot:repo-template/docs/agent-process/message-protocol.md",
+  });
+  return [agentsResult, updateLogResult, updateLogReadmeResult, startupBaselineResult, plansReadmeResult, documentPolicyResult, messageProtocolResult];
 }
 
 export async function verify(ctx) {
@@ -291,6 +327,10 @@ export async function verify(ctx) {
     if (!(await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/agent-process/document-policy.md", documentPolicy))) {
       return { ok: false, error: "docs/agent-process/document-policy.md is missing or stale" };
     }
+    const messageProtocol = await readFile(MESSAGE_PROTOCOL_SNAPSHOT, "utf8");
+    if (!(await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/agent-process/message-protocol.md", messageProtocol))) {
+      return { ok: false, error: "docs/agent-process/message-protocol.md is missing or stale" };
+    }
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err.message };
@@ -298,7 +338,7 @@ export async function verify(ctx) {
 }
 
 export function rollbackHint(ctx) {
-  return `Delete ${ctx.targetPath}/AGENTS.md, ${ctx.targetPath}/docs/repo-update-log.md, ${ctx.targetPath}/docs/repo-update-log/README.md, ${ctx.targetPath}/.agent/startup-baseline.json, ${ctx.targetPath}/docs/plans/README.md, and ${ctx.targetPath}/docs/agent-process/document-policy.md to retry.`;
+  return `Delete ${ctx.targetPath}/AGENTS.md, ${ctx.targetPath}/docs/repo-update-log.md, ${ctx.targetPath}/docs/repo-update-log/README.md, ${ctx.targetPath}/.agent/startup-baseline.json, ${ctx.targetPath}/docs/plans/README.md, ${ctx.targetPath}/docs/agent-process/document-policy.md, and ${ctx.targetPath}/docs/agent-process/message-protocol.md to retry.`;
 }
 
 function recordCreatedOnly(ctx, result, entry) {

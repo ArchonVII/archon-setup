@@ -50,6 +50,8 @@ test("root lifecycle scripts stay byte-identical to their repo-template snapshot
     "scripts/close/lib.mjs",
     "scripts/close/scan-complete.mjs",
     "scripts/close/ci-guard.mjs",
+    "scripts/agent-close-preflight.mjs",
+    "scripts/agent-pr-ready.mjs",
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",
     "scripts/doc-sweep/sweep.mjs",

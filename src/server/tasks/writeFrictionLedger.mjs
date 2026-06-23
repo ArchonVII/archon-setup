@@ -7,7 +7,17 @@ import { writeSnapshotFile } from "./repoTemplateSnapshot.mjs";
 
 const LEDGER_PATH = ".claude/friction.md";
 const GITIGNORE_PATH = ".gitignore";
-const REQUIRED_GITIGNORE_LINES = [".claude/*", "!.claude/friction.md"];
+// `.claude/*` keeps agent-local scratch out of git, but the documented
+// append-log ledgers must stay trackable: AGENTS.md (~170-171) and the owner
+// maintenance hook treat `.claude/{friction,noticed,napkin}.md` as ledgers that
+// agents/owners write to directly, so each needs a re-include or `git add`
+// fails on a freshly onboarded repo (#282).
+const REQUIRED_GITIGNORE_LINES = [
+  ".claude/*",
+  "!.claude/friction.md",
+  "!.claude/noticed.md",
+  "!.claude/napkin.md",
+];
 // A bare `.claude` / `.claude/` directory ignore shadows the friction
 // re-include: git cannot re-include a file whose parent directory is excluded
 // (gitignore(5), "It is not possible to re-include a file if a parent
@@ -59,7 +69,7 @@ function ensureGitignoreFrictionException(body) {
 
   const trimmed = normalized.trimEnd();
   const prefix = trimmed ? `${trimmed}\n\n` : "";
-  return `${prefix}# ArchonVII friction ledger\n${missing.join("\n")}\n`;
+  return `${prefix}# ArchonVII agent-local ledgers (tracked append-logs)\n${missing.join("\n")}\n`;
 }
 
 export function frictionLedgerSeed(body) {
