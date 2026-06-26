@@ -24,6 +24,13 @@ const SCRIPT_FILES = [
   "scripts/close/lib.mjs",
   "scripts/close/scan-complete.mjs",
   "scripts/close/ci-guard.mjs",
+  // The strict closeout wrappers AGENTS.md mandates (`npm run agent:close-preflight`
+  // / `npm run agent:pr-ready`). They `import ./pr-contract.mjs`, written above, so
+  // the dependency resolves at runtime (same ordering rule as the close scripts,
+  // #252). Without these the documented closeout path fails with "missing script"
+  // in every onboarded repo (#282).
+  "scripts/agent-close-preflight.mjs",
+  "scripts/agent-pr-ready.mjs",
 ];
 
 // The npm script entries this task idempotently merges into the target's
@@ -36,6 +43,8 @@ export const AGENT_SCRIPTS = {
   "agent:pr-body": "node scripts/agent/pr-body.mjs",
   "close:scan:complete": "node scripts/close/scan-complete.mjs",
   "close:ci:guard": "node scripts/close/ci-guard.mjs",
+  "agent:close-preflight": "node scripts/agent-close-preflight.mjs",
+  "agent:pr-ready": "node scripts/agent-pr-ready.mjs",
 };
 
 async function readTargetPackageJson(targetPath) {

@@ -20,6 +20,8 @@ const SCRIPT_FILES = [
   "scripts/close/lib.mjs",
   "scripts/close/scan-complete.mjs",
   "scripts/close/ci-guard.mjs",
+  "scripts/agent-close-preflight.mjs",
+  "scripts/agent-pr-ready.mjs",
 ];
 
 async function makeTarget() {
@@ -139,6 +141,8 @@ test("AGENT_SCRIPTS exports the current lifecycle entries", () => {
     "agent:pr-body": "node scripts/agent/pr-body.mjs",
     "close:scan:complete": "node scripts/close/scan-complete.mjs",
     "close:ci:guard": "node scripts/close/ci-guard.mjs",
+    "agent:close-preflight": "node scripts/agent-close-preflight.mjs",
+    "agent:pr-ready": "node scripts/agent-pr-ready.mjs",
   });
 });
 
@@ -182,6 +186,39 @@ test("installed close scripts resolve their pr-contract.mjs dependency (no ERR_M
     2,
     `installed close script failed to resolve pr-contract.mjs: ${result.stderr}`,
   );
+});
+
+// #282: AGENTS.md mandates `npm run agent:close-preflight` / `agent:pr-ready`,
+// so the task must install both wrappers AND their npm entries. The wrappers
+// named-import loadPrFromGh/validatePrContract/formatPrContractResult from
+// scripts/pr-contract.mjs; a missing export or file surfaces as a module-
+// resolution failure at import time (the wrappers call main() on import, so any
+// later git/gh runtime error means the import graph already resolved).
+test("installed closeout wrappers resolve and are wired as npm scripts (#282)", async () => {
+  const target = await makeTarget();
+  await writeAgentLifecycle.apply(makeCtx(target));
+
+  const pkg = await readPkg(target);
+  assert.equal(pkg.scripts["agent:close-preflight"], "node scripts/agent-close-preflight.mjs");
+  assert.equal(pkg.scripts["agent:pr-ready"], "node scripts/agent-pr-ready.mjs");
+
+  for (const rel of ["scripts/agent-close-preflight.mjs", "scripts/agent-pr-ready.mjs"]) {
+    const full = join(target, rel);
+    assert.ok((await stat(full)).isFile(), `${rel} should be installed`);
+    const probe = [
+      `const url = ${JSON.stringify(pathToFileURL(full).href)};`,
+      "try { await import(url); }",
+      "catch (err) {",
+      "  if (err && err.code === 'ERR_MODULE_NOT_FOUND') { console.error(err.message); process.exit(2); }",
+      "  // Any other error (e.g. main() failing with no git/gh) means the import graph resolved.",
+      "}",
+    ].join(String.fromCharCode(10));
+    const result = spawnSync(process.execPath, ["--input-type=module", "--eval", probe], {
+      cwd: target,
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 2, `${rel} failed to resolve its pr-contract.mjs imports: ${result.stderr}`);
+  }
 });
 
 test("apply records the installed scripts and the merged package.json in the manifest", async () => {

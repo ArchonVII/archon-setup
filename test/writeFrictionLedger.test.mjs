@@ -95,3 +95,22 @@ test("writeFrictionLedger keeps the ledger trackable when .claude/ is already ig
     "friction.md must be trackable, not shadowed by the .claude directory ignore",
   );
 });
+
+test("writeFrictionLedger keeps the documented noticed.md / napkin.md ledgers trackable (#282)", async () => {
+  const root = await tempRoot();
+  await writeFile(join(root, ".gitignore"), "node_modules/\n", "utf8");
+  const taskCtx = ctx(root);
+
+  await task.apply(taskCtx);
+
+  const gitignore = await readFile(join(root, ".gitignore"), "utf8");
+  assert.match(gitignore, /^!\.claude\/noticed\.md$/m);
+  assert.match(gitignore, /^!\.claude\/napkin\.md$/m);
+
+  // AGENTS.md and the owner-maintenance hook treat these as append-log ledgers
+  // agents write to directly, so `git add` must work without -f.
+  execFileSync("git", ["-C", root, "init", "-q"]);
+  for (const ledger of [".claude/friction.md", ".claude/noticed.md", ".claude/napkin.md"]) {
+    assert.equal(gitIgnores(root, ledger), false, `${ledger} must be trackable, not ignored by .claude/*`);
+  }
+});

@@ -48,14 +48,29 @@ jobs:
       }}
     uses: ArchonVII/github-workflows/.github/workflows/repo-required-gate.yml@v1
     with:
-      # ------ Minimal (docs / config repos with no language CI) -----------
-      stack: minimal
-
-      # ------ Node-only stack ---------------------------------------------
-      # stack: node
+      # ------ Node-only stack (ArchonVII baseline default) ----------------
+      # The ArchonVII baseline always ships package.json + scripts/**, so the
+      # Node stack is the correct default: stack=minimal is hard-rejected by the
+      # gate's classifier the moment code/package files are touched, so the very
+      # first PR on a freshly onboarded repo would fail the required gate. node-ci
+      # runs scripts via `npm run --if-present`, so a repo with no
+      # lint/typecheck/test script is still green. The `with:` block is
+      # repo-owned — switch stacks or add scripts freely.
+      stack: node
       # node-versions: '["22"]'
       # npm-test-script: test
       # npm-build-script: build
+
+      # Dependency review needs GitHub Dependency Graph / Advanced Security,
+      # which a freshly created repo does NOT have enabled — so onboarding keeps
+      # the lane OFF by default (assume nothing is configured GitHub-side). To
+      # turn it on: enable Dependency Graph (repo Settings -> Code security and
+      # analysis; private repos also need GitHub Advanced Security), then set
+      # run-dependency-review: true.
+      run-dependency-review: false
+
+      # ------ Minimal (docs / config repos with no language CI) -----------
+      # stack: minimal
 
       # ------ Python-only stack -------------------------------------------
       # stack: python
