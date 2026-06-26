@@ -87,7 +87,7 @@ test("tasks do not record existing files as created during apply", async () => {
     {
       name: "writeAgentsMd",
       task: writeAgentsMd,
-      files: ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md"],
+      files: ["AGENTS.md", "docs/repo-update-log.md", "docs/repo-update-log/README.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md"],
     },
     { name: "writeClaudeMd", task: writeClaudeMd, files: ["CLAUDE.md"] },
     { name: "writeGeminiMd", task: writeGeminiMd, files: ["GEMINI.md"] },
@@ -161,6 +161,10 @@ test("tasks record only the files actually written during a mixed apply", async 
     {
       path: "docs/repo-update-log.md",
       source: "snapshot:repo-template/docs/repo-update-log.md",
+    },
+    {
+      path: "docs/repo-update-log/README.md",
+      source: "snapshot:repo-template/docs/repo-update-log/README.md",
     },
     {
       path: ".agent/startup-baseline.json",

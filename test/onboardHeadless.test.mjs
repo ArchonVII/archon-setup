@@ -34,6 +34,12 @@ const BASELINE_FILES = [
   "scripts/close/lib.mjs",
   "scripts/close/scan-complete.mjs",
   "scripts/close/ci-guard.mjs",
+  // 2026-06-15-document-policy startup-baseline files that previously had no
+  // feature generating them (startup-readiness gap fix).
+  "docs/repo-update-log/README.md",
+  "scripts/doc-health/lib.mjs",
+  "scripts/doc-health/health.mjs",
+  "docs/agent-process/doc-health.md",
 ];
 
 // F19 / authority markers that the wizard scrubs out of generated hooks.
@@ -154,6 +160,36 @@ test("onboard writes the local baseline, scrubbed identically to the wizard", as
     assert.doesNotMatch(preCommit, pattern, `pre-commit leaked ${pattern}`);
     assert.doesNotMatch(checkoutRole, pattern, `checkout-role leaked ${pattern}`);
   }
+});
+
+test("a default onboard reports startup readiness complete (no manual baseline patching)", async () => {
+  const root = await tempRoot();
+
+  const writeResult = await withFetchStub(() =>
+    withGitIdentity(() => runOnboard({ targetPath: root, owner: "ArchonVII", repo: "example" }))
+  );
+  assert.equal(writeResult.ok, true, "onboard should succeed");
+
+  // The doc-health runner + repo-update-log fragments guide must be generated,
+  // not left for a human to hand-copy from the snapshot.
+  for (const rel of [
+    "docs/repo-update-log/README.md",
+    "scripts/doc-health/lib.mjs",
+    "scripts/doc-health/health.mjs",
+    "docs/agent-process/doc-health.md",
+  ]) {
+    assert.equal(await exists(root, rel), true, `expected onboard to create ${rel}`);
+  }
+
+  // Audit the freshly-onboarded repo: startup readiness must be complete with
+  // nothing missing or stale.
+  const auditResult = await withFetchStub(() => runOnboard({ targetPath: root, audit: true }));
+  assert.equal(auditResult.ok, true);
+  assert.equal(auditResult.audit.startupReadiness.status, "complete");
+  assert.deepEqual(auditResult.audit.startupReadiness.missing, []);
+  assert.deepEqual(auditResult.audit.startupReadiness.stale, []);
+  assert.ok(auditResult.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
+  assert.ok(auditResult.audit.startupReadiness.present.includes("scripts/doc-health/health.mjs"));
 });
 
 test("unknown feature ids are rejected before any write", async () => {

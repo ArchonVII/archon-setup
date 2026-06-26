@@ -29,6 +29,20 @@ const UPDATE_LOG_SNAPSHOT = join(
   "docs",
   "repo-update-log.md"
 );
+// Per-PR repo-update-log fragments guide. It supersedes the frozen single-file
+// docs/repo-update-log.md archive (shipped just above) and is named by the
+// 2026-06-15-document-policy startup baseline. Frontmatter-tolerant like the
+// plans README: wiki-managed repos may prepend repo-local YAML.
+const UPDATE_LOG_README_SNAPSHOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "snapshots",
+  "repo-template",
+  "docs",
+  "repo-update-log",
+  "README.md"
+);
 const STARTUP_BASELINE_SNAPSHOT = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -132,6 +146,12 @@ export async function check(ctx) {
     const current = await readFile(safeJoin(ctx.targetPath, "AGENTS.md"), "utf8");
     const snapshotBody = await readAgentsSnapshot(ctx);
     const updateLogDone = await fileExists(ctx.targetPath, "docs/repo-update-log.md");
+    const updateLogReadme = await readFile(UPDATE_LOG_README_SNAPSHOT, "utf8");
+    const updateLogReadmeDone = await fileMatchesMarkdownSnapshot(
+      ctx.targetPath,
+      "docs/repo-update-log/README.md",
+      updateLogReadme
+    );
     const startupDone = await startupBaselineCurrent(ctx.targetPath);
     const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
     const plansReadmeDone = await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/plans/README.md", plansReadme);
@@ -141,7 +161,7 @@ export async function check(ctx) {
       "docs/agent-process/document-policy.md",
       documentPolicy
     );
-    return agentsContractCurrent(current, snapshotBody) && updateLogDone && startupDone && plansReadmeDone && documentPolicyDone
+    return agentsContractCurrent(current, snapshotBody) && updateLogDone && updateLogReadmeDone && startupDone && plansReadmeDone && documentPolicyDone
       ? "already-done"
       : "needs-apply";
   } catch {
@@ -152,6 +172,11 @@ export async function check(ctx) {
 export async function apply(ctx) {
   const body = await readAgentsSnapshot(ctx);
   const updateLog = await readFile(UPDATE_LOG_SNAPSHOT, "utf8");
+  const updateLogReadme = await snapshotBodyPreservingFrontmatter(
+    ctx.targetPath,
+    "docs/repo-update-log/README.md",
+    await readFile(UPDATE_LOG_README_SNAPSHOT, "utf8")
+  );
   const startupBaseline = await readFile(STARTUP_BASELINE_SNAPSHOT, "utf8");
   const plansReadme = await snapshotBodyPreservingFrontmatter(
     ctx.targetPath,
@@ -192,6 +217,12 @@ export async function apply(ctx) {
     "docs/repo-update-log.md",
     updateLog
   );
+  const updateLogReadmeResult = await safeWriteFile(
+    ctx.targetPath,
+    "docs/repo-update-log/README.md",
+    updateLogReadme,
+    { overwrite: true }
+  );
   const startupBaselineResult = await safeWriteFile(
     ctx.targetPath,
     ".agent/startup-baseline.json",
@@ -218,6 +249,10 @@ export async function apply(ctx) {
     path: "docs/repo-update-log.md",
     source: "snapshot:repo-template/docs/repo-update-log.md",
   });
+  recordCreatedOnly(ctx, updateLogReadmeResult, {
+    path: "docs/repo-update-log/README.md",
+    source: "snapshot:repo-template/docs/repo-update-log/README.md",
+  });
   recordCreatedOnly(ctx, startupBaselineResult, {
     path: ".agent/startup-baseline.json",
     source: "snapshot:repo-template/.agent/startup-baseline.json",
@@ -230,7 +265,7 @@ export async function apply(ctx) {
     path: "docs/agent-process/document-policy.md",
     source: "snapshot:repo-template/docs/agent-process/document-policy.md",
   });
-  return [agentsResult, updateLogResult, startupBaselineResult, plansReadmeResult, documentPolicyResult];
+  return [agentsResult, updateLogResult, updateLogReadmeResult, startupBaselineResult, plansReadmeResult, documentPolicyResult];
 }
 
 export async function verify(ctx) {
@@ -241,6 +276,10 @@ export async function verify(ctx) {
       return { ok: false, error: "AGENTS.md is missing the ArchonVII startup map" };
     }
     await access(safeJoin(ctx.targetPath, "docs/repo-update-log.md"), constants.F_OK);
+    const updateLogReadme = await readFile(UPDATE_LOG_README_SNAPSHOT, "utf8");
+    if (!(await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/repo-update-log/README.md", updateLogReadme))) {
+      return { ok: false, error: "docs/repo-update-log/README.md is missing or stale" };
+    }
     if (!(await startupBaselineCurrent(ctx.targetPath))) {
       return { ok: false, error: ".agent/startup-baseline.json is missing or stale" };
     }
@@ -259,7 +298,7 @@ export async function verify(ctx) {
 }
 
 export function rollbackHint(ctx) {
-  return `Delete ${ctx.targetPath}/AGENTS.md, ${ctx.targetPath}/docs/repo-update-log.md, ${ctx.targetPath}/.agent/startup-baseline.json, ${ctx.targetPath}/docs/plans/README.md, and ${ctx.targetPath}/docs/agent-process/document-policy.md to retry.`;
+  return `Delete ${ctx.targetPath}/AGENTS.md, ${ctx.targetPath}/docs/repo-update-log.md, ${ctx.targetPath}/docs/repo-update-log/README.md, ${ctx.targetPath}/.agent/startup-baseline.json, ${ctx.targetPath}/docs/plans/README.md, and ${ctx.targetPath}/docs/agent-process/document-policy.md to retry.`;
 }
 
 function recordCreatedOnly(ctx, result, entry) {

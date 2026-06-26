@@ -18,6 +18,7 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
 
   const agents = await readFile(join(targetPath, "AGENTS.md"), "utf8");
   const updateLog = await readFile(join(targetPath, "docs", "repo-update-log.md"), "utf8");
+  const updateLogReadme = await readFile(join(targetPath, "docs", "repo-update-log", "README.md"), "utf8");
   const startupBaseline = await readFile(join(targetPath, ".agent", "startup-baseline.json"), "utf8");
   const plansReadme = await readFile(join(targetPath, "docs", "plans", "README.md"), "utf8");
   // document-policy spec §5.1, lane 1c: foundation.agents now distributes the
@@ -27,12 +28,13 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
   assert.match(agents, /Repo update log/);
   assert.match(agents, /Agent Start Map/);
   assert.match(updateLog, /# Repository Update Log/);
+  assert.match(updateLogReadme, /# Repository Update Log/);
   assert.equal(JSON.parse(startupBaseline).version, "2026-06-15-document-policy");
   assert.match(plansReadme, /docs\/plans\/YYYY-MM-DD-<slug>\.md/);
   assert.ok(documentPolicy.length > 0, "document-policy.md is written");
   assert.deepEqual(
     ctx.manifest.createdFiles.map((file) => file.path),
-    ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md"],
+    ["AGENTS.md", "docs/repo-update-log.md", "docs/repo-update-log/README.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md"],
   );
 });
 

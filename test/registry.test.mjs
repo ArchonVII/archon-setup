@@ -75,6 +75,7 @@ test("foundation.agents plans the repo update log with AGENTS.md", async () => {
   assert.ok(agents, "foundation.agents feature missing");
   assert.ok(agents.creates.includes("AGENTS.md"));
   assert.ok(agents.creates.includes("docs/repo-update-log.md"));
+  assert.ok(agents.creates.includes("docs/repo-update-log/README.md"));
   assert.ok(agents.creates.includes(".agent/startup-baseline.json"));
   assert.ok(agents.creates.includes("docs/plans/README.md"));
 });
@@ -527,6 +528,50 @@ test("doc-sweep points at existing snapshot files and lands in the initial commi
   assert.ok(
     tasks.indexOf("writeDocSweep") < tasks.indexOf("initGitAndCommit"),
     "the doc-sweep runner must land in the initial commit"
+  );
+});
+
+// --- doc-health feature (startup-readiness baseline gap) ---
+
+test("doc-health is a locked default agent-workflow feature installing the runner + spec", async () => {
+  const { features } = await loadRegistry();
+  const dh = features.find((f) => f.id === "agent-workflow.doc-health");
+  assert.ok(dh, "agent-workflow.doc-health feature missing");
+  assert.equal(dh.group, "agent-workflow");
+  assert.equal(dh.default, true);
+  assert.equal(dh.locked, true);
+  assert.equal(dh.tasks[0], "writeDocHealth");
+  for (const f of [
+    "scripts/doc-health/lib.mjs",
+    "scripts/doc-health/health.mjs",
+    "docs/agent-process/doc-health.md",
+  ]) {
+    assert.ok(dh.creates.includes(f), `doc-health creates ${f}`);
+  }
+  assert.ok(!(dh.requires || []).includes("remote.github"), "doc-health must not pull in repo-create");
+});
+
+test("doc-health points at existing snapshot files and lands in the initial commit", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const snapDir = join(here, "..", "src", "snapshots", "repo-template");
+  for (const f of ["scripts/doc-health/lib.mjs", "scripts/doc-health/health.mjs", "docs/agent-process/doc-health.md"]) {
+    const body = await readFile(join(snapDir, f), "utf8");
+    assert.ok(body.length > 0, `${f} snapshot present`);
+  }
+
+  const plan = await buildPlan({
+    selection: ["agent-workflow.doc-health", "foundation.git-init"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: {} },
+  });
+  const tasks = plan.ordered.map((u) => u.taskId);
+  assert.ok(tasks.includes("writeDocHealth"), "writeDocHealth should be planned");
+  assert.ok(
+    tasks.indexOf("writeDocHealth") < tasks.indexOf("initGitAndCommit"),
+    "the doc-health runner must land in the initial commit"
   );
 });
 
