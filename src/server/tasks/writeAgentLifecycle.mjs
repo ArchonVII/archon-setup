@@ -9,6 +9,17 @@ import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { recordCreatedFile } from "../lib/manifest.mjs";
 
+const GITIGNORE_PATH = ".gitignore";
+// scripts/close/scan-complete.mjs writes a HEAD-bound marker at
+// .agent/close-scan/complete.json (scripts/close/lib.mjs DEFAULT_MARKER_PATH).
+// It is ephemeral close-state, never committed, so onboarded repos must ignore
+// the whole directory or the marker shows up as committable junk (#253).
+const CLOSE_SCAN_IGNORE = ".agent/close-scan/";
+// Match the managed rule already present (with or without a leading slash or
+// trailing slash) so re-runs detect it and stay no-ops. Mirrors the
+// CLAUDE_DIR_IGNORE shape in writeFrictionLedger.mjs.
+const CLOSE_SCAN_IGNORE_LINE = /^\/?\.agent\/close-scan\/?$/;
+
 // The repo-template agent worktree-lifecycle and close-guard scripts (shipped
 // upstream in repo-template and snapshotted under src/snapshots/repo-template).
 const SCRIPT_FILES = [
@@ -55,6 +66,31 @@ async function readTargetPackageJson(targetPath) {
   }
 }
 
+async function readGitignore(ctx) {
+  // Tolerate a missing .gitignore: treat absent as empty so the managed block is
+  // simply created (mirrors writeFrictionLedger.mjs readGitignore()).
+  try {
+    return await readFile(safeJoin(ctx.targetPath, GITIGNORE_PATH), "utf8");
+  } catch {
+    return "";
+  }
+}
+
+function gitignoreHasCloseScanIgnore(body) {
+  return String(body ?? "").split(/\r?\n/).some((line) => CLOSE_SCAN_IGNORE_LINE.test(line.trim()));
+}
+
+function ensureGitignoreCloseScanIgnore(body) {
+  const original = String(body ?? "");
+  // Already ignored — return the body untouched so the no-op path (and CRLF
+  // files) stays byte-identical and re-runs don't rewrite line endings.
+  if (gitignoreHasCloseScanIgnore(original)) return original;
+
+  const trimmed = original.trimEnd();
+  const prefix = trimmed ? `${trimmed}\n\n` : "";
+  return `${prefix}# ArchonVII close-scan marker (ephemeral, never committed)\n${CLOSE_SCAN_IGNORE}\n`;
+}
+
 function entriesAlreadyMerged(pkg) {
   const scripts = pkg?.scripts || {};
   return Object.entries(AGENT_SCRIPTS).every(([k, v]) => scripts[k] === v);
@@ -65,7 +101,11 @@ export async function check(ctx) {
   // (#95), not just a missing one.
   if ((await checkAllMatch(ctx, SCRIPT_FILES)) === "needs-apply") return "needs-apply";
   const pkg = await readTargetPackageJson(ctx.targetPath);
-  return pkg && entriesAlreadyMerged(pkg) ? "already-done" : "needs-apply";
+  if (!pkg || !entriesAlreadyMerged(pkg)) return "needs-apply";
+  // A partial state (scripts + entries present, but the close-scan ignore rule
+  // missing) must re-apply so the marker stays ignored (#253).
+  if (!gitignoreHasCloseScanIgnore(await readGitignore(ctx))) return "needs-apply";
+  return "already-done";
 }
 
 export async function apply(ctx) {
@@ -96,6 +136,20 @@ export async function apply(ctx) {
   );
   recordCreatedFile(ctx, pkgResult, { path: "package.json", source: "merged:agent-lifecycle" });
   results.push(pkgResult);
+
+  // Idempotently ignore the ephemeral close-scan marker dir. Skip the write when
+  // unchanged so re-runs are no-ops and CRLF .gitignore files stay stable.
+  const gitignoreBody = await readGitignore(ctx);
+  const nextGitignore = ensureGitignoreCloseScanIgnore(gitignoreBody);
+  const gitignoreResult = nextGitignore === gitignoreBody
+    ? { status: "unchanged", path: safeJoin(ctx.targetPath, GITIGNORE_PATH) }
+    : await safeWriteFile(ctx.targetPath, GITIGNORE_PATH, nextGitignore, { overwrite: true });
+  recordCreatedFile(ctx, gitignoreResult, {
+    path: GITIGNORE_PATH,
+    source: "archon-setup:agent-lifecycle-close-scan-ignore",
+  });
+  results.push(gitignoreResult);
+
   return results;
 }
 
@@ -106,9 +160,12 @@ export async function verify(ctx) {
   if (!pkg || !entriesAlreadyMerged(pkg)) {
     return { ok: false, error: "package.json is missing the agent:* lifecycle scripts" };
   }
+  if (!gitignoreHasCloseScanIgnore(await readGitignore(ctx))) {
+    return { ok: false, error: `${GITIGNORE_PATH} is missing the ${CLOSE_SCAN_IGNORE} ignore rule` };
+  }
   return { ok: true };
 }
 
 export function rollbackHint(ctx) {
-  return `Delete ${ctx.targetPath}/scripts/agent/ and ${ctx.targetPath}/scripts/close/, then remove the managed agent:* and close:* entries from package.json to retry.`;
+  return `Delete ${ctx.targetPath}/scripts/agent/ and ${ctx.targetPath}/scripts/close/, remove the managed agent:* and close:* entries from package.json, and drop the ${CLOSE_SCAN_IGNORE} rule from ${ctx.targetPath}/.gitignore to retry.`;
 }
