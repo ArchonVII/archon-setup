@@ -59,7 +59,7 @@
         "status": "green|yellow|red",
         "basis": "fast|audited",
         "fastStatus": "not_onboarded|manifest_current|manifest_outdated|unknown_needs_audit|null",
-        "reasons": [{ "code": "manifest-current-unaudited", "detail": "Manifest current · run audit to verify" }]
+        "reasons": [{ "code": "manifest-current-unaudited|docs-overbudget|docs-stale|docs-unswept|...", "detail": "Manifest current · run audit to verify" }]
       },
       "friction": {
         "state": "present|no-ledger",
@@ -168,7 +168,9 @@
   must always render as **"Manifest current · run audit to verify"** (the
   `manifest-current-unaudited` reason detail), never a bare "Current". Repos
   without a registry role (e.g. plain `--github-root` enumeration) carry
-  `maintenance: null`.
+  `maintenance: null`. Active repos also join cached `doc-health.v1` reports
+  from Archon user state; cached budget, stale-doc, and sweep/policy warnings
+  surface as `docs-overbudget`, `docs-stale`, and `docs-unswept`.
 - **`repos[].friction`** is the per-repo summary of `.claude/friction.md`
   (`src/contracts/schemas/repo-friction.schema.json`). `state: "present"` means
   the ledger was readable, even when `count` is zero. `state: "no-ledger"` means

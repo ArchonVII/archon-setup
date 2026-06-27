@@ -45,15 +45,21 @@ Computed per repo by the maintenance engine
 Worst reason wins, and every status carries its reason codes — including
 green, which carries its "nothing wrong" marker
 (`manifest-current-unaudited`, `verified-current`, `snapshot-current`,
-`pins-verified`, or `catalog-present`). When a signal needed for a check
+`pins-verified`, or `catalog-present`). Active repos also include cached
+doc-health warnings as YELLOW `docs-overbudget`, `docs-stale`, or
+`docs-unswept` reasons. When a signal needed for a check
 cannot be gathered, the engine fails closed to YELLOW (`needs-audit`,
-`snapshot-unverified`, or `fix-queue-pending` with an "unreadable" detail)
+`snapshot-unverified`, `docs-unswept`, or `fix-queue-pending` with an "unreadable" detail)
 rather than guessing green. The rules:
 
 **All roles**
 
 - RED `repo-unavailable` — registered path missing or not a git worktree.
 - YELLOW `dirty-worktree` — primary checkout has uncommitted changes.
+- YELLOW `docs-overbudget`, `docs-stale`, or `docs-unswept` — an active
+  repo's cached `doc-health.v1` report contains budget, stale-document, or
+  sweep/policy follow-up warnings. Missing or unreadable cache is
+  `docs-unswept`; doc-health is report-only and never edits the target repo.
 
 **application** (cheap "fast" basis)
 

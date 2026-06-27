@@ -89,6 +89,10 @@ export const MAINTENANCE_REASONS = [
   "needs-audit",
   "events-stale",
   "manifest-current-unaudited",
+  // document-policy doc-health cache (doc-health.v1 report)
+  "docs-overbudget",
+  "docs-stale",
+  "docs-unswept",
   // application — audited basis (VerifiedStatus, FRONTEND_REDESIGN_SPEC §5.2)
   "verified-current",
   "drift-detected",

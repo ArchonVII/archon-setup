@@ -116,6 +116,53 @@ test("application: workflow drift is yellow workflow-drift", () => {
   assert.match(result.reasons.find((r) => r.code === "workflow-drift").detail, /2 managed workflow caller/);
 });
 
+test("application: cached doc-health findings map to document maintenance reasons", () => {
+  const result = compute(app({
+    docHealth: {
+      report: {
+        schemaVersion: "doc-health.v1",
+        status: "warnings",
+        summary: { findings: 3, warnings: 3, blocking: 0 },
+        findings: [
+          { code: "charter-overbudget", path: "README.md", severity: "warning" },
+          { code: "last-reviewed-stale", path: "docs/CANON.md", severity: "warning" },
+          { code: "startup-baseline-missing-path", path: ".agent/startup-baseline.json", severity: "warning" },
+        ],
+        issues: [],
+      },
+    },
+  }));
+  assert.equal(result.status, "yellow");
+  assert.deepEqual(codes(result), ["docs-overbudget", "docs-stale", "docs-unswept"]);
+});
+
+test("application: missing or invalid doc-health cache is yellow docs-unswept for active repos", () => {
+  assert.deepEqual(codes(compute(app({ docHealth: { state: "missing" } }))), ["docs-unswept"]);
+  assert.deepEqual(codes(compute(app({ docHealth: { report: { schemaVersion: "other", findings: [] } } }))), ["docs-unswept"]);
+
+  const inactive = compute(app({
+    entry: { id: "old-app", role: "application", healthTarget: true, lifecycle: "inactive" },
+    docHealth: { state: "missing" },
+  }));
+  assert.deepEqual(codes(inactive), ["manifest-current-unaudited"]);
+});
+
+test("provider: doc-health applies to every active registry role", () => {
+  const result = compute(provider({
+    docHealth: {
+      report: {
+        schemaVersion: "doc-health.v1",
+        status: "warnings",
+        summary: { findings: 1, warnings: 1, blocking: 0 },
+        findings: [{ code: "tool-stub-overbudget", path: "CLAUDE.md", severity: "warning" }],
+        issues: [],
+      },
+    },
+  }));
+  assert.equal(result.status, "yellow");
+  assert.deepEqual(codes(result), ["docs-overbudget"]);
+});
+
 test("application: events-stale exactly at the 14-day threshold boundary", () => {
   // 13.9 days old — still fresh.
   const fresh = compute(app({ events: { lastEventAt: "2026-05-29T14:00:00.000Z" } }));
