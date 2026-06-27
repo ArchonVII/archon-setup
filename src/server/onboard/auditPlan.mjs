@@ -10,6 +10,7 @@ import { TEMPLATE as CLAUDE_TEMPLATE } from "../tasks/writeClaudeMd.mjs";
 import { TEMPLATE as GEMINI_TEMPLATE } from "../tasks/writeGeminiMd.mjs";
 import { scrubHookBody } from "../tasks/writeGithooks.mjs";
 import { AGENT_SCRIPTS } from "../tasks/writeAgentLifecycle.mjs";
+import { TEMPLATE_LIBRARY_FILES } from "../tasks/writeTemplateLibrary.mjs";
 import { hasCurrentManagedBlock } from "../tasks/managedMarkdownBlock.mjs";
 import { markdownMatchesSnapshotAllowingFrontmatter } from "../tasks/markdownFrontmatter.mjs";
 import { startupBaselineMatchesExpected } from "../tasks/startupBaselineContract.mjs";
@@ -122,6 +123,9 @@ async function expectedBodyFor({ path, unit, context }) {
         };
       }
       return repoTemplateBody(path);
+    case "writeTemplateLibrary":
+      if (TEMPLATE_LIBRARY_FILES.includes(path)) return repoTemplateBody(path);
+      return null;
     default:
       return null;
   }

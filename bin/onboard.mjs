@@ -14,6 +14,8 @@
 //   --dry-run          Print the plan and exit without writing
 //   --json             Emit the result as JSON instead of human text
 //   --help             Show this help
+import { resolve } from "node:path";
+
 import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
 
 function parseArgs(argv) {
@@ -140,9 +142,10 @@ async function main() {
       };
 
   if (!opts.dryRun && !opts.audit && !opts.json) console.log(`Onboarding ${opts.targetPath} ...\n`);
+  const targetPath = resolve(opts.targetPath);
 
   const res = await runOnboard({
-    targetPath: opts.targetPath,
+    targetPath,
     features: opts.features,
     owner: opts.owner,
     repo: opts.repo,
@@ -177,7 +180,7 @@ async function main() {
   const m = res.result?.manifest;
   if (m) {
     console.log(`\nCreated ${m.createdFiles.length} file(s); skipped ${m.skippedFiles.length}.`);
-    console.log(`Manifest: ${opts.targetPath}/.github/archon-setup.json`);
+    console.log(`Manifest: ${targetPath}/.github/archon-setup.json`);
   }
   if (!res.ok) {
     const failed = res.result?.results.find((r) => !r.ok);

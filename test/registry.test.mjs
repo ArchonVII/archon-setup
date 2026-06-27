@@ -575,6 +575,56 @@ test("doc-health points at existing snapshot files and lands in the initial comm
   );
 });
 
+// --- #296: repo-template template library feature ---
+
+test("template library is a locked default agent-workflow feature installing templates/**", async () => {
+  const { features } = await loadRegistry();
+  const tl = features.find((f) => f.id === "agent-workflow.template-library");
+  assert.ok(tl, "agent-workflow.template-library feature missing");
+  assert.equal(tl.group, "agent-workflow");
+  assert.equal(tl.default, true);
+  assert.equal(tl.locked, true);
+  assert.equal(tl.tasks[0], "writeTemplateLibrary");
+  for (const file of [
+    "templates/README.md",
+    "templates/MANIFEST.md",
+    "templates/agent/agent.final-response.standard.md",
+    "templates/github/github.issue.standard.md",
+    "templates/reports/reports.findings-report.standard.md",
+  ]) {
+    assert.ok(tl.creates.includes(file), `template library creates ${file}`);
+  }
+  assert.ok(!(tl.requires || []).includes("remote.github"), "template library must not pull in repo-create");
+});
+
+test("template library points at snapshot files and lands in the initial commit", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join } = await import("node:path");
+  const here = dirname(fileURLToPath(import.meta.url));
+  const snapDir = join(here, "..", "src", "snapshots", "repo-template");
+  for (const file of [
+    "templates/README.md",
+    "templates/MANIFEST.md",
+    "templates/github/github.issue.standard.md",
+  ]) {
+    const body = await readFile(join(snapDir, file), "utf8");
+    assert.ok(body.length > 0, `${file} snapshot present`);
+  }
+
+  const plan = await buildPlan({
+    selection: ["agent-workflow.template-library", "foundation.git-init"],
+    options: {},
+    context: { targetPath: "X", owner: "o", repo: "r", visibility: "private", capabilities: {} },
+  });
+  const tasks = plan.ordered.map((u) => u.taskId);
+  assert.ok(tasks.includes("writeTemplateLibrary"), "writeTemplateLibrary should be planned");
+  assert.ok(
+    tasks.indexOf("writeTemplateLibrary") < tasks.indexOf("initGitAndCommit"),
+    "the template library must land in the initial commit"
+  );
+});
+
 test("doc-orphan-detector is an opt-in runtime cron caller pinned to @v1", async () => {
   const { features } = await loadRegistry();
   const cron = features.find((f) => f.id === "agent-workflow.doc-orphan-detector");

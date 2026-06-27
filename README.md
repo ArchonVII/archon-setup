@@ -542,6 +542,8 @@ Built or actively hardening:
 - Generate README, LICENSE, `.gitignore`, `AGENTS.md`, `CLAUDE.md`,
   `GEMINI.md`, `.agent/check-map.yml`, `docs/repo-update-log.md`, and
   `.github/archon-setup.json`.
+- Install the repo-template `templates/**` library so fresh repos get the
+  standard agent, prompt, report, operations, GitHub, and partial templates.
 - Initialize git, create the GitHub repo with `gh`, push the initial commit,
   apply standard labels, and apply baseline branch protection.
 - Install one stable required branch-protection gate through

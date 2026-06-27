@@ -40,6 +40,9 @@ const BASELINE_FILES = [
   "scripts/doc-health/lib.mjs",
   "scripts/doc-health/health.mjs",
   "docs/agent-process/doc-health.md",
+  "templates/README.md",
+  "templates/MANIFEST.md",
+  "templates/github/github.issue.standard.md",
 ];
 
 // F19 / authority markers that the wizard scrubs out of generated hooks.
@@ -152,6 +155,7 @@ test("onboard writes the local baseline, scrubbed identically to the wizard", as
   const manifest = JSON.parse(await readFile(join(root, ".github/archon-setup.json"), "utf8"));
   assert.equal(manifest.tool, "archon-setup");
   assert.ok(manifest.selectedFeatures.includes("foundation.hooks"));
+  assert.ok(manifest.selectedFeatures.includes("agent-workflow.template-library"));
 
   // Hooks are scrubbed of F19 / authority markers.
   const preCommit = await readFile(join(root, ".githooks/pre-commit"), "utf8");
@@ -177,6 +181,7 @@ test("a default onboard reports startup readiness complete (no manual baseline p
     "scripts/doc-health/lib.mjs",
     "scripts/doc-health/health.mjs",
     "docs/agent-process/doc-health.md",
+    "templates/github/github.issue.standard.md",
   ]) {
     assert.equal(await exists(root, rel), true, `expected onboard to create ${rel}`);
   }
@@ -190,6 +195,10 @@ test("a default onboard reports startup readiness complete (no manual baseline p
   assert.deepEqual(auditResult.audit.startupReadiness.stale, []);
   assert.ok(auditResult.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
   assert.ok(auditResult.audit.startupReadiness.present.includes("scripts/doc-health/health.mjs"));
+  assert.equal(
+    auditResult.audit.items.find((item) => item.path === "templates/github/github.issue.standard.md")?.status,
+    "present"
+  );
 });
 
 test("unknown feature ids are rejected before any write", async () => {
