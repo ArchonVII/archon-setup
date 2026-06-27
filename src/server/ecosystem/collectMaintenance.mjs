@@ -19,6 +19,7 @@ import { checkWorkflowDrift } from "../../updater/checkWorkflowDrift.mjs";
 import { computeFastStatus } from "./manifestStatus.mjs";
 import { computeMaintenanceStatus } from "./maintenanceStatus.mjs";
 import { REPO_ROLES } from "../../contracts/vocab.mjs";
+import { archonHome } from "./registryStore.mjs";
 
 // src/server/ecosystem -> src/snapshots/manifest.json
 const DEFAULT_SNAPSHOT_MANIFEST_PATH = join(
@@ -35,6 +36,9 @@ const PROVIDER_PIN_KEYS = Object.freeze({
 });
 
 const KNOWN_ROLES = new Set(REPO_ROLES);
+export function defaultDocHealthCacheDir() {
+  return join(archonHome(), "state", "doc-health");
+}
 
 // Fix-queue statuses that still demand integrator action; `shipped` and
 // `deferred` are settled (docs/ecosystem-status.md "Ecosystem Fix Queue").
@@ -114,6 +118,20 @@ async function readFixQueuePending(integratorPath) {
   }
 }
 
+function docHealthCacheFile(cacheDir, repoId) {
+  return join(cacheDir, `${encodeURIComponent(repoId)}.json`);
+}
+
+async function readDocHealthCache(cacheDir, row) {
+  if (row.lifecycle !== "active") return null;
+  try {
+    return { report: JSON.parse(await readFile(docHealthCacheFile(cacheDir, row.id), "utf8")) };
+  } catch (err) {
+    if (err.code === "ENOENT") return { state: "missing" };
+    return { state: "unreadable" };
+  }
+}
+
 async function safeWorkflowDrift(targetPath) {
   try {
     return await checkWorkflowDrift({ targetPath });
@@ -130,6 +148,7 @@ export async function collectMaintenance({
   governance = null,
   now = new Date().toISOString(),
   snapshotManifestPath = DEFAULT_SNAPSHOT_MANIFEST_PATH,
+  docHealthCacheDir = defaultDocHealthCacheDir(),
   runCommand = defaultRunCommand,
 } = {}) {
   let pins = {};
@@ -161,6 +180,7 @@ export async function collectMaintenance({
     const input = { entry, repoState, governance, now };
 
     if (row.available !== false) {
+      input.docHealth = await readDocHealthCache(docHealthCacheDir, row);
       if (row.role === "application") {
         input.fastStatus = await computeFastStatus(row.path, { snapshotManifestPath });
         input.workflowDrift = await safeWorkflowDrift(row.path);

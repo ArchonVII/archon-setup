@@ -98,6 +98,17 @@ test("collectMaintenance assembles per-role inputs and returns byId", async (t) 
 
   const rtPath = join(root, "repo-template");
   const gwPath = join(root, "github-workflows");
+  const docHealthCacheDir = join(root, "doc-health-cache");
+  await mkdir(docHealthCacheDir, { recursive: true });
+  for (const id of ["pigafetta", "archon-setup", "repo-template", "github-workflows", "skills-review"]) {
+    await writeFile(join(docHealthCacheDir, `${encodeURIComponent(id)}.json`), JSON.stringify({
+      schemaVersion: "doc-health.v1",
+      status: "clean",
+      summary: { findings: 0, warnings: 0, blocking: 0 },
+      findings: [],
+      issues: [],
+    }), "utf8");
+  }
 
   const repos = [
     repoRow({ id: "pigafetta", role: "application", path: appPath }),
@@ -127,7 +138,7 @@ test("collectMaintenance assembles per-role inputs and returns byId", async (t) 
     },
   });
 
-  const { byId } = await collectMaintenance({ repos, events, now: NOW, snapshotManifestPath, runCommand });
+  const { byId } = await collectMaintenance({ repos, events, now: NOW, snapshotManifestPath, docHealthCacheDir, runCommand });
 
   // Application: green fast basis, honesty detail, no bare "Current".
   assert.equal(byId.pigafetta.status, "green");
@@ -164,6 +175,57 @@ test("collectMaintenance assembles per-role inputs and returns byId", async (t) 
   assert.ok(!("mystery" in byId));
 });
 
+test("collectMaintenance reads cached doc-health reports and fails closed when missing", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "collect-maintenance-doc-health-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const appPath = join(root, "pigafetta");
+  await mkdir(join(appPath, ".github"), { recursive: true });
+  await writeFile(join(appPath, ".github", "archon-setup.json"), JSON.stringify({
+    tool: "archon-setup",
+    sourceSnapshots: {},
+  }), "utf8");
+
+  const docHealthCacheDir = join(root, "doc-health-cache");
+  await mkdir(docHealthCacheDir, { recursive: true });
+  await writeFile(join(docHealthCacheDir, "pigafetta.json"), JSON.stringify({
+    schemaVersion: "doc-health.v1",
+    status: "warnings",
+    summary: { findings: 2, warnings: 2, blocking: 0 },
+    findings: [
+      { code: "tool-stub-overbudget", path: "CLAUDE.md", severity: "warning" },
+      { code: "dangling-relative-link", path: "README.md", severity: "warning" },
+    ],
+    issues: [],
+  }), "utf8");
+
+  const repos = [
+    repoRow({ id: "pigafetta", role: "application", path: appPath }),
+    repoRow({ id: "hudson-bend", role: "application", path: join(root, "hudson-bend") }),
+  ];
+  const events = {
+    sources: [
+      { path: join(appPath, ".archon", "events.jsonl"), count: 1, lastEventAt: "2026-06-11T00:00:00.000Z" },
+      { path: join(root, "hudson-bend", ".archon", "events.jsonl"), count: 1, lastEventAt: "2026-06-11T00:00:00.000Z" },
+    ],
+  };
+
+  const { byId } = await collectMaintenance({
+    repos,
+    events,
+    now: NOW,
+    snapshotManifestPath: join(tmpdir(), "missing-manifest.json"),
+    docHealthCacheDir,
+    runCommand: async () => ({ code: 128, stdout: "", stderr: "" }),
+  });
+
+  assert.deepEqual(
+    byId.pigafetta.reasons.map((r) => r.code).sort(),
+    ["docs-overbudget", "docs-unswept", "needs-audit"],
+  );
+  assert.ok(byId["hudson-bend"].reasons.map((r) => r.code).includes("docs-unswept"));
+});
+
 test("collectMaintenance: unavailable repo short-circuits without touching git or disk", async () => {
   const { byId } = await collectMaintenance({
     repos: [repoRow({ id: "gone", role: "application", path: "C:/nope", available: false, reason: "not a git worktree" })],
@@ -182,8 +244,10 @@ test("collectMaintenance: missing snapshot manifest degrades providers to snapsh
     repos: [repoRow({ id: "repo-template", role: "baseline-provider", path: "C:/somewhere" })],
     now: NOW,
     snapshotManifestPath: join(tmpdir(), "definitely-missing-manifest.json"),
+    // Isolate from the real ~/.archon doc-health cache so docs-unswept is deterministic (#305 review)
+    docHealthCacheDir: join(tmpdir(), "definitely-missing-doc-health-cache"),
     runCommand: fakeGit({ "C:/somewhere": { "rev-parse HEAD": { code: 0, stdout: "abc\n" } } }),
   });
   assert.equal(byId["repo-template"].status, "yellow");
-  assert.deepEqual(byId["repo-template"].reasons.map((r) => r.code), ["snapshot-unverified"]);
+  assert.deepEqual(byId["repo-template"].reasons.map((r) => r.code).sort(), ["docs-unswept", "snapshot-unverified"]);
 });

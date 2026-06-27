@@ -24,6 +24,9 @@ export const REASON_SEVERITY = Object.freeze({
   "needs-audit": "yellow",
   "events-stale": "yellow",
   "manifest-current-unaudited": "green",
+  "docs-overbudget": "yellow",
+  "docs-stale": "yellow",
+  "docs-unswept": "yellow",
   "verified-current": "green",
   "drift-detected": "yellow",
   "missing-files": "yellow",
@@ -57,6 +60,11 @@ const VERIFIED_STATUS_REASONS = Object.freeze({
   needs_review: { code: "audit-needs-review", detail: "deep audit needs human review" },
 });
 
+const DOC_HEALTH_REASON_GROUPS = Object.freeze({
+  "docs-overbudget": new Set(["charter-overbudget", "tool-stub-overbudget"]),
+  "docs-stale": new Set(["last-reviewed-stale", "active-plan-stale", "stale-active-doc-term"]),
+});
+
 function worstStatus(reasons) {
   let worst = "green";
   for (const { code } of reasons) {
@@ -76,6 +84,48 @@ function daysBetween(fromIso, toIso) {
   const to = Date.parse(toIso);
   if (Number.isNaN(from) || Number.isNaN(to)) return null;
   return (to - from) / 86_400_000; // ms per day
+}
+
+function docHealthReasons({ entry, docHealth }, findings) {
+  if (!docHealth || entry.lifecycle !== "active") return;
+
+  if (docHealth.state === "missing") {
+    findings.push({ code: "docs-unswept", detail: "no cached doc-health report for an active repo" });
+    return;
+  }
+  if (docHealth.state === "unreadable") {
+    findings.push({ code: "docs-unswept", detail: "cached doc-health report could not be read" });
+    return;
+  }
+
+  const report = docHealth.report ?? docHealth;
+  if (report.schemaVersion !== "doc-health.v1" || !Array.isArray(report.findings)) {
+    findings.push({ code: "docs-unswept", detail: "cached doc-health report is missing or invalid" });
+    return;
+  }
+  if (report.findings.length === 0) return;
+
+  const counts = { "docs-overbudget": 0, "docs-stale": 0, "docs-unswept": 0 };
+  for (const finding of report.findings) {
+    const findingCode = String(finding?.code ?? "");
+    if (DOC_HEALTH_REASON_GROUPS["docs-overbudget"].has(findingCode)) {
+      counts["docs-overbudget"] += 1;
+    } else if (DOC_HEALTH_REASON_GROUPS["docs-stale"].has(findingCode)) {
+      counts["docs-stale"] += 1;
+    } else {
+      counts["docs-unswept"] += 1;
+    }
+  }
+
+  if (counts["docs-overbudget"] > 0) {
+    findings.push({ code: "docs-overbudget", detail: `${counts["docs-overbudget"]} doc budget warning(s) in cached doc-health report` });
+  }
+  if (counts["docs-stale"] > 0) {
+    findings.push({ code: "docs-stale", detail: `${counts["docs-stale"]} stale doc warning(s) in cached doc-health report` });
+  }
+  if (counts["docs-unswept"] > 0) {
+    findings.push({ code: "docs-unswept", detail: `${counts["docs-unswept"]} doc-health warning(s) need sweep or policy follow-up` });
+  }
 }
 
 function applicationReasons({ entry, fastStatus, workflowDrift, events, auditCache, now }, findings) {
@@ -212,6 +262,7 @@ export function computeMaintenanceStatus({
   governance = null, // reserved: part of the spec §4.2 signature, no rule consumes it yet
   snapshotPin = null,
   auditCache = null,
+  docHealth = null,
   now,
 }) {
   if (!entry || !entry.role) throw new Error("computeMaintenanceStatus requires entry.role");
@@ -249,6 +300,8 @@ export function computeMaintenanceStatus({
       providerReasons({ snapshotPin }, findings);
       break;
   }
+
+  docHealthReasons({ entry, docHealth }, findings);
 
   // Green-with-warnings is contradictory: when yellow/red findings exist, the
   // role's green code (a "nothing wrong" marker, not a finding) is dropped.
