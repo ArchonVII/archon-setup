@@ -244,6 +244,8 @@ test("collectMaintenance: missing snapshot manifest degrades providers to snapsh
     repos: [repoRow({ id: "repo-template", role: "baseline-provider", path: "C:/somewhere" })],
     now: NOW,
     snapshotManifestPath: join(tmpdir(), "definitely-missing-manifest.json"),
+    // Isolate from the real ~/.archon doc-health cache so docs-unswept is deterministic (#305 review)
+    docHealthCacheDir: join(tmpdir(), "definitely-missing-doc-health-cache"),
     runCommand: fakeGit({ "C:/somewhere": { "rev-parse HEAD": { code: 0, stdout: "abc\n" } } }),
   });
   assert.equal(byId["repo-template"].status, "yellow");
