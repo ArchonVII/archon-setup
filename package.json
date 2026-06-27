@@ -1,3 +1,54 @@
 {
   "name": "@archonvii/archon-setup",
-  "ver
+  "version": "0.1.0-pre",
+  "description": "Plug-and-play repo bootstrapper for the ArchonVII ecosystem. Local browser wizard that scaffolds a new repo with AGENTS.md, workflows, labels, and branch protection.",
+  "type": "module",
+  "bin": {
+    "archon-setup": "bin/archon-setup.mjs"
+  },
+  "scripts": {
+    "start": "node bin/archon-setup.mjs",
+    "dev": "node bin/archon-setup.mjs --dev",
+    "onboard": "node bin/onboard.mjs",
+    "agent:close-preflight": "node scripts/agent-close-preflight.mjs",
+    "agent:pr-ready": "node scripts/agent-pr-ready.mjs",
+    "refresh-snapshots": "node scripts/refresh-snapshots.mjs",
+    "snapshots:verify": "node scripts/refresh-snapshots.mjs --verify",
+    "update-ecosystem-overview": "node scripts/update-ecosystem-overview.mjs",
+    "snapshot": "node bin/ecosystem-snapshot.mjs",
+    "lint:markers": "node scripts/lint-managed-regions.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
+    "prepublishOnly": "node scripts/prepublish-check.mjs",
+    "agent:self-apply": "node scripts/agent-self-apply.mjs",
+    "agent:status": "node scripts/agent/status.mjs",
+    "agent:prune": "node scripts/agent/prune.mjs",
+    "agent:start-task": "node scripts/agent/start-task.mjs",
+    "agent:pr-body": "node scripts/agent/pr-body.mjs",
+    "close:scan:complete": "node scripts/close/scan-complete.mjs",
+    "close:ci:guard": "node scripts/close/ci-guard.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "config/",
+    "install.ps1",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "scaffold",
+    "bootstrap",
+    "agents",
+    "github",
+    "archonvii"
+  ],
+  "license": "UNLICENSED",
+  "author": "Joseph Maguirre"
+}
