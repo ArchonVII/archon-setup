@@ -4,11 +4,6 @@
 
 ### Added
 
-- Headless/default onboarding now installs the repo-template `templates/**`
-  library through the locked `agent-workflow.template-library` feature, with
-  exact audit/drift repair coverage for the reusable agent, prompt, report,
-  operations, GitHub, and partial templates. (#296)
-
 - The ecosystem snapshot now judges every registered repo against the
   maintenance contract: a new pure status engine
   (`src/server/ecosystem/maintenanceStatus.mjs`) rolls per-role rules from
@@ -93,10 +88,6 @@
   (#232)
 
 ### Fixed
-
-- The headless onboard CLI now resolves relative target paths before planning,
-  so documented commands such as `npm run onboard -- . --audit` work from the
-  target repository instead of failing downstream path-safety checks. (#296)
 
 - Headless onboarding now includes runtime workflow caller files such as
   `.github/workflows/repo-required-gate.yml` in the default local baseline, so
