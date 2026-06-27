@@ -57,6 +57,28 @@ function taskPhase(unit) {
   return 0;
 }
 
+function remoteMutationForTask(unit, context) {
+  const owner = context.owner || "";
+  const repo = context.repo || "";
+  if (unit.taskId === "ghRepoCreateAndPush") {
+    return {
+      type: "repo.create",
+      feature: unit.featureId,
+      owner,
+      repo,
+      visibility: context.visibility || "private",
+    };
+  }
+  if (!owner || !repo) return null;
+  if (unit.taskId === "applyLabels") {
+    return { type: "labels.apply", feature: unit.featureId, owner, repo };
+  }
+  if (unit.taskId === "applyBaselineBranchProtection") {
+    return { type: "branchProtection.applyBaseline", feature: unit.featureId, owner, repo };
+  }
+  return null;
+}
+
 // Build a normalized plan from a user selection + options + context.
 //
 // input:
@@ -98,6 +120,18 @@ export async function buildPlan({ selection, options = {}, context }) {
     }
   }
 
+  const resolvedIds = new Set(resolved.map((f) => f.id));
+  const hasRemoteIntent = resolved.some((f) => f.remoteRequirement || f.group === "remote");
+  if (context.targetMode === "new-repo" && explicit && hasRemoteIntent && !resolvedIds.has("remote.github")) {
+    plan.warnings.push({
+      feature: "remote.github",
+      message:
+        `"Create GitHub repo" is not selected for this new-repo plan. ` +
+        `Select it to create and push ${explicit.owner}/${explicit.repo}, or switch to Existing repo mode before applying remote settings.`,
+      severity: "error",
+    });
+  }
+
   // remoteRequirement gate (spec section 3). runtime -> warn (deduped); api-target -> error.
   const targetKnown = resolvedTarget.status === "known";
   const willCreate = resolvedTarget.status === "will-create";
@@ -135,7 +169,6 @@ export async function buildPlan({ selection, options = {}, context }) {
 
   // Conflicts: a feature may declare `conflictsWith` to mark mutual exclusion
   // (e.g. the three `workflow.*-ci` features — exactly one CI flavor per repo).
-  const resolvedIds = new Set(resolved.map((f) => f.id));
   for (const f of resolved) {
     for (const conflictId of f.conflictsWith || []) {
       if (resolvedIds.has(conflictId) && f.id < conflictId) {
@@ -153,7 +186,6 @@ export async function buildPlan({ selection, options = {}, context }) {
   // `ci-success` check to require (F1 / issue #17). Surfaced as a warning
   // rather than a hard error so the planner stays pure; the UI / CLI is
   // responsible for blocking Execute when this warning is present.
-  const hasRemoteIntent = resolved.some((f) => f.remoteRequirement || f.group === "remote");
   if (resolvedTarget.status !== "none" && hasRemoteIntent) {
     const ciSelected = resolved.filter((f) => f.group === "workflows.ci");
     if (ciSelected.length === 0) {
@@ -203,6 +235,10 @@ export async function buildPlan({ selection, options = {}, context }) {
     .map((unit, index) => ({ ...unit, index }))
     .sort((a, b) => taskPhase(a) - taskPhase(b) || a.index - b.index)
     .map(({ index, ...unit }) => unit);
+
+  plan.remoteMutations = plan.ordered
+    .map((unit) => remoteMutationForTask(unit, planContext))
+    .filter(Boolean);
 
   // Special-case post-checks for branch protection.
   if (plan.ordered.some((t) => t.taskId === "applyBaselineBranchProtection")) {

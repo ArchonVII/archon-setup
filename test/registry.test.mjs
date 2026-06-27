@@ -174,6 +174,82 @@ test("plan with branch protection adds deferred post-check", async () => {
   );
 });
 
+test("remote features populate first-class remote mutations", async () => {
+  const plan = await buildPlan({
+    selection: ["remote.github", "remote.labels", "remote.branch-protection", "workflow.required-gate"],
+    options: {},
+    context: {
+      targetPath: "X",
+      targetMode: "new-repo",
+      owner: "ArchonVII",
+      repo: "example",
+      visibility: "private",
+      capabilities: {
+        "gh.repoCreateAllowed": true,
+        "gh.authenticated": true,
+        "gh.branchProtectionAllowed": true,
+      },
+    },
+  });
+
+  assert.deepEqual(
+    plan.remoteMutations.map((m) => m.type),
+    ["repo.create", "labels.apply", "branchProtection.applyBaseline"]
+  );
+  assert.ok(plan.remoteMutations.every((m) => m.owner === "ArchonVII" && m.repo === "example"));
+});
+
+test("new-repo mode blocks explicit GitHub target when repo creation is not selected", async () => {
+  const plan = await buildPlan({
+    selection: ["remote.labels", "remote.branch-protection", "workflow.required-gate"],
+    options: {},
+    context: {
+      targetPath: "X",
+      targetMode: "new-repo",
+      owner: "ArchonVII",
+      repo: "example",
+      visibility: "private",
+      capabilities: {
+        "gh.authenticated": true,
+        "gh.branchProtectionAllowed": true,
+      },
+    },
+  });
+
+  const warning = plan.warnings.find((w) => w.feature === "remote.github");
+  assert.ok(warning, "expected a remote.github warning");
+  assert.equal(warning.severity, "error");
+  assert.equal(warning.blocking, true);
+  assert.match(warning.message, /Create GitHub repo/);
+  assert.match(warning.message, /not selected/);
+});
+
+test("existing-repo mode still targets remote settings without repo creation", async () => {
+  const plan = await buildPlan({
+    selection: ["remote.labels", "remote.branch-protection", "workflow.required-gate"],
+    options: {},
+    context: {
+      targetPath: "X",
+      targetMode: "existing-repo",
+      owner: "",
+      repo: "",
+      visibility: "private",
+      capabilities: {
+        "gh.authenticated": true,
+        "gh.branchProtectionAllowed": true,
+      },
+      originDetected: { owner: "ArchonVII", repo: "example" },
+    },
+  });
+
+  assert.ok(!plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
+  assert.ok(!plan.warnings.some((w) => w.blocking));
+  assert.deepEqual(
+    plan.remoteMutations.map((m) => m.type),
+    ["labels.apply", "branchProtection.applyBaseline"]
+  );
+});
+
 // --- issue #17 / F1: language-CI features ---
 
 test("workflows.ci group is enabled and contains node/python/minimal CI features", async () => {
