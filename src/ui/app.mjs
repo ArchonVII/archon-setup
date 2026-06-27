@@ -107,6 +107,16 @@ function selectedTargetLabel(plan = state.plan) {
   return "local files only";
 }
 
+function remoteMutationLabel(mutation) {
+  const target = mutation.owner && mutation.repo ? `${mutation.owner}/${mutation.repo}` : "GitHub repo";
+  if (mutation.type === "repo.create") {
+    return `create ${target} (${mutation.visibility || "private"})`;
+  }
+  if (mutation.type === "labels.apply") return `apply standard labels to ${target}`;
+  if (mutation.type === "branchProtection.applyBaseline") return `apply baseline branch protection to ${target}`;
+  return `${mutation.type} on ${target}`;
+}
+
 function shellQuote(value) {
   return `"${String(value || "").replaceAll('"', '\\"')}"`;
 }
@@ -582,6 +592,15 @@ function renderReview() {
 
   const auditResults = renderAuditResults(state.audit);
   if (auditResults) card.append(auditResults);
+
+  if (state.plan.remoteMutations?.length) {
+    card.append(h("h3", { class: "mt-4 font-medium" }, "Remote actions"));
+    const remoteUl = h("ul", { class: "mt-1 text-sm font-mono space-y-0.5" });
+    for (const mutation of state.plan.remoteMutations) {
+      remoteUl.append(h("li", { class: "text-slate-700" }, "> " + remoteMutationLabel(mutation)));
+    }
+    card.append(remoteUl);
+  }
 
   card.append(h("h3", { class: "mt-4 font-medium" }, "Files to create"));
   const filesUl = h("ul", { class: "mt-1 text-sm font-mono space-y-0.5" });

@@ -16,4 +16,6 @@ test("wizard source exposes existing-repo mode, audit, confirmation, and handoff
   assert.match(source, /failed/);
   assert.match(source, /foundation\.agents,foundation\.claude-md/);
   assert.match(source, /tighten-required-gate/);
+  assert.match(source, /Remote actions/);
+  assert.match(source, /remoteMutationLabel/);
 });
