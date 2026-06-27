@@ -104,6 +104,41 @@ test("onboard --audit is exposed by the CLI JSON contract", async () => {
   assert.equal(byPath(parsed.audit, ".github/workflows/actionlint.yml").status, "present");
 });
 
+test("onboard CLI resolves a relative target path before auditing", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+
+  const { stdout } = await execFileP(
+    process.execPath,
+    [join(REPO_ROOT, "bin", "onboard.mjs"), ".", "--features", "foundation.actionlint", "--audit", "--json"],
+    { cwd: root }
+  );
+  const parsed = JSON.parse(stdout);
+
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.mode, "audit");
+  assert.equal(parsed.plan.context.targetPath, root);
+  assert.equal(byPath(parsed.audit, ".github/workflows/actionlint.yml").status, "missing");
+});
+
+test("onboard --audit reports template library files as missing, present, or drifted", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  await copySnapshot(root, "templates/README.md");
+  await writeFile(join(root, "templates", "MANIFEST.md"), "# local drift\n", "utf8");
+
+  const result = await runOnboard({
+    targetPath: root,
+    features: ["agent-workflow.template-library"],
+    audit: true,
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(byPath(result.audit, "templates/README.md").status, "present");
+  assert.equal(byPath(result.audit, "templates/MANIFEST.md").status, "drifted");
+  assert.equal(byPath(result.audit, "templates/github/github.issue.standard.md").status, "missing");
+});
+
 test("onboard --audit reports warning-level startup readiness in JSON", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);

@@ -684,7 +684,7 @@ center).
 | `RepoSetupPlan` | `src/server/planner/buildPlan.mjs` | merge files/skippedFiles/audit → `operations`; split warnings → blockers/warnings |
 | explanations | `src/registry/features.json` (`beginner/advancedDescription`) | surface per-operation (R3); no new copy store |
 | maturity | registry `disabled: true` groups | map disabled → coming_soon |
-| Templates | `src/snapshots/repo-template/templates/**` | add a Templates feature + RPC to list/preview |
+| Templates | `src/snapshots/repo-template/templates/**` + `agent-workflow.template-library` | add RPC to list/preview installed templates |
 | Execute streaming | `plan.execute` SSE in `src/server/index.mjs` | preserve as-is |
 | Security model | `src/server/security/**` | preserve + add Vite N1–N4 |
 | Tabs/shell/screens | `src/ui/app.mjs` (980-line vanilla) | rebuild as React+Vite components |

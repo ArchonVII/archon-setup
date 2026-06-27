@@ -28,6 +28,7 @@ import * as enableCopilot from "../tasks/enableCopilot.mjs";
 import * as writeAgentLifecycle from "../tasks/writeAgentLifecycle.mjs";
 import * as writeDocSweep from "../tasks/writeDocSweep.mjs";
 import * as writeDocHealth from "../tasks/writeDocHealth.mjs";
+import * as writeTemplateLibrary from "../tasks/writeTemplateLibrary.mjs";
 
 const TASKS = {
   writeReadme,
@@ -57,6 +58,7 @@ const TASKS = {
   writeAgentLifecycle,
   writeDocSweep,
   writeDocHealth,
+  writeTemplateLibrary,
 };
 
 // Executes a plan from the planner. Streams events via onEvent.
