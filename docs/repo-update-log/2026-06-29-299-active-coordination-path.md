@@ -1,0 +1,5 @@
+# 2026-06-29 - #299 Active coordination path
+
+- **Changed paths:** `src/registry/features.json`, `src/server/executor/executePlan.mjs`, `src/server/onboard/auditPlan.mjs`, `src/server/tasks/writeCoordinationClaims.mjs`, `test/coordinationActivePath.test.mjs`, `.changelog/unreleased/299-active-coordination-path.md`, `docs/repo-update-log/2026-06-29-299-active-coordination-path.md`.
+- **What changed:** The opt-in coordination-board feature now installs an explicit active-coordination path: a `.agent/coordination/board.md` plus a live `claims/` location written by the new `writeCoordinationClaims` task. `agent:status` reports the coordination path as installed and `onboard --audit` covers it, so the board is a usable claim surface rather than an empty placeholder.
+- **Verification:** `test/coordinationActivePath.test.mjs` asserts the board, the claims location, audit coverage, and the `agent:status` installed signal. GitHub required checks pass on PR #312 (`repo-required-gate / node ci`, `pr contract`, `decision`, and the `check / check` repo-update-log gate). The fragment commit is docs-only.
