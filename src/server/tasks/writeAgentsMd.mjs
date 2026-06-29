@@ -94,13 +94,29 @@ const MESSAGE_PROTOCOL_SNAPSHOT = join(
 const AGENTS_MANAGED_BLOCK_ID = "agents-start-map";
 const LEGACY_AGENTS_MANAGED_BLOCK_IDS = ["agents-workflow-contract"];
 
-async function readAgentsSnapshot(ctx) {
-  let body = await readFile(AGENTS_SNAPSHOT, "utf8");
-  const mode = ctx.taskOptions?.changelogMode || "Mode 1: direct edit";
+// #291: the shipped baseline carries `.changelog/unreleased/` infra and a close
+// guard (scripts/close/lib.mjs `evaluateChangelogDecision`) that REQUIRES a
+// `.changelog/unreleased/*.md` fragment or the `no-changelog` label - i.e.
+// Mode 2. Onboarding therefore defaults to Mode 2 and resolves the snapshot's
+// "pick one and delete the other during initial setup" placeholder
+// deterministically instead of shipping the literal setup instruction.
+export function resolveChangelogMode(body, changelogMode) {
+  const directEdit = changelogMode === "direct" || changelogMode === "Mode 1: direct edit";
+  const resolved = directEdit
+    ? "This repo uses **Mode 1: direct edit**. Edit `CHANGELOG.md` directly for any PR " +
+      "that warrants a CHANGELOG entry; for PRs that do not, apply the `no-changelog` label."
+    : "This repo uses **Mode 2: `.changelog/unreleased/` fragments**. Add a " +
+      "`.changelog/unreleased/<slug>.md` fragment for any PR that warrants a CHANGELOG " +
+      "entry; for PRs that do not, apply the `no-changelog` label.";
   return body.replace(
-    /<Mode 1: direct edit \/ Mode 2: `\.changelog\/unreleased\/` fragments>/,
-    mode === "fragments" ? "Mode 2: `.changelog/unreleased/` fragments" : "Mode 1: direct edit"
+    /This repo uses \*\*<Mode 1: direct edit \/ Mode 2: `\.changelog\/unreleased\/` fragments>\*\*[\s\S]*?`no-changelog` label\./,
+    () => resolved
   );
+}
+
+async function readAgentsSnapshot(ctx) {
+  const body = await readFile(AGENTS_SNAPSHOT, "utf8");
+  return resolveChangelogMode(body, ctx.taskOptions?.changelogMode);
 }
 
 function managedAgentsBody(snapshotBody) {

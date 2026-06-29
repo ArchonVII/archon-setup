@@ -12,6 +12,7 @@ import { scrubHookBody } from "../tasks/writeGithooks.mjs";
 import { AGENT_SCRIPTS } from "../tasks/writeAgentLifecycle.mjs";
 import { TEMPLATE_LIBRARY_FILES } from "../tasks/writeTemplateLibrary.mjs";
 import { hasCurrentManagedBlock } from "../tasks/managedMarkdownBlock.mjs";
+import { resolveChangelogMode } from "../tasks/writeAgentsMd.mjs";
 import { markdownMatchesSnapshotAllowingFrontmatter } from "../tasks/markdownFrontmatter.mjs";
 import { startupBaselineMatchesExpected } from "../tasks/startupBaselineContract.mjs";
 
@@ -38,12 +39,9 @@ async function expectedBodyFor({ path, unit, context }) {
       return readmeTemplate({ repo: context.repo, owner: context.owner });
     case "writeAgentsMd":
       if (path === "AGENTS.md") {
-        const mode = unit.options?.changelogMode || "Mode 1: direct edit";
-        const body = await repoTemplateBody("AGENTS.md");
-        return body.replace(
-          /<Mode 1: direct edit \/ Mode 2: `\.changelog\/unreleased\/` fragments>/,
-          mode === "fragments" ? "Mode 2: `.changelog/unreleased/` fragments" : "Mode 1: direct edit"
-        );
+        // #291: reuse the emitter's resolver so the audit's expected body defaults
+        // to Mode 2 exactly like onboarding writes it.
+        return resolveChangelogMode(await repoTemplateBody("AGENTS.md"), unit.options?.changelogMode);
       }
       if (path === "docs/repo-update-log.md") {
         return repoTemplateBody(join("docs", "repo-update-log.md"));

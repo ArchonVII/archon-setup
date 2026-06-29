@@ -31,6 +31,11 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
 
   assert.match(agents, /Repo update log/);
   assert.match(agents, /Agent Start Map/);
+  // #291: onboarding defaults to Mode 2 (matches the shipped `.changelog/` infra
+  // and the close guard) and resolves the placeholder deterministically.
+  assert.match(agents, /Mode 2: `\.changelog\/unreleased\/` fragments/);
+  assert.doesNotMatch(agents, /pick one and delete the other/);
+  assert.doesNotMatch(agents, /<Mode 1: direct edit \/ Mode 2/);
   assert.match(updateLog, /# Repository Update Log/);
   assert.match(updateLogReadme, /# Repository Update Log/);
   assert.equal(JSON.parse(startupBaseline).version, "2026-06-15-document-policy");
