@@ -122,15 +122,9 @@ export async function buildPlan({ selection, options = {}, context }) {
 
   const resolvedIds = new Set(resolved.map((f) => f.id));
   const hasRemoteIntent = resolved.some((f) => f.remoteRequirement || f.group === "remote");
-  if (context.targetMode === "new-repo" && explicit && hasRemoteIntent && !resolvedIds.has("remote.github")) {
-    plan.warnings.push({
-      feature: "remote.github",
-      message:
-        `"Create GitHub repo" is not selected for this new-repo plan. ` +
-        `Select it to create and push ${explicit.owner}/${explicit.repo}, or switch to Existing repo mode before applying remote settings.`,
-      severity: "error",
-    });
-  }
+  // NOTE: the "Create GitHub repo" omission guard runs AFTER plan.remoteMutations
+  // is computed (below), so it can gate on ACTUAL remote intent rather than the
+  // presence of any remoteRequirement (#303).
 
   // remoteRequirement gate (spec section 3). runtime -> warn (deduped); api-target -> error.
   const targetKnown = resolvedTarget.status === "known";
@@ -239,6 +233,29 @@ export async function buildPlan({ selection, options = {}, context }) {
   plan.remoteMutations = plan.ordered
     .map((unit) => remoteMutationForTask(unit, planContext))
     .filter(Boolean);
+
+  // "Create GitHub repo" omission guard (#303). Block a new-repo plan with an
+  // explicit owner/repo ONLY when it has actual remote intent — i.e. it produced
+  // concrete remoteMutations (repo create / labels / branch protection). A
+  // workflow-only local plan writes workflow files to disk with an empty
+  // remoteMutations list, so it must not be blocked just because a workflow
+  // feature carries a runtime `remoteRequirement`. Gating on hasRemoteIntent
+  // (any remoteRequirement) was the bug: it forced users to clear the repo
+  // fields for a valid local-only onboarding.
+  if (
+    context.targetMode === "new-repo" &&
+    explicit &&
+    plan.remoteMutations.length > 0 &&
+    !resolvedIds.has("remote.github")
+  ) {
+    plan.warnings.push({
+      feature: "remote.github",
+      message:
+        `"Create GitHub repo" is not selected for this new-repo plan. ` +
+        `Select it to create and push ${explicit.owner}/${explicit.repo}, or switch to Existing repo mode before applying remote settings.`,
+      severity: "error",
+    });
+  }
 
   // Special-case post-checks for branch protection.
   if (plan.ordered.some((t) => t.taskId === "applyBaselineBranchProtection")) {
