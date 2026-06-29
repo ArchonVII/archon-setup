@@ -1,0 +1,5 @@
+# 2026-06-29 - #289 Provenance bootstrap order
+
+- **Changed paths:** `src/server/onboard/headlessOnboard.mjs`, `src/server/tasks/writeGitignore.mjs`, `test/onboardProvenanceClean.test.mjs`, `test/writeGitignore.test.mjs`, `.changelog/unreleased/289-provenance-bootstrap-order.md`, `docs/repo-update-log/2026-06-29-289-provenance-bootstrap-order.md`.
+- **What changed:** Headless onboarding now commits its provenance artifacts (the onboarding manifest and CODEOWNERS) as a sanctioned final bootstrap step, so a fresh onboard ends with a clean working tree instead of leaving generated provenance uncommitted. The onboarded `.gitignore` template also now ignores `.archon/events.jsonl` and `.agent/bypass.log` so runtime event and bypass logs do not dirty the tree.
+- **Verification:** `test/onboardProvenanceClean.test.mjs` asserts a fresh headless onboard ends on a clean tree; `test/writeGitignore.test.mjs` asserts the new ignore entries. GitHub required checks pass on PR #310 (`repo-required-gate / node ci`, `pr contract`, `decision`, and the `check / check` repo-update-log gate). The fragment commit is docs-only.
