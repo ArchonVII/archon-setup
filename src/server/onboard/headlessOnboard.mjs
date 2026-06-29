@@ -6,6 +6,16 @@ import { loadRegistry, buildPlan } from "../planner/buildPlan.mjs";
 import { executePlan } from "../executor/executePlan.mjs";
 import { checkOriginRemote } from "../preflight/checkOriginRemote.mjs";
 import { auditPlan } from "./auditPlan.mjs";
+import { runCommand } from "../lib/commandRunner.mjs";
+
+// Onboarding provenance written by tasks that run after initGitAndCommit's
+// bootstrap commit — the setup manifest always (executePlan writes it last),
+// and CODEOWNERS if its task is ever ordered after git-init. They miss the
+// bootstrap commit, and that commit also activates the .githooks
+// main-protection guard, so an ordinary follow-up commit of them is refused
+// without the sanctioned bypass. We commit them here so a fresh onboard ends
+// with a clean working tree (#289).
+const PROVENANCE_PATHS = [".github/archon-setup.json", ".github/CODEOWNERS"];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // src/server/onboard -> src/snapshots/manifest.json
@@ -101,5 +111,57 @@ export async function runOnboard({
   }
 
   const result = await executePlan(plan, { onEvent });
-  return { ok: result.ok, plan, result, blockingWarnings };
+
+  // After a fresh bootstrap commit, sweep the onboarding provenance that landed
+  // after it into a sanctioned commit so the repo is handed back clean (#289).
+  let provenanceCommit = null;
+  if (result.ok && bootstrapCommitted(result)) {
+    provenanceCommit = await commitProvenance(targetPath);
+  }
+
+  return { ok: result.ok, plan, result, blockingWarnings, provenanceCommit };
+}
+
+// Did initGitAndCommit create a fresh bootstrap commit in THIS run? It returns
+// { result: "committed" } only when it initialised and committed a repo with no
+// prior commits; an existing repo short-circuits to "already-done" (no apply
+// result) and is left to its own delivery workflow — we never auto-commit on
+// top of a user's existing history.
+function bootstrapCommitted(result) {
+  const unit = (result?.results || []).find((r) => r.unit?.taskId === "initGitAndCommit");
+  return unit?.applied?.result === "committed";
+}
+
+async function provenanceIsDirty(targetPath, relPath) {
+  const { code, stdout } = await runCommand(
+    "git",
+    ["-C", targetPath, "status", "--porcelain", "--", relPath],
+    { timeoutMs: 5000 }
+  );
+  return code === 0 && stdout.trim().length > 0;
+}
+
+// Commit the post-bootstrap provenance as a sanctioned final step. Uses the
+// documented bypass env vars (the same ALLOW_MAIN_COMMIT / ALLOW_NO_ISSUE_REF a
+// maintainer would set by hand) so the now-active main-protection and issue-ref
+// hooks let the commit through; the bypass is logged to .agent/bypass.log, which
+// the onboarded .gitignore now ignores. Stages only the known provenance paths
+// (never `git add --all`) to respect commit hygiene (#289).
+async function commitProvenance(targetPath) {
+  const dirty = [];
+  for (const rel of PROVENANCE_PATHS) {
+    if (await provenanceIsDirty(targetPath, rel)) dirty.push(rel);
+  }
+  if (!dirty.length) return { committed: false, reason: "nothing-to-commit" };
+
+  const add = await runCommand("git", ["-C", targetPath, "add", "--", ...dirty], { timeoutMs: 10_000 });
+  if (add.code !== 0) throw new Error(`git add (provenance) failed: ${add.stderr}`);
+
+  const commit = await runCommand(
+    "git",
+    ["-C", targetPath, "commit", "-m", "chore: record archon-setup onboarding provenance"],
+    { timeoutMs: 15_000, env: { ALLOW_MAIN_COMMIT: "1", ALLOW_NO_ISSUE_REF: "1" } }
+  );
+  if (commit.code !== 0) throw new Error(`git commit (provenance) failed: ${commit.stderr}`);
+  return { committed: true, paths: dirty };
 }
