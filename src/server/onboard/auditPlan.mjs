@@ -82,7 +82,15 @@ async function expectedBodyFor({ path, unit, context }) {
     case "writeCoordinationReadme":
       return repoTemplateBody(join(".agent", "coordination", "README.md"));
     case "writeCoordinationBoard":
-      return repoTemplateBody(join(".agent", "coordination", "board.md"));
+      // The active-coordination feature plans two files but unitForFile resolves
+      // both to this (first) task; the board has a snapshot body, the claims
+      // placeholder is generated (no snapshot) so it audits by existence only.
+      if (path === ".agent/coordination/board.md") {
+        return repoTemplateBody(join(".agent", "coordination", "board.md"));
+      }
+      return null;
+    case "writeCoordinationClaims":
+      return null;
     case "writeCheckMap":
       return repoTemplateBody(join(".agent", "check-map.yml"));
     case "writeGithooks":

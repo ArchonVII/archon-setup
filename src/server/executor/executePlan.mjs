@@ -10,6 +10,7 @@ import * as writeGeminiMd from "../tasks/writeGeminiMd.mjs";
 import * as writeCheckMap from "../tasks/writeCheckMap.mjs";
 import * as writeCoordinationReadme from "../tasks/writeCoordinationReadme.mjs";
 import * as writeCoordinationBoard from "../tasks/writeCoordinationBoard.mjs";
+import * as writeCoordinationClaims from "../tasks/writeCoordinationClaims.mjs";
 import * as writeGithooks from "../tasks/writeGithooks.mjs";
 import * as writeFrictionLedger from "../tasks/writeFrictionLedger.mjs";
 import * as writeGitattributes from "../tasks/writeGitattributes.mjs";
@@ -40,6 +41,7 @@ const TASKS = {
   writeCheckMap,
   writeCoordinationReadme,
   writeCoordinationBoard,
+  writeCoordinationClaims,
   writeGithooks,
   writeFrictionLedger,
   writeGitattributes,
