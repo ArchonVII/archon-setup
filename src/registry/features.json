@@ -280,13 +280,13 @@
   },
   {
     "id": "agent-workflow.coordination-board",
-    "label": "Coordination board (active)",
+    "label": "Active coordination (board + live claims)",
     "group": "agent-workflow",
     "default": false,
-    "creates": [".agent/coordination/board.md"],
-    "tasks": ["writeCoordinationBoard"],
-    "beginnerDescription": "Adds an active multi-agent coordination board for repos where several agents or people work concurrently. Skip it if you don't need active coordination.",
-    "advancedDescription": "Copied from the repo-template baseline at .agent/coordination/board.md. Opt-in companion to the locked foundation.coordination contract. Names no other repo or machine path; the repo decides whether live board state is tracked."
+    "creates": [".agent/coordination/board.md", ".agent/coordination/claims/.gitkeep"],
+    "tasks": ["writeCoordinationBoard", "writeCoordinationClaims"],
+    "beginnerDescription": "Turns on ACTIVE multi-agent coordination for repos where several agents or people work concurrently: a board.md you edit by hand plus a live claims/ folder agents write to. Selecting this enables live claims — agent:status will report coordination installed and doc-sweep can see active lanes instead of guessing about stale worktrees. Skip it (the default) if only one agent works here at a time.",
+    "advancedDescription": "Installs both halves of active coordination: the board.md human surface (from the repo-template snapshot) and an empty .agent/coordination/claims/ directory (kept by a .gitkeep placeholder) where agents drop one <lane>.json claim per active lane. Opt-in companion to the locked foundation.coordination contract — leaving it unselected keeps the repo claims-absent so agent:status reports 'not installed' and doc-sweep keeps its leave/log behavior for worktree docs. Names no other repo or machine-global board; live claims stay isolated to this repo."
   },
   {
     "id": "agent-workflow.anomaly-triage",
