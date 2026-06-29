@@ -262,6 +262,61 @@ test("new-repo mode blocks explicit GitHub target when repo creation is not sele
   assert.match(warning.message, /not selected/);
 });
 
+test("new-repo mode does NOT block a workflow-only local plan with no remote mutations (#303)", async () => {
+  // A runtime workflow feature (workflow.required-gate) only writes workflow
+  // files to disk — it produces no remoteMutations. With owner/repo filled in,
+  // the old hasRemoteIntent gate (any remoteRequirement => remote intent)
+  // wrongly raised a blocking remote.github error, forcing the user to clear
+  // the repo fields for a valid local-only onboarding. The error must gate on
+  // actual remote intent (non-empty remoteMutations) instead.
+  const plan = await buildPlan({
+    selection: ["workflow.required-gate"],
+    options: {},
+    context: {
+      targetPath: "X",
+      targetMode: "new-repo",
+      owner: "ArchonVII",
+      repo: "example",
+      visibility: "private",
+      capabilities: {},
+    },
+  });
+
+  assert.deepEqual(plan.remoteMutations, [], "a workflow-only plan has no remote mutations");
+  assert.ok(
+    !plan.warnings.some((w) => w.feature === "remote.github"),
+    "no spurious remote.github error for a workflow-only local plan"
+  );
+  assert.ok(!plan.warnings.some((w) => w.blocking), "the local-only plan must not be blocked");
+  assert.ok(
+    plan.files.some((f) => f.path === ".github/workflows/repo-required-gate.yml"),
+    "the workflow file is still planned locally"
+  );
+});
+
+test("new-repo mode still blocks remote settings (labels) without repo creation (#303 guard intact)", async () => {
+  // The fix must NOT weaken the real guard: labels/branch-protection DO produce
+  // remoteMutations, so omitting "Create GitHub repo" in new-repo mode must
+  // still raise the blocking error.
+  const plan = await buildPlan({
+    selection: ["remote.labels"],
+    options: {},
+    context: {
+      targetPath: "X",
+      targetMode: "new-repo",
+      owner: "ArchonVII",
+      repo: "example",
+      visibility: "private",
+      capabilities: { "gh.authenticated": true },
+    },
+  });
+
+  assert.ok(plan.remoteMutations.length > 0, "labels produce a real remote mutation");
+  const warning = plan.warnings.find((w) => w.feature === "remote.github" && w.severity === "error");
+  assert.ok(warning, "remote.github error must still fire when there is real remote intent");
+  assert.equal(warning.blocking, true);
+});
+
 test("existing-repo mode still targets remote settings without repo creation", async () => {
   const plan = await buildPlan({
     selection: ["remote.labels", "remote.branch-protection", "workflow.required-gate"],
