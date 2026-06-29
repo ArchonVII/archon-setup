@@ -198,6 +198,47 @@ export async function listSnapshotFiles(dir) {
     .sort();
 }
 
+// Hook files git actually invokes once a clone sets `core.hooksPath=.githooks`:
+// the commit-msg/pre-commit dispatchers and every `scripts/*.sh` helper they
+// source. These must ship executable so the policy guards run on Unix/CI instead
+// of being silently skipped as non-executable (#314). `rel` is relative to the
+// snapshot's source dir, e.g. ".githooks/commit-msg".
+export function isExecutableHookPath(rel) {
+  const p = String(rel).split(sep).join("/");
+  return (
+    p === ".githooks/commit-msg" ||
+    p === ".githooks/pre-commit" ||
+    (p.startsWith(".githooks/scripts/") && p.endsWith(".sh"))
+  );
+}
+
+// Stamp the git index exec bit (100755) onto vendored hook entrypoints. refresh
+// runs on Windows where `core.filemode=false`, so `git add` records new hook
+// files as 100644 and the executable bit that is correct upstream is lost in the
+// vendored snapshot (#314 — git then skips non-executable hooks on Unix). `git
+// update-index --add --chmod=+x` writes the mode straight into the index,
+// independent of the working-tree filemode. Best-effort: if the snapshot is not
+// inside a git work tree (e.g. an isolated test fixture), warn and skip.
+export async function setHookExecBit(dest) {
+  const relFiles = (await listSnapshotFiles(dest)).filter(isExecutableHookPath);
+  if (relFiles.length === 0) return [];
+  let repoRoot;
+  try {
+    repoRoot = gitOutput(dest, ["rev-parse", "--show-toplevel"]);
+  } catch {
+    console.warn(`skip exec-bit: ${dest} is not inside a git work tree`);
+    return [];
+  }
+  const paths = relFiles.map((rel) => relative(repoRoot, join(dest, rel)).split(sep).join("/"));
+  for (const p of paths) {
+    execFileSync("git", ["-C", repoRoot, "update-index", "--add", "--chmod=+x", "--", p], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  }
+  console.log(`exec-bit: marked ${paths.length} hook file(s) 100755`);
+  return paths;
+}
+
 function gitListTree(path, pin, prefix) {
   const out = gitOutput(path, ["ls-tree", "-r", "--name-only", pin, "--", prefix]);
   return out ? out.split(/\r?\n/) : [];
@@ -440,6 +481,10 @@ export async function refreshSnapshots({
         await cp(join(s.localPath, d), join(dest, d), { recursive: true });
       }
     }
+    // Preserve the executable bit on vendored git hooks (#314). The cp() calls
+    // above drop it on Windows; restore it in the index so onboarded repos get
+    // hooks git will actually run on Unix.
+    await setHookExecBit(dest);
     manifest.snapshots[s.key] = {
       source: s.source,
       ref: s.ref,
