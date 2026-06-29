@@ -5,7 +5,12 @@ import { dirname, join } from "node:path";
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { recordCreatedFile } from "../lib/manifest.mjs";
-import { hasCurrentManagedBlock, reconcileManagedBlockNearTop } from "./managedMarkdownBlock.mjs";
+import {
+  formatManagedBlock,
+  hasCurrentManagedBlock,
+  reconcileManagedBlock,
+  reconcileManagedBlockNearTop,
+} from "./managedMarkdownBlock.mjs";
 import {
   applySnapshotPreservingFrontmatter,
   markdownMatchesSnapshotAllowingFrontmatter,
@@ -92,7 +97,17 @@ const MESSAGE_PROTOCOL_SNAPSHOT = join(
   "message-protocol.md"
 );
 const AGENTS_MANAGED_BLOCK_ID = "agents-start-map";
+// #306: the cross-tool delivery contract (issue -> branch -> atomic commits ->
+// PR, never commit feature work to `main`, Conventional Commits, branch naming
+// `agent/<tool>/<issue>-<slug>`) ships as its own managed block so it is
+// guaranteed and re-syncable for every onboarded repo, not just freshly created
+// ones. Existing repos only got the start map before, which is the lifeloot gap.
+export const DELIVERY_WORKFLOW_BLOCK_ID = "delivery-workflow";
 const LEGACY_AGENTS_MANAGED_BLOCK_IDS = ["agents-workflow-contract"];
+
+function detectEol(value) {
+  return value.includes("\r\n") ? "\r\n" : "\n";
+}
 
 // #291: the shipped baseline carries `.changelog/unreleased/` infra and a close
 // guard (scripts/close/lib.mjs `evaluateChangelogDecision`) that REQUIRES a
@@ -114,9 +129,48 @@ export function resolveChangelogMode(body, changelogMode) {
   );
 }
 
+// #306: wrap the snapshot's `## Workflow` delivery contract in an ArchonVII
+// managed block so it is re-syncable. The block body is generated from the
+// existing snapshot section (the same way agents-start-map is generated), so no
+// edit to src/snapshots/ is required.
+function wrapDeliveryWorkflow(body) {
+  const eol = detectEol(body);
+  const headingIndex = body.indexOf("## Workflow");
+  if (headingIndex === -1) {
+    throw new Error("repo-template AGENTS.md is missing the ## Workflow delivery contract");
+  }
+  const afterHeading = headingIndex + "## Workflow".length;
+  const nextHeadingOffset = body.slice(afterHeading).search(/\r?\n## /);
+  const endIndex = nextHeadingOffset === -1 ? body.length : afterHeading + nextHeadingOffset;
+  const section = body.slice(headingIndex, endIndex).replace(/\s+$/, "");
+  const before = body.slice(0, headingIndex).replace(/\s+$/, "");
+  const after = body.slice(endIndex).replace(/^[\r\n]+/, "");
+  const block = formatManagedBlock(DELIVERY_WORKFLOW_BLOCK_ID, section, eol);
+  const tail = after ? `${eol}${eol}${after}` : eol;
+  return `${before}${eol}${eol}${block}${tail}`;
+}
+
+// Pure snapshot -> emitted-body transform. Exported and shared with the audit so
+// the audit's "expected" body never drifts from what onboarding actually writes:
+// resolve the changelog mode (#291) then wrap the delivery contract (#306).
+export function renderAgentsBody(rawBody, changelogMode) {
+  return wrapDeliveryWorkflow(resolveChangelogMode(rawBody, changelogMode));
+}
+
+export function extractDeliveryWorkflowBody(renderedBody) {
+  const start = `<!-- BEGIN ARCHONVII MANAGED BLOCK: ${DELIVERY_WORKFLOW_BLOCK_ID} -->`;
+  const end = `<!-- END ARCHONVII MANAGED BLOCK: ${DELIVERY_WORKFLOW_BLOCK_ID} -->`;
+  const startIndex = renderedBody.indexOf(start);
+  const endIndex = renderedBody.indexOf(end);
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    throw new Error("rendered AGENTS.md is missing the managed delivery-workflow block");
+  }
+  return renderedBody.slice(startIndex + start.length, endIndex).trim();
+}
+
 async function readAgentsSnapshot(ctx) {
   const body = await readFile(AGENTS_SNAPSHOT, "utf8");
-  return resolveChangelogMode(body, ctx.taskOptions?.changelogMode);
+  return renderAgentsBody(body, ctx.taskOptions?.changelogMode);
 }
 
 function managedAgentsBody(snapshotBody) {
@@ -168,8 +222,13 @@ async function snapshotBodyPreservingFrontmatter(root, relativePath, snapshotBod
 }
 
 function agentsContractCurrent(current, snapshotBody) {
-  return current === snapshotBody
-    || hasCurrentManagedBlock(current, AGENTS_MANAGED_BLOCK_ID, managedAgentsBody(snapshotBody));
+  if (current === snapshotBody) return true;
+  // #306: the contract is only current when BOTH the start map and the managed
+  // delivery-workflow block are present and in sync with the snapshot.
+  return (
+    hasCurrentManagedBlock(current, AGENTS_MANAGED_BLOCK_ID, managedAgentsBody(snapshotBody)) &&
+    hasCurrentManagedBlock(current, DELIVERY_WORKFLOW_BLOCK_ID, extractDeliveryWorkflowBody(snapshotBody))
+  );
 }
 
 export async function check(ctx) {
@@ -238,13 +297,21 @@ export async function apply(ctx) {
     if (current === body) {
       agentsResult = { status: "unchanged", path: agentsPath };
     } else {
-      const reconciled = reconcileManagedBlockNearTop(
+      const startMap = reconcileManagedBlockNearTop(
         stripLegacyManagedBlocks(current),
         AGENTS_MANAGED_BLOCK_ID,
         managedAgentsBody(body)
       );
-      if (reconciled.changed) {
-        await writeFile(agentsPath, reconciled.body, "utf8");
+      // #306: also reconcile the delivery-workflow contract. A fresh repo gets it
+      // inline from the snapshot body; an existing repo on the reconcile path
+      // would otherwise never receive it (the lifeloot gap).
+      const delivery = reconcileManagedBlock(
+        startMap.body,
+        DELIVERY_WORKFLOW_BLOCK_ID,
+        extractDeliveryWorkflowBody(body)
+      );
+      if (startMap.changed || delivery.changed) {
+        await writeFile(agentsPath, delivery.body, "utf8");
         agentsResult = { status: "updated", path: agentsPath };
       } else {
         agentsResult = { status: "unchanged", path: agentsPath };

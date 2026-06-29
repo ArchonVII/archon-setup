@@ -11,6 +11,15 @@ import assert from "node:assert/strict";
 import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
 import { checkTargetPath } from "../src/server/preflight/checkTargetPath.mjs";
 import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
+import { extractDeliveryWorkflowBody, renderAgentsBody } from "../src/server/tasks/writeAgentsMd.mjs";
+import { formatManagedBlock } from "../src/server/tasks/managedMarkdownBlock.mjs";
+
+// #306: the managed delivery-workflow block as onboarding renders it, used to
+// seed a "current" AGENTS.md in audit tests without hardcoding the contract.
+async function deliveryWorkflowBlock() {
+  const snapshot = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
+  return formatManagedBlock("delivery-workflow", extractDeliveryWorkflowBody(renderAgentsBody(snapshot)));
+}
 
 const execFileP = promisify(execFile);
 const REPO_ROOT = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
@@ -189,7 +198,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await mkdir(join(root, "scripts", "doc-health"), { recursive: true });
   await writeFile(
     join(root, "AGENTS.md"),
-    `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n\n## Local workflow\n\nKeep repo-specific rules.\n`,
+    `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n\n## Local workflow\n\nKeep repo-specific rules.\n\n${await deliveryWorkflowBlock()}\n`,
     "utf8"
   );
   await writeFile(join(root, ".agent", "startup-baseline.json"), startupBaseline, "utf8");
@@ -237,6 +246,43 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   assert.ok(parsed.audit.startupReadiness.present.includes("AGENTS.md"));
   assert.ok(parsed.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
   assert.ok(parsed.audit.startupReadiness.present.includes(".github/workflows/repo-update-log-fragment.yml"));
+});
+
+test("onboard --audit flags a missing managed delivery-workflow block on an existing repo", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
+  const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
+  const startMapBlock = `<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->`;
+
+  async function auditStartup() {
+    const { stdout } = await execFileP(
+      process.execPath,
+      [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit", "--json"],
+      { cwd: REPO_ROOT }
+    );
+    return JSON.parse(stdout).audit.startupReadiness;
+  }
+
+  // RED: start map present, managed delivery-workflow block absent (the lifeloot gap).
+  await writeFile(
+    join(root, "AGENTS.md"),
+    `# Local agent guide\n\n${startMapBlock}\n\n## Local workflow\n\nKeep repo-specific rules.\n`,
+    "utf8"
+  );
+  const red = await auditStartup();
+  assert.ok(red.stale.includes("AGENTS.md"), "a missing delivery-workflow block must flag AGENTS.md as stale");
+  assert.ok(!red.present.includes("AGENTS.md"));
+
+  // GREEN: add the managed delivery-workflow block and the flag clears.
+  await writeFile(
+    join(root, "AGENTS.md"),
+    `# Local agent guide\n\n${startMapBlock}\n\n## Local workflow\n\nKeep repo-specific rules.\n\n${await deliveryWorkflowBlock()}\n`,
+    "utf8"
+  );
+  const green = await auditStartup();
+  assert.ok(green.present.includes("AGENTS.md"), "adding the delivery-workflow block clears the AGENTS.md flag");
+  assert.ok(!green.stale.includes("AGENTS.md"));
 });
 
 test("startup readiness reports stale concrete startup tooling", async () => {
