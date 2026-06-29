@@ -12,6 +12,11 @@ import { scrubHookBody } from "../tasks/writeGithooks.mjs";
 import { AGENT_SCRIPTS } from "../tasks/writeAgentLifecycle.mjs";
 import { TEMPLATE_LIBRARY_FILES } from "../tasks/writeTemplateLibrary.mjs";
 import { hasCurrentManagedBlock } from "../tasks/managedMarkdownBlock.mjs";
+import {
+  DELIVERY_WORKFLOW_BLOCK_ID,
+  extractDeliveryWorkflowBody,
+  renderAgentsBody,
+} from "../tasks/writeAgentsMd.mjs";
 import { markdownMatchesSnapshotAllowingFrontmatter } from "../tasks/markdownFrontmatter.mjs";
 import { startupBaselineMatchesExpected } from "../tasks/startupBaselineContract.mjs";
 
@@ -38,12 +43,10 @@ async function expectedBodyFor({ path, unit, context }) {
       return readmeTemplate({ repo: context.repo, owner: context.owner });
     case "writeAgentsMd":
       if (path === "AGENTS.md") {
-        const mode = unit.options?.changelogMode || "Mode 1: direct edit";
-        const body = await repoTemplateBody("AGENTS.md");
-        return body.replace(
-          /<Mode 1: direct edit \/ Mode 2: `\.changelog\/unreleased\/` fragments>/,
-          mode === "fragments" ? "Mode 2: `.changelog/unreleased/` fragments" : "Mode 1: direct edit"
-        );
+        // #291 + #306: reuse the emitter's renderer so the audit's expected body
+        // never drifts from what onboarding actually writes (Mode 2 default,
+        // managed delivery-workflow block).
+        return renderAgentsBody(await repoTemplateBody("AGENTS.md"), unit.options?.changelogMode);
       }
       if (path === "docs/repo-update-log.md") {
         return repoTemplateBody(join("docs", "repo-update-log.md"));
@@ -316,7 +319,12 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
 
   switch (relativePath) {
     case "AGENTS.md":
-      return (await agentsHasCurrentStartMap(root)) ? "present" : "stale";
+      // #306: AGENTS.md is only current when BOTH the start map and the managed
+      // delivery-workflow contract are present and in sync. A missing
+      // delivery-workflow block (the lifeloot gap) reports AGENTS.md as stale.
+      return (await agentsHasCurrentStartMap(root)) && (await agentsHasCurrentDeliveryWorkflow(root))
+        ? "present"
+        : "stale";
     case ".agent/startup-baseline.json":
       return (await startupBaselineCurrent(root, baseline)) ? "present" : "stale";
     case "docs/plans/README.md":
@@ -353,6 +361,15 @@ function extractManagedAgentStartMap(body) {
   const match = body.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/);
   if (!match) throw new Error("repo-template AGENTS.md is missing the managed agent start map");
   return match[0].trim();
+}
+
+// #306: mirror agentsHasCurrentStartMap for the managed delivery-workflow block.
+// The expected body is rendered the same way the emitter renders it, so the
+// audit and onboarding never disagree on what "current" means.
+async function agentsHasCurrentDeliveryWorkflow(root) {
+  const body = normalizeSnapshotText(await readFile(safeJoin(root, "AGENTS.md"), "utf8"));
+  const expected = extractDeliveryWorkflowBody(renderAgentsBody(await repoTemplateBody("AGENTS.md")));
+  return hasCurrentManagedBlock(body, DELIVERY_WORKFLOW_BLOCK_ID, expected);
 }
 
 async function startupBaselineCurrent(root, expectedBaseline) {

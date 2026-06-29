@@ -31,6 +31,17 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
 
   assert.match(agents, /Repo update log/);
   assert.match(agents, /Agent Start Map/);
+  // #291: onboarding defaults to Mode 2 (matches the shipped `.changelog/` infra
+  // and the close guard) and resolves the placeholder deterministically.
+  assert.match(agents, /Mode 2: `\.changelog\/unreleased\/` fragments/);
+  assert.doesNotMatch(agents, /pick one and delete the other/);
+  assert.doesNotMatch(agents, /<Mode 1: direct edit \/ Mode 2/);
+  // #306: the delivery contract ships as its own managed block, guaranteed for
+  // every onboarded repo and re-syncable via the same marker mechanism.
+  assert.match(agents, /<!-- BEGIN ARCHONVII MANAGED BLOCK: delivery-workflow -->/);
+  assert.match(agents, /<!-- END ARCHONVII MANAGED BLOCK: delivery-workflow -->/);
+  assert.match(agents, /agent\/<tool>\/<issue>-<slug>/);
+  assert.match(agents, /Never commit feature work to `main`/);
   assert.match(updateLog, /# Repository Update Log/);
   assert.match(updateLogReadme, /# Repository Update Log/);
   assert.equal(JSON.parse(startupBaseline).version, "2026-06-15-document-policy");
@@ -67,6 +78,12 @@ Keep this repo-specific setup note.
   assert.match(reconciled, /Keep this repo-specific setup note\./);
   assert.match(reconciled, /BEGIN ARCHONVII MANAGED BLOCK: agents-start-map/);
   assert.match(reconciled, /Agent Start Map/);
+  // #306: an existing repo on the reconcile path must also receive the managed
+  // delivery-workflow contract (the lifeloot gap), not just the start map.
+  assert.match(reconciled, /BEGIN ARCHONVII MANAGED BLOCK: delivery-workflow/);
+  assert.match(reconciled, /END ARCHONVII MANAGED BLOCK: delivery-workflow/);
+  assert.match(reconciled, /agent\/<tool>\/<issue>-<slug>/);
+  assert.match(reconciled, /Never commit feature work to `main`/);
   assert.doesNotMatch(reconciled, /## Checkout role \/ worktrees/);
   assert.doesNotMatch(reconciled, /Mode 1: direct edit/);
   assert.ok(
