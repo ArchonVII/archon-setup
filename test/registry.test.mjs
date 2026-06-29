@@ -130,6 +130,44 @@ test("friction ledger source policy is present in the repo-template snapshot (#2
   assert.match(ownerMaintenance, /\.claude\/friction\.md/);
 });
 
+// --- #304: agent-lifecycle dry-run/plan parity for its .gitignore write ---
+
+test("agent-lifecycle requires foundation.gitignore so its .gitignore write is declared (#304)", async () => {
+  // writeAgentLifecycle creates/updates .gitignore (the close-scan ignore rule)
+  // at execution. The feature must pull in the gitignore foundation that owns
+  // that file — mirroring foundation.friction-ledger, which also modifies
+  // .gitignore and `requires: foundation.gitignore` rather than re-declaring it
+  // — so an approved dry-run never hides the filesystem mutation.
+  const { features } = await loadRegistry();
+  const lifecycle = features.find((f) => f.id === "agent-lifecycle.baseline");
+
+  assert.ok(lifecycle, "agent-lifecycle.baseline feature missing");
+  assert.ok(
+    (lifecycle.requires || []).includes("foundation.gitignore"),
+    "agent-lifecycle.baseline must require foundation.gitignore (the file its task writes)"
+  );
+});
+
+test("a scoped agent-lifecycle plan declares the .gitignore mutation it performs (#304)", async () => {
+  const plan = await buildPlan({
+    selection: ["agent-lifecycle.baseline"],
+    options: {},
+    context: { targetPath: "X", owner: "", repo: "", visibility: "private", capabilities: {} },
+  });
+
+  // Transitive requires must surface the gitignore foundation in the closure...
+  assert.ok(
+    plan.selectedFeatureIds.includes("foundation.gitignore"),
+    "agent-lifecycle.baseline must pull in foundation.gitignore"
+  );
+  // ...and the plan's declared files must include the .gitignore that
+  // writeAgentLifecycle touches, so --dry-run and apply stay at parity.
+  assert.ok(
+    plan.files.some((f) => f.path === ".gitignore"),
+    "a scoped agent-lifecycle dry-run must declare the .gitignore write"
+  );
+});
+
 test("planning anomaly-triage plans the workflow without repo-create", async () => {
   const plan = await buildPlan({
     selection: ["agent-workflow.anomaly-triage"],
