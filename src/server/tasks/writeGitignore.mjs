@@ -6,12 +6,21 @@ import { readFile } from "node:fs/promises";
 // Generated agent runtime state that must never be committed. repo-template's
 // own .gitignore carries these, but an onboarded repo builds .gitignore from a
 // stock GitHub language template (below), so the rules are appended here
-// instead. `.agent/current-task.json` is written per-worktree by
-// `npm run agent:start-task`; without this rule a fresh worktree is immediately
-// dirty with untracked runtime state, conflicting with the clean-worktree
-// delivery workflow (#282).
+// instead.
+//   - `.agent/current-task.json` is written per-worktree by
+//     `npm run agent:start-task`; without this rule a fresh worktree is
+//     immediately dirty with untracked runtime state, conflicting with the
+//     clean-worktree delivery workflow (#282).
+//   - `.archon/events.jsonl` is the onboarding/agent event log appended by the
+//     executor (src/server/lib/events.mjs) and by later agent runs; left
+//     tracked it is re-dirtied on every run. archon-setup's own .gitignore
+//     ignores it for the same reason (#289).
+//   - `.agent/bypass.log` is the forensic audit trail the pre-commit hook
+//     appends whenever a sanctioned bypass (e.g. ALLOW_MAIN_COMMIT) is used —
+//     including the onboarding provenance commit — so it must stay untracked
+//     (#289).
 const ARCHON_GITIGNORE_BLOCK_HEADER = "# ArchonVII agent runtime state (generated; never committed)";
-const ARCHON_GITIGNORE_LINES = [".agent/current-task.json"];
+const ARCHON_GITIGNORE_LINES = [".agent/current-task.json", ".archon/events.jsonl", ".agent/bypass.log"];
 
 function escapeForLineMatch(line) {
   return line.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

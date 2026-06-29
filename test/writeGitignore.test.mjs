@@ -50,6 +50,22 @@ test("writeGitignore ignores generated .agent/current-task.json on a fresh repo 
   assert.equal(gitIgnores(root, "src/index.mjs"), false, "ordinary source files must not be ignored");
 });
 
+test("writeGitignore ignores the runtime event log and bypass audit log (#289)", async () => {
+  const root = await tempRoot();
+  const taskCtx = ctx(root);
+
+  await task.apply(taskCtx);
+
+  const gitignore = await readFile(join(root, ".gitignore"), "utf8");
+  assert.match(gitignore, /^\.archon\/events\.jsonl$/m, ".archon/events.jsonl must be ignored");
+  assert.match(gitignore, /^\.agent\/bypass\.log$/m, ".agent/bypass.log must be ignored");
+
+  // git must actually treat these generated runtime paths as ignored.
+  execFileSync("git", ["-C", root, "init", "-q"]);
+  assert.equal(gitIgnores(root, ".archon/events.jsonl"), true, "events.jsonl must be ignored");
+  assert.equal(gitIgnores(root, ".agent/bypass.log"), true, "bypass.log must be ignored");
+});
+
 test("writeGitignore is idempotent — re-apply does not duplicate the managed rule", async () => {
   const root = await tempRoot();
   const taskCtx = ctx(root);
