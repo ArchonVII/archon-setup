@@ -168,13 +168,109 @@ async function patchRequiredStatusChecks({ owner, repo, branch, checkName, paylo
     };
   }
   if (isNotFound(res)) {
+    // Branch protection was readable moments ago, so a 404 here is GitHub's
+    // "Required status checks not enabled" on the subresource — NOT missing
+    // branch protection (#301). A rerun re-reads protection and takes the
+    // full-protection PUT path instead.
+    return {
+      ok: false,
+      status: "required-checks-not-enabled",
+      message:
+        `Required status checks are not enabled for ${owner}/${repo} ${branch} ` +
+        "(branch protection itself exists). Rerun this command to enable them through the full branch-protection update.",
+    };
+  }
+  return { ok: false, status: "error", message: `could not update required status checks: ${commandText(res)}` };
+}
+
+// GitHub's GET /protection response and PUT /protection request use different
+// shapes (GET wraps booleans in `{enabled}`, expands users/teams/apps to
+// objects). Rebuild a faithful PUT body from the current protection so
+// enabling required status checks does not silently reset anything else (#301).
+export function putBodyFromProtection(protection, requiredStatusChecks) {
+  const enabled = (value) => (typeof value?.enabled === "boolean" ? value.enabled : undefined);
+  const logins = (list, key) => (list || []).map((item) => item?.[key]).filter(Boolean);
+  const actorGroup = (group) =>
+    group
+      ? {
+          users: logins(group.users, "login"),
+          teams: logins(group.teams, "slug"),
+          ...(Array.isArray(group.apps) ? { apps: logins(group.apps, "slug") } : {}),
+        }
+      : undefined;
+
+  const prr = protection?.required_pull_request_reviews;
+  let reviews = null;
+  if (prr) {
+    reviews = {
+      dismiss_stale_reviews: Boolean(prr.dismiss_stale_reviews),
+      require_code_owner_reviews: Boolean(prr.require_code_owner_reviews),
+      required_approving_review_count: Number.isInteger(prr.required_approving_review_count)
+        ? prr.required_approving_review_count
+        : 0,
+    };
+    if (typeof prr.require_last_push_approval === "boolean") {
+      reviews.require_last_push_approval = prr.require_last_push_approval;
+    }
+    const dismissal = actorGroup(prr.dismissal_restrictions);
+    if (dismissal) reviews.dismissal_restrictions = dismissal;
+    const bypass = actorGroup(prr.bypass_pull_request_allowances);
+    if (bypass) reviews.bypass_pull_request_allowances = bypass;
+  }
+
+  const body = {
+    required_status_checks: requiredStatusChecks,
+    enforce_admins: enabled(protection?.enforce_admins) ?? false,
+    required_pull_request_reviews: reviews,
+    restrictions: protection?.restrictions ? actorGroup(protection.restrictions) : null,
+  };
+
+  // Optional booleans default to false on PUT when omitted, so preserve every
+  // one the GET response exposes.
+  for (const key of [
+    "required_linear_history",
+    "allow_force_pushes",
+    "allow_deletions",
+    "block_creations",
+    "required_conversation_resolution",
+    "lock_branch",
+    "allow_fork_syncing",
+  ]) {
+    const value = enabled(protection?.[key]);
+    if (typeof value === "boolean") body[key] = value;
+  }
+
+  return body;
+}
+
+// Baseline protection ships `required_status_checks: null`, and GitHub 404s
+// the required_status_checks subresource in that state — the only way to
+// enable the gate is a full branch-protection PUT (#301).
+async function putBranchProtection({ owner, repo, branch, checkName, protection, payload, runCommand }) {
+  const body = putBodyFromProtection(protection, payload);
+  const res = await runCommand(
+    "gh",
+    ["api", "--method", "PUT", branchProtectionPath(owner, repo, branch), "--input", "-"],
+    { stdin: JSON.stringify(body), timeoutMs: 15_000 }
+  );
+  if (res.code === 0) return { ok: true };
+  if (isValidationFailure(res)) {
+    return {
+      ok: false,
+      status: "pending-check-run",
+      message:
+        `${checkName} has not run recently enough for GitHub to make it required. ` +
+        "Open or refresh a PR so the repo-required-gate workflow runs, then rerun this command.",
+    };
+  }
+  if (isNotFound(res)) {
     return {
       ok: false,
       status: "missing-protection",
       message: `Branch protection is not enabled for ${owner}/${repo} ${branch}; apply baseline branch protection first.`,
     };
   }
-  return { ok: false, status: "error", message: `could not update required status checks: ${commandText(res)}` };
+  return { ok: false, status: "error", message: `could not update branch protection: ${commandText(res)}` };
 }
 
 // Read-only: resolve the required-status-check contexts currently enforced on the
@@ -254,12 +350,25 @@ export async function tightenRequiredGate({
   }
 
   const payload = buildRequiredGatePayload(requiredStatusChecks, checkName);
-  const patchResult = await patchRequiredStatusChecks({ ...identity, branch, checkName, payload, runCommand });
-  if (!patchResult.ok) {
-    if (["pending-check-run", "missing-protection"].includes(patchResult.status)) {
-      return { ...patchResult, ok: true, owner: identity.owner, repo: identity.repo, branch, checkName };
+  // Baseline protection has required_status_checks: null; the subresource
+  // PATCH 404s in that state, so route through the full-protection PUT that
+  // preserves the rest of the current settings (#301).
+  const via = requiredStatusChecks ? "required-status-checks-patch" : "full-protection-put";
+  const updateResult = requiredStatusChecks
+    ? await patchRequiredStatusChecks({ ...identity, branch, checkName, payload, runCommand })
+    : await putBranchProtection({
+        ...identity,
+        branch,
+        checkName,
+        protection: protectionResult.protection,
+        payload,
+        runCommand,
+      });
+  if (!updateResult.ok) {
+    if (["pending-check-run", "missing-protection", "required-checks-not-enabled"].includes(updateResult.status)) {
+      return { ...updateResult, ok: true, owner: identity.owner, repo: identity.repo, branch, checkName, via };
     }
-    return { ...patchResult, owner: identity.owner, repo: identity.repo, branch, checkName };
+    return { ...updateResult, owner: identity.owner, repo: identity.repo, branch, checkName, via };
   }
 
   const manifestUpdated = await markManifestComplete({ manifestPath, manifest, checkName, branch, now });
@@ -271,6 +380,7 @@ export async function tightenRequiredGate({
     repo: identity.repo,
     branch,
     checkName,
+    via,
     manifestPath: reportedManifestPath,
     manifestUpdated,
   };
