@@ -1,7 +1,7 @@
 # Onboarding-Hardening Arc
 
 **Created:** 2026-06-29 · **Owner:** Manager (coordination) · **Repo:** `ArchonVII/archon-setup`
-**Tracking epic:** _(linked once filed)_
+**Tracking epic:** https://github.com/ArchonVII/archon-setup/issues/307
 
 Consolidates 13 open issues — the managed Delivery-Workflow block, the
 onboarding-defect cluster surfaced by the civ-sim PR #73 / lifeloot reviews, and
@@ -152,11 +152,11 @@ of F are owner-gated** and run last. Critical path: B (serial, 3 issues) and E
 
 | Phase | State | PR(s) | Notes |
 |---|---|---|---|
-| A | dispatched | — | quick-parity lane |
-| B | dispatched | — | AGENTS.md emission lane |
-| C | dispatched | — | flow-integrity lane |
-| D | queued | — | after #301; #302 owner-gated |
-| E | dispatched | — | repo-template + snapshot |
-| F | held | — | owner-gated backfill |
+| A | **landed 2026-06-30** | [#308](https://github.com/ArchonVII/archon-setup/pull/308) → `5ab44ac` (#304), [#309](https://github.com/ArchonVII/archon-setup/pull/309) → `d4d9658` (#303) | issues closed 2026-07-01 with evidence |
+| B | **landed 2026-06-30** | [#311](https://github.com/ArchonVII/archon-setup/pull/311) → `1ef7fff` (#291, #306); #290 archon portion via snapshot re-vendor | issues closed 2026-07-01 |
+| C | **landed 2026-06-30** | [#310](https://github.com/ArchonVII/archon-setup/pull/310) → `c711b66` (#289), [#312](https://github.com/ArchonVII/archon-setup/pull/312) → `ea980fe` (#299) | issues closed 2026-07-01 |
+| D | queued | — | after #301; #302 owner-gated; #293 re-verified still real 2026-07-01 (`check-map.yml` `stack: minimal` vs gate caller `stack: node`) |
+| E | **landed 2026-06-30** | repo-template [#133](https://github.com/ArchonVII/repo-template/pull/133)–[#137](https://github.com/ArchonVII/repo-template/pull/137) → `4ddf930`; snapshot re-vendor [#316](https://github.com/ArchonVII/archon-setup/pull/316) → `1ca9104` | #294 snapshot half done; committed-mode remainder → [#317](https://github.com/ArchonVII/archon-setup/issues/317) |
+| F | held | — | owner-gated backfill; folded into the 2026-07-01 friction arc (W6) so each consumer gets one combined visit |
 
-_Update PR links and state as lanes land._
+Suite on `main` @ `1ca9104` re-verified 2026-07-01: 639 tests / 637 pass / 0 fail / 2 skipped.

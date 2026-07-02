@@ -110,7 +110,7 @@ Before marking a PR ready:
 
 ## CHANGELOG
 
-Mode 1 (direct edit) until concurrent PRs cause merge conflicts on `CHANGELOG.md`. Then switch to Mode 2 (`.changelog/unreleased/`) and wire `changelog-fragment.yml` from `github-workflows`.
+Mode 2 (`.changelog/unreleased/` fragments): a non-doc PR adds one fragment under `.changelog/unreleased/` or carries the `no-changelog` label; fragments are folded into `CHANGELOG.md` at release time. This matches the shipped `.changelog/unreleased/` scaffolding, the close guard (`scripts/close/lib.mjs` `evaluateChangelogDecision`), and the onboarding default (#291). Do not direct-edit `CHANGELOG.md` outside a release fold. (Superseded declaration: this file previously said Mode 1, which contradicted the close guard — reconciled 2026-07-01, #319.)
 
 ## Global Workflow Updates
 
