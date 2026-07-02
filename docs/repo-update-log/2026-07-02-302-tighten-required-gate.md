@@ -1,0 +1,6 @@
+# 2026-07-02 - #302 Tighten: repo-required-gate / decision is now required on main
+
+- **Changed paths:** `.github/archon-setup.json` (manifest `postChecks` records the completed `branchProtection.tightenRequiredChecks` step), fragments.
+- **What changed:** With #324 and #325 merged and zero open PRs, `node bin/archon-setup.mjs tighten-required-gate --owner ArchonVII --repo archon-setup` was run from main. GitHub branch protection on `main` now requires `repo-required-gate / decision` (verified via `GET /branches/main/protection`: the check is listed, `strict: false`). The tool wrote the completion record into the manifest; this PR lands that record since main is now gate-protected and takes no direct commits.
+- **Verification:** `gh api repos/ArchonVII/archon-setup/branches/main/protection` shows `repo-required-gate / decision` as the sole required check. Full `npm test` on the lane worktree green (0 failures, 2 skipped). This PR itself must pass the now-required gate to merge — that is the live proof of the tightened protection.
+- **Propagation:** none upstream (repo-local branch-protection state + manifest record). Closes the #302 arc: part (a) installed the caller (#325), part (b) made it required (this run).
