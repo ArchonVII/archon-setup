@@ -12,6 +12,11 @@ on:
       - yarn.lock
       - packages/**/package.json
 
+# Superseded runs on the same PR are pure spend — cancel them (#101).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
