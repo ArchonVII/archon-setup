@@ -164,5 +164,16 @@
   ],
   "skippedFiles": [],
   "remoteActions": [],
-  "postChecks": []
+  "postChecks": [
+    {
+      "type": "branchProtection.tightenRequiredChecks",
+      "deferUntil": "firstCheckRun",
+      "reason": "After the first PR run, require repo-required-gate / decision. GitHub requires a check to have run within 7 days before it can be marked required.",
+      "status": "complete",
+      "completedAt": "2026-07-02T16:52:05.302Z",
+      "requiredCheck": "repo-required-gate / decision",
+      "branch": "main",
+      "result": "required"
+    }
+  ]
 }
