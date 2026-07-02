@@ -7,6 +7,11 @@ on:
   pull_request:
     types: [opened, synchronize, edited, reopened]
 
+# Superseded runs on the same PR are pure spend — cancel them (#101).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   pull-requests: read
   contents: read
