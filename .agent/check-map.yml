@@ -1,8 +1,8 @@
 version: 1
 
 required_gate:
-  check_name: ci-success
-  workflow: .github/workflows/node-ci.yml
+  check_name: repo-required-gate / decision
+  workflow: .github/workflows/repo-required-gate.yml
 
 defaults:
   stack: node
