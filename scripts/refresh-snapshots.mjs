@@ -62,6 +62,12 @@ export const SOURCES = [
       // runner already flows via copyDirs:"scripts", so the snapshot must also
       // ship the companion spec to satisfy its own baseline.
       "docs/agent-process/doc-health.md",
+      // Docs-system contract doc (repo-template#124 S1). The scripts/docs
+      // generators already flow via copyDirs:"scripts" and the refreshed
+      // llms.txt nav block links this doc, so the snapshot must ship it or
+      // every onboarded repo carries a dangling link doc-health flags
+      // (the archon-setup#278 failure mode).
+      "docs/agent-process/doc-system.md",
       "projects/README.md",
       // Librarian wiki front-door + scaffold pages (repo-template#94). scripts/wiki/*
       // already flows via copyDirs:"scripts"; these are the docs/ pages a new repo
@@ -79,6 +85,11 @@ export const SOURCES = [
       // and no onboarding task installs it (scaffolded repos get no package.json).
       // See repo-template#52.
       ".agent/check-map.yml",
+      // Diff->doc ownership spine (repo-template#124 S1), sibling of
+      // check-map.yml. The vendored scripts/docs generators read it and the
+      // refreshed llms.txt/doc-map required.base list it, so the snapshot
+      // must ship it to satisfy its own surfaces.
+      ".agent/doc-map.yml",
       ".agent/coordination/README.md",
       ".agent/coordination/board.md",
       ".githooks/commit-msg",
