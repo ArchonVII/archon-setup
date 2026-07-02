@@ -58,6 +58,15 @@ async function withGitIdentity(fn) {
 test("a fresh onboard commits every hook entrypoint at mode 100755 (#317)", async () => {
   const root = await tempRoot();
 
+  // Simulate a filemode-less host (the Windows default) on every platform so
+  // this regression bites on Linux/macOS CI too: with core.filemode=false,
+  // `git add` records new files as 100644 regardless of the on-disk mode, so
+  // only the explicit update-index --chmod=+x staging can yield 100755.
+  // initGitAndCommit reuses an existing repo without re-init, so this local
+  // config survives the onboard (src/server/tasks/initGitAndCommit.mjs apply()).
+  await execFileP("git", ["init", "-b", "main", root]);
+  await execFileP("git", ["-C", root, "config", "core.filemode", "false"]);
+
   const result = await withFetchStub(() =>
     withGitIdentity(() => runOnboard({ targetPath: root, owner: "ArchonVII", repo: "example" }))
   );
