@@ -1,21 +1,16 @@
 # Ecosystem Status — ArchonVII
 
-_Last updated: 2026-06-20 by Codex (repo-update-log fragment guard rollout lane #270)_
+_Last updated: 2026-07-01 by Claude (docs reconciliation lane #319)_
 
-The canonical "what is the ecosystem doing right now?" document for the core ArchonVII source-of-truth repos and the active local health set. Update this file as part of every ecosystem-wide rollout (step 4 of the playbook below).
+The ecosystem **process + history** document: the rollout playbook, the fix queue, the decision log, and the completed-rollout record. Each volatile concern now has exactly one owner doc — do not duplicate their content here (#319):
 
-For the single current-work map of active lanes, blocked-by relationships, held PRs, and decision gates, see [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md).
+- **Repo map / roles / change routing** → [`docs/ecosystem-overview.md`](./ecosystem-overview.md) (repo-map table is generated from `config/ecosystem-map.json`; `npm run update-ecosystem-overview`).
+- **Current work** — active lanes, blocked-by, held PRs, decision gates → [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md).
+- **Machine-readable live state** (ports, dirty worktrees, governance posture) → `ecosystem-state.json` per [`docs/ECOSYSTEM_STATE.md`](./ECOSYSTEM_STATE.md).
 
 ## Topology
 
-Four core sibling repos under [@ArchonVII](https://github.com/ArchonVII) still define the source-of-truth data flow — no master repo, but `archon-setup` is the integration hub. The wider health surface is defined by `src/server/ecosystem/repoRegistry.json`.
-
-| Repo | Role | What it covers | What exists there | What does not belong there | Update / consumption path |
-| --- | --- | --- | --- | --- | --- |
-| [`ArchonVII/.github`](https://github.com/ArchonVII/.github) | Org-level defaults provider | Community-health defaults that GitHub auto-applies to ArchonVII repos when the target repo does not ship its own copy. Use this for organization-wide issue, PR, release, security, profile, and document-policy defaults. | Default PR template, issue forms, issue-template config, release-notes config, `SECURITY.md`, org profile README, and `STARTER.md` document-policy guidance. | Reusable Actions workflow bodies, per-repo caller workflows, branch protection settings, and enforced `CODEOWNERS` files. GitHub does not inherit those from the org default repo. | Edit this repo first when the shared default file itself changes. Repos consume it automatically unless they override locally. `archon-setup` snapshots selected org-default docs under `src/snapshots/org-defaults/`. |
-| [`ArchonVII/github-workflows`](https://github.com/ArchonVII/github-workflows) | Reusable workflow provider | The shared GitHub Actions implementation layer. Use this for workflow logic, example callers, reusable CI/security/PR-policy gates, and repo setup automation that applies GitHub labels or branch protection through `gh api`. | `workflow_call` workflow bodies under `.github/workflows/`, example caller files under `examples/`, workflow helper scripts and tests, `scripts/setup-repo.mjs`, workflow policy parsers, and the consumer-facing `v1` tag. | Repo-specific workflow customizations, generated repo docs, org community-health files, and `archon-setup` embedded snapshots. | Land provider PRs here before refreshing consumers. For compatible reusable-workflow changes, move `v1` to the merge SHA, then refresh `archon-setup` snapshots and/or update consumer caller files. |
-| [`ArchonVII/repo-template`](https://github.com/ArchonVII/repo-template) | Passive baseline provider | The clone-and-go baseline for new repos and the canonical tracked file shape for generated repos. Use this for default repo structure, agent contract text, hooks, check-map defaults, changelog mode, and pre-wired caller workflows. | README skeleton, `AGENTS.md`, `CHANGELOG.md`, `LICENSE`, `.gitignore`, `.agent/check-map.yml`, `.githooks/`, `.github/workflows/` callers, Dependabot config, `CODEOWNERS`, ADR placeholders, and `docs/repo-update-log.md`. | Reusable workflow internals, org default issue/PR templates, local-server onboarding code, and one-off consumer repo overrides. | New repos can start from the GitHub template directly. `archon-setup` also snapshots this repo under `src/snapshots/repo-template/` and uses it as managed baseline material for scaffold/update plans. |
-| [`ArchonVII/archon-setup`](https://github.com/ArchonVII/archon-setup) | Integration hub and consumer | The user-facing onboarding/update tool and the coordination hub for ecosystem state. Use this for the local wizard, headless onboarding, feature registry, planner/executor behavior, managed update records, snapshot refreshes, and this status document. | `bin/archon-setup.mjs`, `bin/onboard.mjs`, the local RPC server, feature registry, task planner/executor modules, tests, source snapshots from the three providers, global update catalog, repo onboarding docs, ecosystem snapshot tooling, and `docs/ecosystem-status.md`. | Source-of-truth workflow bodies, org defaults, and repo-template baseline prose outside `src/snapshots/`. If a snapshot is stale or wrong, fix the provider first and run `npm run refresh-snapshots`. | Pull provider `main` branches, run `npm run refresh-snapshots`, test, and land an `archon-setup` PR. Generated or upgraded repos consume the result through the wizard, `npm run onboard`, or the update/distribution commands. |
+See the generated repo map and the "Change routing — to change X, edit Y first" table in [`docs/ecosystem-overview.md`](./ecosystem-overview.md). (A hand-maintained copy of that table lived here until 2026-07-01; it had drifted and was removed in #319.)
 
 ## Active health registry
 
@@ -81,27 +76,9 @@ snapshot refresh or the change unblocks active work.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Q-2026-06-09-pr-composition | proposed | Page GM `gm-20260609-133354-d0dec701`; archon-setup #149 | `archon-setup` repo-local policy first; possible later `repo-template` propagation | Clarify that atomic commits are not atomic PRs, and companion docs/changelog/status edits for the same issue phase ride in the same PR. | None unless promoted to `repo-template`. | No global AGENTS distribution in the first slice. | Review after #149; decide whether future generated repos need the same rule. |
 
-## Active workstreams
+## Active workstreams and in-flight PRs
 
-| Repo               | Status        | Detail                                                                                                                                         |
-| ------------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `archon-setup`     | In progress   | Ecosystem registry/dashboard epic [#212](https://github.com/ArchonVII/archon-setup/issues/212): lanes 0-2 merged on 2026-06-12 (`3fe47b0`, `4d00804`, `f67a081`); lanes 3-9 remain mapped in [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md). Document-policy epic [#223](https://github.com/ArchonVII/archon-setup/issues/223) is held by draft spec PR [#224](https://github.com/ArchonVII/archon-setup/pull/224). Agent OS epic [#229](https://github.com/ArchonVII/archon-setup/issues/229) Stage 0/1 lanes are filed; #230 and #231 merged, and snapshot refresh [#232](https://github.com/ArchonVII/archon-setup/issues/232) is active. |
-| `repo-template`    | In progress   | OS Stage 0/1 provider batch merged on 2026-06-12: [#75](https://github.com/ArchonVII/repo-template/issues/75)/PR [#80](https://github.com/ArchonVII/repo-template/pull/80), [#76](https://github.com/ArchonVII/repo-template/issues/76)/PR [#79](https://github.com/ArchonVII/repo-template/pull/79), [#77](https://github.com/ArchonVII/repo-template/issues/77)/PR [#81](https://github.com/ArchonVII/repo-template/pull/81), [#28](https://github.com/ArchonVII/repo-template/issues/28)/PR [#82](https://github.com/ArchonVII/repo-template/pull/82), and [#78](https://github.com/ArchonVII/repo-template/issues/78)/PR [#83](https://github.com/ArchonVII/repo-template/pull/83). Epic #212 lanes [#70](https://github.com/ArchonVII/repo-template/issues/70) and [#71](https://github.com/ArchonVII/repo-template/issues/71) remain open. |
-| `github-workflows` | In progress   | README refresh PR [#66](https://github.com/ArchonVII/github-workflows/pull/66) is open; Dependabot actions PR [#68](https://github.com/ArchonVII/github-workflows/pull/68) is open with `vitest` failing. Document-policy lanes [#69](https://github.com/ArchonVII/github-workflows/issues/69) and [#70](https://github.com/ArchonVII/github-workflows/issues/70) are blocked by repo-template/doc-policy prerequisites. `@v1` retag remains owner-gated. |
-| `.github`          | In progress   | Profile refresh PR [#29](https://github.com/ArchonVII/.github/pull/29) is draft and awaiting owner feedback. Document-policy STARTER lane [#27](https://github.com/ArchonVII/.github/issues/27) waits for archon-setup spec PR #224. |
-| `jma-skill-review` | In progress   | Description lint gate PR [#180](https://github.com/ArchonVII/jma-skill-review/pull/180) remains open. PRs [#183](https://github.com/ArchonVII/jma-skill-review/pull/183) and [#184](https://github.com/ArchonVII/jma-skill-review/pull/184) merged on 2026-06-12. Project-intake skill lane [#178](https://github.com/ArchonVII/jma-skill-review/issues/178) waits for repo-template vision/doc-policy lanes. |
-
-## In-flight PRs
-
-| Repo | PR | Purpose / state |
-| --- | --- | --- |
-| `archon-setup` | [#224](https://github.com/ArchonVII/archon-setup/pull/224) | Draft document-policy spec; owner-held gate for epic #223. |
-| `archon-setup` | [#209](https://github.com/ArchonVII/archon-setup/pull/209) | Dependabot actions update; checks green as of 2026-06-11. |
-| `archon-setup` | [#208](https://github.com/ArchonVII/archon-setup/pull/208) | Docs/contracts reconciliation; file list does not overlap this #230 lane. |
-| `github-workflows` | [#66](https://github.com/ArchonVII/github-workflows/pull/66) | README refresh; review path. |
-| `github-workflows` | [#68](https://github.com/ArchonVII/github-workflows/pull/68) | Dependabot actions update; `vitest` failing as of 2026-06-11. |
-| `.github` | [#29](https://github.com/ArchonVII/.github/pull/29) | Draft public profile refresh; awaiting owner feedback. |
-| `jma-skill-review` | [#180](https://github.com/ArchonVII/jma-skill-review/pull/180) | Description lint gate; review path. |
+Owned by [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md) — the single current-work map. (The tables that lived here were a second copy and had drifted three weeks behind reality by 2026-07-01; removed in #319.)
 
 ## F-roadmap
 
@@ -129,15 +106,13 @@ Review note, 2026-06-12: no F-number status transition was identified during the
 | F18 | `.githooks/` baseline                          | **Shipped**                                            | —        | repo-template #16/#18                                  |
 | F19 | Issue-Admiral triage role                      | Open                                                   | low      | `.github` #18                                          |
 
-## Backlog (prioritized)
+## Backlog
 
-1. **Land `github-workflows` PR #35** — preserve the lifecycle accounting, then execute the linked lifecycle implementation issues.
-2. **Template walkthrough** — refresh issue forms against the new F2/F10 evidence shape and F7 owner-lane semantics after the strict PR contract lands.
-3. **F7 `.github` policy work** — finish `.github` #14 scoped policy now that the reusable workflow and template pieces are shipped.
-4. **Branch-protection 400 anomaly** — file via the anomaly-triage workflow on next `archon-setup` PR. Reference fix already exists in `archon-setup/src/server/tasks/applyBaselineBranchProtection.mjs`.
-5. **Events-stream rollout** — _archon-setup side shipped (#89):_ a best-effort `appendEvent` emitter, `collectEvents`, a "Recent events" render section, and `docs/archon-events-convention.md`. Remaining: the provider-side `.archon/events.jsonl` schema in `repo-template` AGENTS.md (companion PR) and gitignoring `.archon/` in generated repos.
+Owned by [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md) (active lanes + decision gates) and the issue tracker; the 2026-07-01 staleness triage of the long tail is [archon-setup#318](https://github.com/ArchonVII/archon-setup/issues/318). (The numbered backlog that lived here referenced 2026-06-11-era PRs; removed in #319.)
 
 ## Recently completed
+
+- **2026-06-30 / 2026-07-01** — Onboarding-hardening arc [#307](https://github.com/ArchonVII/archon-setup/issues/307) Phases A/B/C/E landed: `archon-setup` PRs [#308](https://github.com/ArchonVII/archon-setup/pull/308)–[#312](https://github.com/ArchonVII/archon-setup/pull/312) (managed Delivery-Workflow block, Mode-2 changelog default, coordination path, planner/parity fixes) + snapshot re-vendor [#316](https://github.com/ArchonVII/archon-setup/pull/316) (`repoTemplate @ 4ddf930`, exec-bit `100755`, root self-apply); `repo-template` PRs [#133](https://github.com/ArchonVII/repo-template/pull/133)–[#137](https://github.com/ArchonVII/repo-template/pull/137). Delivered issues closed with evidence 2026-07-01; remaining: Phase D, [#317](https://github.com/ArchonVII/archon-setup/issues/317), Phase F. The 2026-07-01 **ecosystem friction arc** (verification contract, CI fan-out, docs truth — see CURRENT_WORK) started the same day.
 
 - **2026-06-20** — Repo-update-log fragment enforcement shipped through the
   source chain: `github-workflows` issue [#92](https://github.com/ArchonVII/github-workflows/issues/92)
@@ -208,11 +183,12 @@ Ideas discussed but not yet planned:
 
 ## Updating this doc
 
-This file is the canonical ecosystem status — but it's only as fresh as the last person who touched it. Update on:
+This file owns process + history (playbook, fix queue, decision log, completed rollouts) — it is only as fresh as the last person who touched it. Update on:
 
-- **Step 4 of every rollout** (mandatory).
+- **Step 4 of every rollout** (mandatory): add a Recently-completed entry.
 - After any cross-repo decision (add a row to the Decision log).
 - When any phase2 issue's status changes (Open → In flight → Shipped — row moves).
-- When a new repo joins or leaves the ecosystem (update Topology, start/stop tracking).
+
+Do **not** re-grow duplicated sections here: current work belongs in [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md); the repo map and change routing belong in [`docs/ecosystem-overview.md`](./ecosystem-overview.md) (generated block + `npm run update-ecosystem-overview`); live machine state belongs in `ecosystem-state.json` ([`docs/ECOSYSTEM_STATE.md`](./ECOSYSTEM_STATE.md)). When a new repo joins or leaves the ecosystem, edit `config/ecosystem-map.json` / `src/server/ecosystem/repoRegistry.json` and regenerate — not prose here.
 
 Keep entries terse. Detail belongs in the relevant repo's `repo-update-log.md`, in the PR description, or in agent memory.
