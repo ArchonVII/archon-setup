@@ -2,7 +2,11 @@ import { chmod, stat } from "node:fs/promises";
 import { checkAllExist, verifyAllExist, writeSnapshotFile } from "./repoTemplateSnapshot.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 
-const FILES = [
+// Exported for initGitAndCommit (#317): the bootstrap commit must stage these
+// with the executable bit set, because on Windows (core.filemode=false) `git
+// add` records new hook files as 100644 and a Unix clone then silently skips
+// the guards.
+export const HOOK_FILES = [
   ".githooks/commit-msg",
   ".githooks/pre-commit",
   ".githooks/scripts/install-githooks.sh",
@@ -12,6 +16,7 @@ const FILES = [
   ".githooks/scripts/checkout-doctor.sh",
   ".githooks/scripts/test-checkout-role.sh",
 ];
+const FILES = HOOK_FILES;
 
 export function scrubHookBody(body) {
   return body
