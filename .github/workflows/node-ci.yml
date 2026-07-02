@@ -1,11 +1,12 @@
 name: Node CI
 
+# PR-time node-ci is provided by the required gate (stack: node), which runs
+# the same reusable lane — a pull_request trigger here double-ran full CI on
+# every code-PR push (#302; mirrors hudson-bend#295). This caller now covers
+# post-merge main only.
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -16,7 +17,6 @@ concurrency:
 
 jobs:
   ci-success:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     uses: ArchonVII/github-workflows/.github/workflows/node-ci.yml@v1
     with:
       node-versions: '["22"]'
