@@ -139,8 +139,15 @@ async function isGitRepo(path) {
 
 // First hook file tracked in the git index at mode 100644, or null. Only a
 // regular file at 100644 counts as drift (symlinks and other modes are left
-// alone), and untracked hooks are not flagged here — existence is checked
-// separately and apply() stages them. Returns null when the target is not a
+// alone). Untracked hooks are NOT flagged here — a known residual gap: when
+// every hook already exists on disk but none is tracked (pre-#294 onboard
+// residue whose setup commit never happened, or a `git reset` before the
+// agent commits), check() returns already-done and apply()'s staging never
+// runs; repair then takes one extra onboard run after a plain `git add`
+// makes the 100644 drift tracked. Deliberately in spec: the #294
+// verification comment (item 3) scopes check() to hooks "present in the
+// index at mode 100644", and post-#294 onboards stage at apply() time so
+// the untracked window cannot recur. Returns null when the target is not a
 // git repo or git cannot answer, preserving pre-#294 behavior for non-repo
 // targets; the loud failure path lives in stageHookExecBits.
 async function firstBadStagedMode(ctx) {
