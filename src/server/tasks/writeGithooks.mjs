@@ -1,4 +1,4 @@
-import { access, chmod, stat } from "node:fs/promises";
+import { access, chmod, lstat, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import { join } from "node:path";
 import { checkAllExist, verifyAllExist, writeSnapshotFile } from "./repoTemplateSnapshot.mjs";
@@ -32,12 +32,22 @@ const FILES = HOOK_FILES;
 export async function stageHookExecBits(cwd) {
   const present = [];
   for (const file of HOOK_FILES) {
+    let info;
     try {
-      await access(join(cwd, file), constants.F_OK);
-      present.push(file);
+      info = await lstat(join(cwd, file));
     } catch {
       // Hook feature not selected for this onboard — nothing to stage.
+      continue;
     }
+    // #294: leave symlinked hook paths alone. On the existing-repo path a
+    // managed hook may already be a symlink (safeWriteFile writes through it,
+    // preserving the link), and `git update-index --add --chmod=+x` FATALS on a
+    // symlink index entry (mode 120000: "cannot chmod +x"), which would abort
+    // onboarding. This mirrors check()/verify()'s firstBadStagedMode, whose
+    // staged-mode probe flags only regular files at 100644. lstat (not access,
+    // which follows the link) is what makes the symlink visible here.
+    if (info.isSymbolicLink()) continue;
+    present.push(file);
   }
   if (present.length === 0) return;
   const res = await runCommand(

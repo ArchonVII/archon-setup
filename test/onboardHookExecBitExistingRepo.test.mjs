@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile, rm, symlink, lstat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { execFile } from "node:child_process";
@@ -155,4 +155,45 @@ test("check() flags a hook tracked at 100644 and re-apply repairs the staged mod
   assert.equal((await stagedHookModes(root)).get(".githooks/commit-msg"), "100755", "re-apply must repair the staged mode");
   assert.equal(await check(taskCtx), "already-done");
   assert.deepEqual(await verify(taskCtx), { ok: true });
+});
+
+// #294 regression: on the existing-repo path a managed hook path may already be
+// a symlink (a real layout — hooks symlinked to a shared target). stageHookExecBits
+// must SKIP it: `git update-index --add --chmod=+x` fatals on a symlink index
+// entry (mode 120000, "cannot chmod +x"), which would abort the whole onboard.
+// check()/verify()'s firstBadStagedMode already leaves symlinks alone; apply()'s
+// staging must match. Without the skip, the second apply() below throws.
+test("apply() skips a symlinked hook path instead of aborting on chmod +x (#294)", async (t) => {
+  const root = await tempRoot();
+  await initFilemodelessRepo(root);
+  const taskCtx = ctx(root);
+
+  // First apply writes all eight entrypoints as regular files and stages them.
+  await apply(taskCtx);
+
+  // Replace one entrypoint with a symlink pointing at another live hook. File
+  // symlinks need a privilege on Windows (Developer Mode); skip there — Linux
+  // CI (the required gate runs on ubuntu-latest) exercises this for real.
+  const linkPath = join(root, ".githooks/commit-msg");
+  await rm(linkPath);
+  try {
+    await symlink("pre-commit", linkPath);
+  } catch (err) {
+    if (process.platform === "win32") {
+      t.skip("symlink creation requires privilege on this Windows host");
+      return;
+    }
+    throw err;
+  }
+  assert.equal((await lstat(linkPath)).isSymbolicLink(), true, "fixture must leave a symlink at the hook path");
+
+  // The regression: without the symlink skip, stageHookExecBits includes the
+  // link in the --chmod=+x batch and git fatals, so apply() rejects here.
+  await apply(taskCtx);
+
+  assert.equal(
+    (await lstat(linkPath)).isSymbolicLink(),
+    true,
+    "the symlinked hook must be left untouched (not converted, not chmod-staged)"
+  );
 });
