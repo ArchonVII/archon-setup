@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 import * as agentLifecycle from "../src/server/tasks/writeAgentLifecycle.mjs";
 import * as docSweep from "../src/server/tasks/writeDocSweep.mjs";
+import * as docHealth from "../src/server/tasks/writeDocHealth.mjs";
 import {
   checkAllMatch,
   verifyAllMatch,
@@ -26,6 +27,10 @@ export const ROOT = join(dirname(MODULE_PATH), "..");
 const STARTUP_BASELINE = ".agent/startup-baseline.json";
 const ANOMALY_TRIAGE_WORKFLOW = ".github/workflows/anomaly-triage.yml";
 const REPO_UPDATE_LOG_WORKFLOW = ".github/workflows/repo-update-log-fragment.yml";
+const ROOT_SUPPORT_DOCS = [
+  "docs/repo-update-log/README.md",
+  "docs/agent-process/document-policy.md",
+];
 
 // The startup baseline rides the same installer primitives the feature tasks
 // use; writeAgentsMd owns it for consumers, but its composite scope (managed
@@ -51,12 +56,31 @@ const repoUpdateLogWorkflowTask = {
   verify: (ctx) => verifyAllMatch(ctx, [REPO_UPDATE_LOG_WORKFLOW]),
 };
 
-// Exactly the surface test/agentLifecycleScripts.test.mjs pins byte-identical
-// to the snapshot, plus the agent:* package.json entries the lifecycle task
-// merges. Each entry is an installer task module: check/apply/verify.
+// Snapshot-owned support docs named by the startup baseline. Do not fold in
+// repo-specific root files such as AGENTS.md, check-map, PR template, package,
+// or docs/plans/README.md: archon-setup intentionally customizes those.
+const rootSupportDocsTask = {
+  name: "root-support-docs",
+  check: (ctx) => checkAllMatch(ctx, ROOT_SUPPORT_DOCS),
+  apply: async (ctx) => {
+    const results = [];
+    for (const file of ROOT_SUPPORT_DOCS) {
+      results.push(await writeSnapshotFile(ctx, file, { overwrite: true }));
+    }
+    return results;
+  },
+  verify: (ctx) => verifyAllMatch(ctx, ROOT_SUPPORT_DOCS),
+};
+
+// Exactly the snapshot-owned root surface test/agentLifecycleScripts.test.mjs
+// pins byte-identical to the snapshot, plus the agent:* package.json entries
+// the lifecycle task merges. Each entry is an installer task module:
+// check/apply/verify.
 export const TASKS = [
   { name: "agent-lifecycle", check: agentLifecycle.check, apply: agentLifecycle.apply, verify: agentLifecycle.verify },
   { name: "doc-sweep", check: docSweep.check, apply: docSweep.apply, verify: docSweep.verify },
+  rootSupportDocsTask,
+  { name: "doc-health", check: docHealth.check, apply: docHealth.apply, verify: docHealth.verify },
   anomalyTriageWorkflowTask,
   repoUpdateLogWorkflowTask,
   startupBaselineTask,

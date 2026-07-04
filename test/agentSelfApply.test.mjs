@@ -1,19 +1,24 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { selfApply, TASKS } from "../scripts/agent-self-apply.mjs";
 import { REPO_TEMPLATE_SNAPSHOT, normalizeSnapshotText } from "../src/server/tasks/repoTemplateSnapshot.mjs";
 
-// The full root-baseline surface the self-apply mechanism owns: the nine
-// files test/agentLifecycleScripts.test.mjs pins, plus the doc-sweep spec the
-// doc-sweep task ships alongside its scripts.
+const ROOT = process.cwd();
+
+// The snapshot-owned root-baseline surface the self-apply mechanism owns. Some
+// startup-baseline paths are intentionally repo-specific in archon-setup
+// (AGENTS.md, check-map, PR template, package.json), so this list stays limited
+// to files the root baseline derives directly from the repo-template snapshot.
 const BASELINE_FILES = [
   ".agent/startup-baseline.json",
   ".github/workflows/anomaly-triage.yml",
   ".github/workflows/repo-update-log-fragment.yml",
+  "docs/repo-update-log/README.md",
+  "docs/agent-process/document-policy.md",
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",
@@ -26,6 +31,9 @@ const BASELINE_FILES = [
   "scripts/doc-sweep/git.mjs",
   "scripts/doc-sweep/sweep.mjs",
   "docs/agent-process/doc-sweep.md",
+  "scripts/doc-health/lib.mjs",
+  "scripts/doc-health/health.mjs",
+  "docs/agent-process/doc-health.md",
 ];
 
 async function snapshotBody(rel) {
@@ -50,6 +58,27 @@ test("selfApply installs the full baseline into an empty target from the snapsho
   assert.equal(pkg.scripts["agent:pr-body"], "node scripts/agent/pr-body.mjs");
   assert.equal(pkg.scripts["close:scan:complete"], "node scripts/close/scan-complete.mjs");
   assert.equal(pkg.scripts["close:ci:guard"], "node scripts/close/ci-guard.mjs");
+});
+
+test("current root has every path declared by the startup baseline", async () => {
+  const baseline = JSON.parse(await readFile(join(ROOT, ".agent", "startup-baseline.json"), "utf8"));
+  const missing = [];
+  for (const rel of baseline.required) {
+    try {
+      await access(join(ROOT, rel));
+    } catch {
+      missing.push(rel);
+    }
+  }
+  for (const rel of baseline.expectedDirectories || []) {
+    try {
+      await access(join(ROOT, rel));
+    } catch {
+      missing.push(rel);
+    }
+  }
+
+  assert.deepEqual(missing, []);
 });
 
 test("selfApply is idempotent: a second run reports already-done and changes no bytes", async () => {
@@ -80,8 +109,11 @@ test("selfApply repairs drifted root copies back to the snapshot (post-refresh u
     ".agent/startup-baseline.json",
     ".github/workflows/anomaly-triage.yml",
     ".github/workflows/repo-update-log-fragment.yml",
+    "docs/repo-update-log/README.md",
+    "docs/agent-process/document-policy.md",
     "scripts/agent/lib.mjs",
     "scripts/doc-sweep/sweep.mjs",
+    "scripts/doc-health/health.mjs",
   ];
   for (const rel of drifted) {
     await writeFile(join(root, rel), "stale root copy\n", "utf8");
@@ -105,6 +137,8 @@ test("checkOnly reports drift without writing anything", async () => {
   const byTask = Object.fromEntries(report.map((r) => [r.task, r.status]));
   assert.equal(byTask["agent-lifecycle"], "needs-apply");
   assert.equal(byTask["doc-sweep"], "already-done");
+  assert.equal(byTask["root-support-docs"], "already-done");
+  assert.equal(byTask["doc-health"], "already-done");
   assert.equal(byTask["startup-baseline"], "already-done");
   assert.deepEqual(createdFiles, []);
   assert.equal(await readFile(join(root, "scripts/agent/lib.mjs"), "utf8"), "stale root copy\n");

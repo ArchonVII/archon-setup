@@ -1,0 +1,1 @@
+- **Root self-apply now repairs the startup-baseline support files it advertises.** `npm run agent:self-apply` installs and checks the repo-template-derived document-policy, doc-health, and repo-update-log fragment support files, so `npm run agent:status` no longer reports missing doc-health/document-policy paths after a snapshot refresh. (#330)
