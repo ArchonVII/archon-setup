@@ -95,10 +95,33 @@ test("extractActiveStack ignores commented variants and tolerates CRLF", () => {
 
 test("extractActiveStack throws on zero or multiple active stack lines", () => {
   const none = ["    with:", "      # stack: minimal", ""].join("\n");
-  assert.throws(() => extractActiveStack(none), /found 0/);
+  // No active-position stack line at all: plain "found 0", no shape hint —
+  // the shape hint would misdirect triage toward a parser gap that isn't there.
+  assert.throws(
+    () => extractActiveStack(none),
+    (err) => /found 0;/.test(err.message) && !/unsupported value shape/.test(err.message)
+  );
 
   const two = ["      stack: node", "      stack: python", ""].join("\n");
   assert.throws(() => extractActiveStack(two), /found 2/);
+});
+
+test("extractActiveStack names the unsupported shape for an inline-comment value", () => {
+  // Review follow-up on #293: an active line exists but carries an inline
+  // comment, so the failure is an unsupported value shape, not a missing
+  // line — the error must say so or a red snapshot-refresh PR gets triaged
+  // at the wrong layer.
+  const body = ["    with:", "      stack: node  # ArchonVII default", ""].join("\n");
+  assert.throws(() => extractActiveStack(body), /unsupported value shape/);
+  assert.throws(() => extractActiveStack(body), /found 0 parseable/);
+});
+
+test("extractActiveStack names the unsupported shape for an expression value", () => {
+  // An expression can never be resolved into a concrete check-map default,
+  // so throwing stays correct — but the diagnostic must point at the value
+  // shape, not claim the line is absent.
+  const body = ["    with:", "      stack: ${{ vars.STACK }}", ""].join("\n");
+  assert.throws(() => extractActiveStack(body), /unsupported value shape/);
 });
 
 test("renderCheckMapBody rewrites only the defaults.stack line", async () => {
@@ -113,6 +136,13 @@ test("renderCheckMapBody rewrites only the defaults.stack line", async () => {
 test("renderCheckMapBody throws when the check-map has no stack line to rewrite", () => {
   const checkMap = ["defaults:", "  runner: github-hosted", ""].join("\n");
   assert.throws(() => renderCheckMapBody(checkMap, "stack: node\n"), /found 0/);
+});
+
+test("renderCheckMapBody names the unsupported shape on the check-map side too", () => {
+  // Same diagnostic contract as extractActiveStack: an unparseable-but-present
+  // stack line must not be reported as a missing one.
+  const checkMap = ["defaults:", "  stack: minimal # note", ""].join("\n");
+  assert.throws(() => renderCheckMapBody(checkMap, "stack: node\n"), /unsupported value shape/);
 });
 
 test("writeCheckMap stays idempotent after the derivation change", async () => {

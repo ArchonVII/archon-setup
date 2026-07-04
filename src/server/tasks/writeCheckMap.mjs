@@ -29,6 +29,28 @@ const GATE_CALLER_SNAPSHOT = join(SNAPSHOTS_ROOT, "github-workflows", "repo-requ
 // snapshots have had CRLF drift before (repo-template#146).
 const ACTIVE_STACK_LINE = /^([ \t]*)stack:[ \t]*([^\s#]+)[ \t]*\r?$/gm;
 
+// Any active-position `stack:` line, regardless of value shape. Used only to
+// sharpen the zero-match diagnostic below — commented variants still never
+// match because `#` cannot precede `stack:`.
+const ACTIVE_STACK_PREFIX = /^[ \t]*stack:/gm;
+
+// Review follow-up on #293: when the strict pattern matches zero times but an
+// active-position `stack:` line exists (inline comment, `${{ ... }}`
+// expression, quoted value, ...), the failure is an unsupported value shape,
+// not a missing line. Say so, or the designed-red snapshot-refresh failure
+// gets triaged at the wrong layer. Deliberately still a throw: an expression
+// value cannot be resolved into a concrete check-map default anyway.
+function describeStackLineCount(body, matches) {
+  if (matches.length !== 0) return `found ${matches.length}`;
+  const loose = [...body.matchAll(ACTIVE_STACK_PREFIX)].length;
+  if (loose === 0) return "found 0";
+  return (
+    `found 0 parseable (${loose} active "stack:" line(s) present but with an ` +
+    `unsupported value shape — expected a single bare token like "stack: node", ` +
+    `with no inline comment or expression)`
+  );
+}
+
 // Extracts the single active `stack:` value from a gate-caller workflow body.
 // Throws on zero or multiple active lines: a broken derivation must fail the
 // onboarding run loudly, never silently ship a stack the gate disagrees with.
@@ -37,7 +59,8 @@ export function extractActiveStack(gateCallerBody) {
   if (matches.length !== 1) {
     throw new Error(
       `expected exactly one active "stack:" line in the repo-required-gate caller snapshot, ` +
-        `found ${matches.length}; cannot derive the check-map default stack (#293)`
+        `${describeStackLineCount(gateCallerBody, matches)}; ` +
+        `cannot derive the check-map default stack (#293)`
     );
   }
   return matches[0][2];
@@ -54,7 +77,8 @@ export function renderCheckMapBody(checkMapSnapshotBody, gateCallerBody) {
   const matches = [...body.matchAll(ACTIVE_STACK_LINE)];
   if (matches.length !== 1) {
     throw new Error(
-      `expected exactly one "stack:" line in the check-map snapshot, found ${matches.length}; ` +
+      `expected exactly one "stack:" line in the check-map snapshot, ` +
+        `${describeStackLineCount(body, matches)}; ` +
         `cannot rewrite defaults.stack to match the gate caller (#293)`
     );
   }
