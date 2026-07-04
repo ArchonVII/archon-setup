@@ -19,6 +19,7 @@ import {
 } from "../tasks/writeAgentsMd.mjs";
 import { markdownMatchesSnapshotAllowingFrontmatter } from "../tasks/markdownFrontmatter.mjs";
 import { startupBaselineMatchesExpected } from "../tasks/startupBaselineContract.mjs";
+import { loadCheckMapBody } from "../tasks/writeCheckMap.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GITHUB_WORKFLOWS_SNAPSHOT = join(__dirname, "..", "..", "snapshots", "github-workflows");
@@ -95,7 +96,10 @@ async function expectedBodyFor({ path, unit, context }) {
     case "writeCoordinationClaims":
       return null;
     case "writeCheckMap":
-      return repoTemplateBody(join(".agent", "check-map.yml"));
+      // #293: reuse the emitter's renderer (defaults.stack derived from the
+      // vendored gate caller) so the audit's expected body never drifts from
+      // what onboarding actually writes — same pattern as renderAgentsBody.
+      return loadCheckMapBody();
     case "writeGithooks":
       return repoTemplateBody(path, scrubHookBody);
     case "writeGitattributes":
