@@ -92,3 +92,75 @@ test("a fresh onboard commits every hook entrypoint at mode 100755 (#317)", asyn
     );
   }
 });
+
+// Simulate a filemode-less host via environment config instead of repo config.
+// GIT_CONFIG_COUNT / GIT_CONFIG_KEY_0 / GIT_CONFIG_VALUE_0 behave exactly like
+// `git -c core.filemode=false` (git-config(1), "Environment"), which is
+// command-scope config — the HIGHEST precedence level — so it outranks the
+// core.filemode=true that a fresh `git init` auto-detects into .git/config on
+// Unix. Repo-local pre-config (the test above) cannot be used here because the
+// whole point is that no repo exists before the onboard runs. Every git the
+// onboard spawns inherits process.env (commandRunner spawns with
+// { ...process.env, ...env }), as do this test's own git probes.
+async function withFilemodelessEnv(fn) {
+  const keys = ["GIT_CONFIG_COUNT", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0"];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  process.env.GIT_CONFIG_COUNT = "1";
+  process.env.GIT_CONFIG_KEY_0 = "core.filemode";
+  process.env.GIT_CONFIG_VALUE_0 = "false";
+  try {
+    return await fn();
+  } finally {
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key];
+      else process.env[key] = previous[key];
+    }
+  }
+}
+
+// #317 mutation guard (added in the #294 review round): the pre-init test
+// above no longer isolates initGitAndCommit's staging call — since #294,
+// writeGithooks.apply() also stages exec bits whenever `.git` already exists
+// at hook-write time, so deleting `await stageHookExecBits(cwd)` from
+// initGitAndCommit.apply() still passes that test (index mode is sticky
+// through the later `git add --all`). This variant starts with NO `.git` at
+// all: writeGithooks.apply() runs before any repo exists and skips staging,
+// so the bootstrap commit's own staging call is the only possible source of
+// 100755 — removing it turns every hook 100644 and fails this test.
+test("a truly-fresh onboard (no .git until bootstrap) commits hooks at 100755 (#317)", async () => {
+  const root = await tempRoot();
+
+  await withFilemodelessEnv(async () => {
+    const result = await withFetchStub(() =>
+      withGitIdentity(() => runOnboard({ targetPath: root, owner: "ArchonVII", repo: "example" }))
+    );
+    assert.equal(result.ok, true, "onboard should succeed");
+
+    // Sanity: the env-level filemode simulation must actually resolve inside
+    // the onboarded repo, otherwise on real-filemode hosts (Linux CI) plain
+    // `git add` would record the on-disk 0o755 and this test could not
+    // distinguish bootstrap staging from disk-mode pickup.
+    const { stdout: filemode } = await execFileP("git", ["-C", root, "config", "core.filemode"]);
+    assert.equal(filemode.trim(), "false", "GIT_CONFIG_* env must override the repo-local core.filemode");
+  });
+
+  const { stdout } = await execFileP("git", ["-C", root, "ls-files", "-s", "--", ".githooks"]);
+  const modeByPath = new Map(
+    stdout
+      .trim()
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map((line) => {
+        const [mode, , , ...pathParts] = line.split(/\s+/);
+        return [pathParts.join(" "), mode];
+      })
+  );
+
+  for (const file of HOOK_FILES) {
+    assert.equal(
+      modeByPath.get(file),
+      "100755",
+      `${file} must be committed executable (got ${modeByPath.get(file) || "untracked"})`
+    );
+  }
+});
