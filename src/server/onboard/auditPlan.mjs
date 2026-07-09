@@ -52,6 +52,11 @@ const ONBOARDING_COMPLETION_ANCHORS = [
   ".github/archon-setup.json",
 ];
 
+const COMPLETION_DRIFT_EXCEPTIONS = new Set([
+  "AGENTS.md",
+  "docs/repo-update-log.md",
+]);
+
 async function repoTemplateBody(snapshotPath, transform = (body) => body) {
   return transform(normalizeSnapshotText(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8")));
 }
@@ -294,11 +299,11 @@ export async function auditPlan(plan) {
     summary: summarize(items),
     items,
     startupReadiness: startup,
-    onboardingCompletion: await onboardingCompletion(plan, startup),
+    onboardingCompletion: await onboardingCompletion(plan, items, startup),
   };
 }
 
-async function onboardingCompletion(plan, startup) {
+async function onboardingCompletion(plan, items, startup) {
   const present = [];
   const missing = [];
 
@@ -307,8 +312,11 @@ async function onboardingCompletion(plan, startup) {
     else missing.push(path);
   }
 
+  const { missingBaselineItems, driftedBaselineItems } = completionItemFailures(items, startup);
   const blockers = [
     ...missing.map((path) => `missing required onboarding anchor: ${path}`),
+    ...missingBaselineItems.map((path) => `missing selected baseline item: ${path}`),
+    ...driftedBaselineItems.map((path) => `drifted selected baseline item: ${path}`),
   ];
   if (startup?.status !== "complete") {
     blockers.push(`startup readiness is ${startup?.status || "unknown"}`);
@@ -319,9 +327,36 @@ async function onboardingCompletion(plan, startup) {
     requiredAnchors: ONBOARDING_COMPLETION_ANCHORS,
     present,
     missing,
+    missingBaselineItems,
+    driftedBaselineItems,
     startupStatus: startup?.status || "unknown",
     blockers,
   };
+}
+
+function completionItemFailures(items, startup) {
+  const startupPresent = new Set(startup?.present || []);
+  const missingBaselineItems = [];
+  const driftedBaselineItems = [];
+
+  for (const item of items) {
+    if (item.status === "missing") {
+      missingBaselineItems.push(item.path);
+      continue;
+    }
+    if (item.status === "drifted" && !completionAcceptsDrift(item.path, startupPresent)) {
+      driftedBaselineItems.push(item.path);
+    }
+  }
+
+  return {
+    missingBaselineItems: unique(missingBaselineItems),
+    driftedBaselineItems: unique(driftedBaselineItems),
+  };
+}
+
+function completionAcceptsDrift(path, startupPresent) {
+  return COMPLETION_DRIFT_EXCEPTIONS.has(path) && startupPresent.has(path);
 }
 
 async function startupReadiness(plan, items) {

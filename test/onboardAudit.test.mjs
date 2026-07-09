@@ -12,6 +12,7 @@ import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
 import { checkTargetPath } from "../src/server/preflight/checkTargetPath.mjs";
 import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
 import { extractDeliveryWorkflowBody, renderAgentsBody } from "../src/server/tasks/writeAgentsMd.mjs";
+import { loadCheckMapBody } from "../src/server/tasks/writeCheckMap.mjs";
 import { formatManagedBlock } from "../src/server/tasks/managedMarkdownBlock.mjs";
 
 // #306: the managed delivery-workflow block as onboarding renders it, used to
@@ -89,6 +90,29 @@ async function writeCurrentSetupManifest(root, selectedFeatures = []) {
   );
 }
 
+async function seedCurrentMinimalAgentBaseline(root, selectedFeatures = ["foundation.agents"]) {
+  await writeCurrentSetupManifest(root, selectedFeatures);
+  const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
+  const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
+
+  await writeFile(
+    join(root, "AGENTS.md"),
+    `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n\n## Local workflow\n\nKeep repo-specific rules.\n\n${await deliveryWorkflowBlock()}\n`,
+    "utf8"
+  );
+
+  for (const relativePath of [
+    "docs/repo-update-log.md",
+    "docs/repo-update-log/README.md",
+    ".agent/startup-baseline.json",
+    "docs/plans/README.md",
+    "docs/agent-process/document-policy.md",
+    "docs/agent-process/message-protocol.md",
+  ]) {
+    await copySnapshot(root, relativePath);
+  }
+}
+
 test("audit mode reports present, missing, and drifted baseline files without writing", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
@@ -160,6 +184,75 @@ test("onboard --audit refuses a complete verdict when AGENTS.md is missing", asy
   assert.ok(result.audit.onboardingCompletion.missing.includes("AGENTS.md"));
   assert.ok(!result.audit.onboardingCompletion.missing.includes(".github/archon-setup.json"));
   assert.equal(result.audit.onboardingCompletion.blockers.includes("missing required onboarding anchor: AGENTS.md"), true);
+});
+
+test("onboard --audit reports completion after applying the selected baseline", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const features = ["foundation.agents", "foundation.actionlint"];
+
+  const applied = await runOnboard({
+    targetPath: root,
+    features,
+  });
+  assert.equal(applied.ok, true);
+
+  const result = await runOnboard({
+    targetPath: root,
+    features,
+    audit: true,
+  });
+
+  assert.equal(result.audit.onboardingCompletion.status, "complete");
+  assert.deepEqual(result.audit.onboardingCompletion.missing, []);
+  assert.deepEqual(result.audit.onboardingCompletion.missingBaselineItems, []);
+  assert.deepEqual(result.audit.onboardingCompletion.driftedBaselineItems, []);
+});
+
+test("onboard --audit refuses completion when a selected baseline item is missing", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  await seedCurrentMinimalAgentBaseline(root, ["foundation.agents", "foundation.actionlint"]);
+
+  const result = await runOnboard({
+    targetPath: root,
+    features: ["foundation.agents", "foundation.actionlint"],
+    audit: true,
+  });
+
+  assert.equal(result.audit.startupReadiness.status, "complete");
+  assert.equal(byPath(result.audit, ".github/workflows/actionlint.yml").status, "missing");
+  assert.equal(result.audit.onboardingCompletion.status, "incomplete");
+  assert.ok(result.audit.onboardingCompletion.missingBaselineItems.includes(".github/workflows/actionlint.yml"));
+  assert.ok(
+    result.audit.onboardingCompletion.blockers.includes(
+      "missing selected baseline item: .github/workflows/actionlint.yml"
+    )
+  );
+});
+
+test("onboard --audit refuses completion when a selected baseline item is drifted", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  await seedCurrentMinimalAgentBaseline(root, ["foundation.agents", "foundation.actionlint"]);
+  await mkdir(join(root, ".github", "workflows"), { recursive: true });
+  await writeFile(join(root, ".github", "workflows", "actionlint.yml"), "name: local drift\n", "utf8");
+
+  const result = await runOnboard({
+    targetPath: root,
+    features: ["foundation.agents", "foundation.actionlint"],
+    audit: true,
+  });
+
+  assert.equal(result.audit.startupReadiness.status, "complete");
+  assert.equal(byPath(result.audit, ".github/workflows/actionlint.yml").status, "drifted");
+  assert.equal(result.audit.onboardingCompletion.status, "incomplete");
+  assert.ok(result.audit.onboardingCompletion.driftedBaselineItems.includes(".github/workflows/actionlint.yml"));
+  assert.ok(
+    result.audit.onboardingCompletion.blockers.includes(
+      "drifted selected baseline item: .github/workflows/actionlint.yml"
+    )
+  );
 });
 
 test("onboard CLI resolves a relative target path before auditing", async () => {
@@ -269,9 +362,9 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await writeFile(join(root, ".agent", "startup-baseline.json"), startupBaseline, "utf8");
   await writeFile(join(root, "docs", "plans", "README.md"), plansReadme, "utf8");
   await writeFile(join(root, "docs", "repo-update-log.md"), "# Repository Update Log\n\nLocal entries.\n", "utf8");
-  await writeFile(join(root, ".agent", "check-map.yml"), "version: 1\n", "utf8");
-  await writeFile(join(root, ".agent", "coordination", "README.md"), "# Coordination\n", "utf8");
-  await writeFile(join(root, ".github", "PULL_REQUEST_TEMPLATE.md"), "## Summary\n", "utf8");
+  await writeFile(join(root, ".agent", "check-map.yml"), await loadCheckMapBody(), "utf8");
+  await copySnapshot(root, ".agent/coordination/README.md");
+  await copySnapshot(root, ".github/PULL_REQUEST_TEMPLATE.md");
   await writeFile(join(root, "package.json"), JSON.stringify({ name: "demo", scripts: { ...AGENT_SCRIPTS } }, null, 2) + "\n");
 
   for (const relativePath of [
@@ -313,7 +406,6 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   const parsed = JSON.parse(stdout);
 
   assert.equal(parsed.audit.startupReadiness.status, "complete");
-  assert.equal(parsed.audit.onboardingCompletion.status, "complete");
   assert.equal(parsed.audit.startupReadiness.profile, "full");
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.deepEqual(parsed.audit.startupReadiness.stale, []);

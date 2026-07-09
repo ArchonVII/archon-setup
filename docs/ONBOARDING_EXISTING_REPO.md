@@ -47,7 +47,8 @@ For the binding completion rules, read
 - Treat `Onboarding completion: incomplete` or JSON
   `audit.onboardingCompletion.status !== "complete"` as a hard stop for any
   "fully onboarded" claim. Missing anchors such as `AGENTS.md` or
-  `.github/archon-setup.json` are reported there explicitly.
+  `.github/archon-setup.json`, plus missing or drifted selected baseline items,
+  are reported there explicitly.
 - `git -C <repo> rev-parse --abbrev-ref HEAD`, `git remote get-url origin`, `git status --porcelain`.
 - Which foundations exist? (`README`, `LICENSE`, `.gitignore`, `AGENTS.md`, `CLAUDE.md`,
   `GEMINI.md`, `.agent/check-map.yml`, `.agent/coordination/README.md`.)

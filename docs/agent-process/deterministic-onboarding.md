@@ -48,12 +48,12 @@ All of these must be true before using "fully onboarded":
 | Area | Required evidence |
 | --- | --- |
 | Default branch | A fresh fetch shows `origin/<default>` contains the selected baseline files. |
-| Local lane | The onboarding PR merged, and the primary checkout can fast-forward to the merged commit without overwriting unrelated work. |
+| Local lane | For existing-repo repair, the onboarding PR merged and the primary checkout can fast-forward to the merged commit without overwriting unrelated work. For direct fresh bootstrap, the initial onboarding commit is already on the default branch and the working tree is clean. |
 | Audit | The selected onboarding profile reports no missing baseline files and no unmanaged drift that the lane claimed to fix. |
 | Manifest | `.github/archon-setup.json` exists on the default branch and records the selected features, created/skipped files, source snapshot SHAs, remote actions, and post-check status. |
 | Workflows | Every required or documented workflow caller exists on the default branch. |
 | Required gate | Branch protection does not require `repo-required-gate / decision` unless the default branch has the caller and GitHub has seen the check run. |
-| PR process | The onboarding PR body records exact verification, known skips, deferred decisions, and linked issue closure. |
+| PR process | For PR-based onboarding, the onboarding PR body records exact verification, known skips, deferred decisions, and linked issue closure. |
 | Follow-ups | Any skipped or manual-only item has an issue, a queue entry, or an explicit owner decision. |
 
 If any row is false, the repo is partially onboarded.
@@ -66,7 +66,7 @@ These are deterministic and should be tool-owned:
 | --- | --- |
 | Repo identity | Resolve git root, default branch, origin URL, owner/repo, protected branch, and worktree state. |
 | Existing-repo audit | Report selected baseline items as present, missing, drifted, skipped, or blocked without writing. |
-| Basic completion verdict | `onboard --audit` must emit `audit.onboardingCompletion`; it is incomplete if `AGENTS.md`, `.github/archon-setup.json`, or startup readiness are missing/stale. |
+| Basic completion verdict | `onboard --audit` must emit `audit.onboardingCompletion`; it is incomplete if required anchors, startup readiness, or any selected baseline item is missing or drifted. |
 | Feature closure | Expand selected features through the registry so the UI, CLI, audit, and apply paths use the same plan. |
 | Baseline file writes | Render managed files and managed blocks from one source path, with no ad hoc agent copies. |
 | Manifest writes | Record source snapshots, selected features, created/skipped files, remote actions, and deferred post-checks. |
@@ -99,7 +99,9 @@ These still need human or explicit supervising-agent decisions:
 Current lane. Add this contract, link it from onboarding surfaces, and make
 `onboard --audit` emit a machine-readable `audit.onboardingCompletion` verdict.
 The verdict requires at least `AGENTS.md`, `.github/archon-setup.json`, and
-clean startup readiness before the local audit can report completion.
+clean startup readiness before the local audit can report completion. It also
+blocks completion when any selected audit item is missing or drifted, except for
+repo-local files that startup readiness validates semantically.
 
 ### P1: Add A Default-Branch Completion Gate
 
