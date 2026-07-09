@@ -66,6 +66,7 @@ These are deterministic and should be tool-owned:
 | --- | --- |
 | Repo identity | Resolve git root, default branch, origin URL, owner/repo, protected branch, and worktree state. |
 | Existing-repo audit | Report selected baseline items as present, missing, drifted, skipped, or blocked without writing. |
+| Basic completion verdict | `onboard --audit` must emit `audit.onboardingCompletion`; it is incomplete if `AGENTS.md`, `.github/archon-setup.json`, or startup readiness are missing/stale. |
 | Feature closure | Expand selected features through the registry so the UI, CLI, audit, and apply paths use the same plan. |
 | Baseline file writes | Render managed files and managed blocks from one source path, with no ad hoc agent copies. |
 | Manifest writes | Record source snapshots, selected features, created/skipped files, remote actions, and deferred post-checks. |
@@ -95,18 +96,21 @@ These still need human or explicit supervising-agent decisions:
 
 ### P0: Document The Contract
 
-Current lane. Add this contract and link it from onboarding surfaces so future
-agents do not confuse "a branch was onboarded" with "the repo is onboarded."
+Current lane. Add this contract, link it from onboarding surfaces, and make
+`onboard --audit` emit a machine-readable `audit.onboardingCompletion` verdict.
+The verdict requires at least `AGENTS.md`, `.github/archon-setup.json`, and
+clean startup readiness before the local audit can report completion.
 
 ### P1: Add A Default-Branch Completion Gate
 
-Add a machine gate that can only pass after the onboarding PR merges:
+Extend the local completion verdict into a default-branch gate that can only
+pass after the onboarding PR merges:
 
 - fetch `origin/<default>`
 - inspect the merged tree, not the stale worktree
 - run the selected `onboard --audit` profile against a clean default-branch
   checkout or detached worktree
-- verify `.github/archon-setup.json` exists on that commit
+- verify `audit.onboardingCompletion.status` is `complete`
 - verify every required workflow caller exists on that commit
 - fail if branch protection requires a check whose caller is absent
 

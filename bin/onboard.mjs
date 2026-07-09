@@ -109,6 +109,12 @@ function printAudit(audit) {
   console.log(
     `Summary: ${summary.present} present, ${summary.missing} missing, ${summary.drifted} drifted (${summary.total} total)`
   );
+  if (audit.onboardingCompletion) {
+    const c = audit.onboardingCompletion;
+    console.log(`\nOnboarding completion: ${c.status}`);
+    if (c.missing.length) console.log(`  missing required anchors: ${c.missing.join(", ")}`);
+    if (c.blockers.length) console.log(`  blockers: ${c.blockers.join("; ")}`);
+  }
   if (audit.startupReadiness) {
     const s = audit.startupReadiness;
     console.log(`\nStartup readiness: ${s.status} (${s.profile || "full"} / ${s.baselineVersion})`);

@@ -47,6 +47,11 @@ const MINIMAL_STARTUP_PATHS = [
   ".agent/coordination/README.md",
 ];
 
+const ONBOARDING_COMPLETION_ANCHORS = [
+  "AGENTS.md",
+  ".github/archon-setup.json",
+];
+
 async function repoTemplateBody(snapshotPath, transform = (body) => body) {
   return transform(normalizeSnapshotText(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8")));
 }
@@ -284,10 +289,38 @@ export async function auditPlan(plan) {
     });
   }
 
+  const startup = await startupReadiness(plan, items);
   return {
     summary: summarize(items),
     items,
-    startupReadiness: await startupReadiness(plan, items),
+    startupReadiness: startup,
+    onboardingCompletion: await onboardingCompletion(plan, startup),
+  };
+}
+
+async function onboardingCompletion(plan, startup) {
+  const present = [];
+  const missing = [];
+
+  for (const path of ONBOARDING_COMPLETION_ANCHORS) {
+    if (await pathExists(plan.context.targetPath, path)) present.push(path);
+    else missing.push(path);
+  }
+
+  const blockers = [
+    ...missing.map((path) => `missing required onboarding anchor: ${path}`),
+  ];
+  if (startup?.status !== "complete") {
+    blockers.push(`startup readiness is ${startup?.status || "unknown"}`);
+  }
+
+  return {
+    status: blockers.length ? "incomplete" : "complete",
+    requiredAnchors: ONBOARDING_COMPLETION_ANCHORS,
+    present,
+    missing,
+    startupStatus: startup?.status || "unknown",
+    blockers,
   };
 }
 

@@ -68,6 +68,27 @@ async function copySnapshot(root, relativePath, { flipEol = false } = {}) {
   await writeFile(join(root, relativePath), flipEol ? flipLineEndings(body) : body, "utf8");
 }
 
+async function writeCurrentSetupManifest(root, selectedFeatures = []) {
+  const snapshotManifest = JSON.parse(await readFile(join(REPO_ROOT, "src", "snapshots", "manifest.json"), "utf8"));
+  await mkdir(join(root, ".github"), { recursive: true });
+  await writeFile(
+    join(root, ".github", "archon-setup.json"),
+    JSON.stringify(
+      {
+        tool: "archon-setup",
+        version: "test",
+        selectedFeatures,
+        sourceSnapshots: snapshotManifest.snapshots,
+        createdFiles: [".github/archon-setup.json"],
+        skippedFiles: [],
+      },
+      null,
+      2
+    ) + "\n",
+    "utf8"
+  );
+}
+
 test("audit mode reports present, missing, and drifted baseline files without writing", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
@@ -124,6 +145,23 @@ test("onboard --audit is exposed by the CLI JSON contract", async () => {
   assert.equal(byPath(parsed.audit, ".github/workflows/actionlint.yml").status, "present");
 });
 
+test("onboard --audit refuses a complete verdict when AGENTS.md is missing", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  await writeCurrentSetupManifest(root, ["foundation.agents"]);
+
+  const result = await runOnboard({
+    targetPath: root,
+    features: ["foundation.agents"],
+    audit: true,
+  });
+
+  assert.equal(result.audit.onboardingCompletion.status, "incomplete");
+  assert.ok(result.audit.onboardingCompletion.missing.includes("AGENTS.md"));
+  assert.ok(!result.audit.onboardingCompletion.missing.includes(".github/archon-setup.json"));
+  assert.equal(result.audit.onboardingCompletion.blockers.includes("missing required onboarding anchor: AGENTS.md"), true);
+});
+
 test("onboard CLI resolves a relative target path before auditing", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
@@ -139,6 +177,20 @@ test("onboard CLI resolves a relative target path before auditing", async () => 
   assert.equal(parsed.mode, "audit");
   assert.equal(parsed.plan.context.targetPath, root);
   assert.equal(byPath(parsed.audit, ".github/workflows/actionlint.yml").status, "missing");
+});
+
+test("human audit output prints the onboarding completion gate", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+
+  const { stdout } = await execFileP(
+    process.execPath,
+    [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit"],
+    { cwd: REPO_ROOT }
+  );
+
+  assert.match(stdout, /Onboarding completion: incomplete/);
+  assert.match(stdout, /missing required anchors: AGENTS\.md, \.github\/archon-setup\.json/);
 });
 
 test("onboard --audit reports template library files as missing, present, or drifted", async () => {
@@ -208,6 +260,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await mkdir(join(root, "scripts", "agent"), { recursive: true });
   await mkdir(join(root, "scripts", "doc-sweep"), { recursive: true });
   await mkdir(join(root, "scripts", "doc-health"), { recursive: true });
+  await writeCurrentSetupManifest(root, FULL_STARTUP_FEATURES);
   await writeFile(
     join(root, "AGENTS.md"),
     `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n\n## Local workflow\n\nKeep repo-specific rules.\n\n${await deliveryWorkflowBlock()}\n`,
@@ -260,6 +313,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   const parsed = JSON.parse(stdout);
 
   assert.equal(parsed.audit.startupReadiness.status, "complete");
+  assert.equal(parsed.audit.onboardingCompletion.status, "complete");
   assert.equal(parsed.audit.startupReadiness.profile, "full");
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.deepEqual(parsed.audit.startupReadiness.stale, []);
