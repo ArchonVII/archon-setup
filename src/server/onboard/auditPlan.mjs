@@ -312,9 +312,12 @@ async function onboardingCompletion(plan, items, startup) {
     else missing.push(path);
   }
 
+  const manifest = await onboardingManifestStatus(plan);
   const { missingBaselineItems, driftedBaselineItems } = completionItemFailures(items, startup);
   const blockers = [
     ...missing.map((path) => `missing required onboarding anchor: ${path}`),
+    ...manifest.problems,
+    ...manifest.missingFeatures.map((feature) => `manifest missing selected feature: ${feature}`),
     ...missingBaselineItems.map((path) => `missing selected baseline item: ${path}`),
     ...driftedBaselineItems.map((path) => `drifted selected baseline item: ${path}`),
   ];
@@ -329,8 +332,44 @@ async function onboardingCompletion(plan, items, startup) {
     missing,
     missingBaselineItems,
     driftedBaselineItems,
+    manifestStatus: manifest.status,
+    manifestMissingFeatures: manifest.missingFeatures,
+    manifestProblems: manifest.problems,
     startupStatus: startup?.status || "unknown",
     blockers,
+  };
+}
+
+async function onboardingManifestStatus(plan) {
+  if (!(await pathExists(plan.context.targetPath, ".github/archon-setup.json"))) {
+    return { status: "missing", missingFeatures: [], problems: [] };
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFile(safeJoin(plan.context.targetPath, ".github/archon-setup.json"), "utf8"));
+  } catch {
+    return {
+      status: "invalid",
+      missingFeatures: [],
+      problems: ["manifest is invalid or unreadable"],
+    };
+  }
+
+  const problems = [];
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || parsed.tool !== "archon-setup") {
+    problems.push("manifest is not an archon-setup manifest");
+  }
+  if (!Array.isArray(parsed?.selectedFeatures)) {
+    problems.push("manifest selectedFeatures is missing or invalid");
+  }
+
+  const selected = new Set(Array.isArray(parsed?.selectedFeatures) ? parsed.selectedFeatures : []);
+  const missingFeatures = (plan.selectedFeatureIds || []).filter((feature) => !selected.has(feature));
+  return {
+    status: problems.length || missingFeatures.length ? "incomplete" : "complete",
+    missingFeatures,
+    problems,
   };
 }
 

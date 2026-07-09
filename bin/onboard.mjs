@@ -115,6 +115,8 @@ function printAudit(audit) {
     if (c.missing.length) console.log(`  missing required anchors: ${c.missing.join(", ")}`);
     if (c.missingBaselineItems.length) console.log(`  missing selected baseline items: ${c.missingBaselineItems.join(", ")}`);
     if (c.driftedBaselineItems.length) console.log(`  drifted selected baseline items: ${c.driftedBaselineItems.join(", ")}`);
+    if (c.manifestMissingFeatures.length) console.log(`  manifest missing selected features: ${c.manifestMissingFeatures.join(", ")}`);
+    if (c.manifestProblems.length) console.log(`  manifest problems: ${c.manifestProblems.join("; ")}`);
     if (c.blockers.length) console.log(`  blockers: ${c.blockers.join("; ")}`);
   }
   if (audit.startupReadiness) {

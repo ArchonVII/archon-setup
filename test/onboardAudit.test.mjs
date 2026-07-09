@@ -255,6 +255,29 @@ test("onboard --audit refuses completion when a selected baseline item is drifte
   );
 });
 
+test("onboard --audit refuses completion when the manifest omits a selected feature", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  await seedCurrentMinimalAgentBaseline(root, ["foundation.agents"]);
+  await copySnapshot(root, ".github/workflows/actionlint.yml");
+
+  const result = await runOnboard({
+    targetPath: root,
+    features: ["foundation.agents", "foundation.actionlint"],
+    audit: true,
+  });
+
+  assert.equal(result.audit.startupReadiness.status, "complete");
+  assert.equal(byPath(result.audit, ".github/workflows/actionlint.yml").status, "present");
+  assert.equal(result.audit.onboardingCompletion.status, "incomplete");
+  assert.deepEqual(result.audit.onboardingCompletion.manifestMissingFeatures, ["foundation.actionlint"]);
+  assert.ok(
+    result.audit.onboardingCompletion.blockers.includes(
+      "manifest missing selected feature: foundation.actionlint"
+    )
+  );
+});
+
 test("onboard CLI resolves a relative target path before auditing", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);

@@ -66,7 +66,7 @@ These are deterministic and should be tool-owned:
 | --- | --- |
 | Repo identity | Resolve git root, default branch, origin URL, owner/repo, protected branch, and worktree state. |
 | Existing-repo audit | Report selected baseline items as present, missing, drifted, skipped, or blocked without writing. |
-| Basic completion verdict | `onboard --audit` must emit `audit.onboardingCompletion`; it is incomplete if required anchors, startup readiness, or any selected baseline item is missing or drifted. |
+| Basic completion verdict | `onboard --audit` must emit `audit.onboardingCompletion`; it is incomplete if required anchors, manifest provenance for the selected feature set, startup readiness, or any selected baseline item is missing or drifted. |
 | Feature closure | Expand selected features through the registry so the UI, CLI, audit, and apply paths use the same plan. |
 | Baseline file writes | Render managed files and managed blocks from one source path, with no ad hoc agent copies. |
 | Manifest writes | Record source snapshots, selected features, created/skipped files, remote actions, and deferred post-checks. |
@@ -98,10 +98,11 @@ These still need human or explicit supervising-agent decisions:
 
 Current lane. Add this contract, link it from onboarding surfaces, and make
 `onboard --audit` emit a machine-readable `audit.onboardingCompletion` verdict.
-The verdict requires at least `AGENTS.md`, `.github/archon-setup.json`, and
-clean startup readiness before the local audit can report completion. It also
-blocks completion when any selected audit item is missing or drifted, except for
-repo-local files that startup readiness validates semantically.
+The verdict requires at least `AGENTS.md`, a valid `.github/archon-setup.json`
+that records every selected feature being audited, and clean startup readiness
+before the local audit can report completion. It also blocks completion when any
+selected audit item is missing or drifted, except for repo-local files that
+startup readiness validates semantically.
 
 ### P1: Add A Default-Branch Completion Gate
 
