@@ -4,6 +4,9 @@ This guide explains what happens when we onboard a repository into the ArchonVII
 ecosystem. It is not a command checklist. It is the human-readable version of
 what we are checking, confirming, adding, replacing, and leaving for review.
 
+For the binding definition of "fully onboarded," read
+[`docs/agent-process/deterministic-onboarding.md`](./agent-process/deterministic-onboarding.md).
+
 ## The Goal
 
 Onboarding makes a repository behave like an ArchonVII repo:

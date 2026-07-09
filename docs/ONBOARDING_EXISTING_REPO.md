@@ -14,10 +14,15 @@ branch protection.
 
 For a plain-English explanation of the whole process, read
 [`REPO_ONBOARDING_WALKTHROUGH.md`](./REPO_ONBOARDING_WALKTHROUGH.md).
+For the binding completion rules, read
+[`agent-process/deterministic-onboarding.md`](./agent-process/deterministic-onboarding.md).
 
 ## Principles
 
 - **Audit first.** Know what's already present before writing anything.
+- **Default branch or it did not happen.** A side branch, setup worktree, or
+  successful onboarding PR check is not completion until the selected baseline
+  is present on `origin/<default>` and a post-merge audit is clean.
 - **Harvest before replacing.** Existing setup is evidence, not authority. Keep useful
   repo-specific decisions such as stack, commands, ports, generated-file warnings, release
   surfaces, and real workflow needs, then fold them into the ArchonVII baseline.
@@ -39,6 +44,11 @@ For a plain-English explanation of the whole process, read
   confirming any write-capable step.
 - Run `npm run onboard -- <repo> --audit` to report planned baseline files as
   `present`, `missing`, or `drifted` without writing.
+- Treat `Onboarding completion: incomplete` or JSON
+  `audit.onboardingCompletion.status !== "complete"` as a hard stop for any
+  "fully onboarded" claim. Missing anchors such as `AGENTS.md` or
+  `.github/archon-setup.json`, manifest feature-set mismatches, and missing or
+  drifted selected baseline items are reported there explicitly.
 - `git -C <repo> rev-parse --abbrev-ref HEAD`, `git remote get-url origin`, `git status --porcelain`.
 - Which foundations exist? (`README`, `LICENSE`, `.gitignore`, `AGENTS.md`, `CLAUDE.md`,
   `GEMINI.md`, `.agent/check-map.yml`, `.agent/coordination/README.md`.)

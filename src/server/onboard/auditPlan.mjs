@@ -47,6 +47,16 @@ const MINIMAL_STARTUP_PATHS = [
   ".agent/coordination/README.md",
 ];
 
+const ONBOARDING_COMPLETION_ANCHORS = [
+  "AGENTS.md",
+  ".github/archon-setup.json",
+];
+
+const COMPLETION_DRIFT_EXCEPTIONS = new Set([
+  "AGENTS.md",
+  "docs/repo-update-log.md",
+]);
+
 async function repoTemplateBody(snapshotPath, transform = (body) => body) {
   return transform(normalizeSnapshotText(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8")));
 }
@@ -284,11 +294,108 @@ export async function auditPlan(plan) {
     });
   }
 
+  const startup = await startupReadiness(plan, items);
   return {
     summary: summarize(items),
     items,
-    startupReadiness: await startupReadiness(plan, items),
+    startupReadiness: startup,
+    onboardingCompletion: await onboardingCompletion(plan, items, startup),
   };
+}
+
+async function onboardingCompletion(plan, items, startup) {
+  const present = [];
+  const missing = [];
+
+  for (const path of ONBOARDING_COMPLETION_ANCHORS) {
+    if (await pathExists(plan.context.targetPath, path)) present.push(path);
+    else missing.push(path);
+  }
+
+  const manifest = await onboardingManifestStatus(plan);
+  const { missingBaselineItems, driftedBaselineItems } = completionItemFailures(items, startup);
+  const blockers = [
+    ...missing.map((path) => `missing required onboarding anchor: ${path}`),
+    ...manifest.problems,
+    ...manifest.missingFeatures.map((feature) => `manifest missing selected feature: ${feature}`),
+    ...missingBaselineItems.map((path) => `missing selected baseline item: ${path}`),
+    ...driftedBaselineItems.map((path) => `drifted selected baseline item: ${path}`),
+  ];
+  if (startup?.status !== "complete") {
+    blockers.push(`startup readiness is ${startup?.status || "unknown"}`);
+  }
+
+  return {
+    status: blockers.length ? "incomplete" : "complete",
+    requiredAnchors: ONBOARDING_COMPLETION_ANCHORS,
+    present,
+    missing,
+    missingBaselineItems,
+    driftedBaselineItems,
+    manifestStatus: manifest.status,
+    manifestMissingFeatures: manifest.missingFeatures,
+    manifestProblems: manifest.problems,
+    startupStatus: startup?.status || "unknown",
+    blockers,
+  };
+}
+
+async function onboardingManifestStatus(plan) {
+  if (!(await pathExists(plan.context.targetPath, ".github/archon-setup.json"))) {
+    return { status: "missing", missingFeatures: [], problems: [] };
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFile(safeJoin(plan.context.targetPath, ".github/archon-setup.json"), "utf8"));
+  } catch {
+    return {
+      status: "invalid",
+      missingFeatures: [],
+      problems: ["manifest is invalid or unreadable"],
+    };
+  }
+
+  const problems = [];
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || parsed.tool !== "archon-setup") {
+    problems.push("manifest is not an archon-setup manifest");
+  }
+  if (!Array.isArray(parsed?.selectedFeatures)) {
+    problems.push("manifest selectedFeatures is missing or invalid");
+  }
+
+  const selected = new Set(Array.isArray(parsed?.selectedFeatures) ? parsed.selectedFeatures : []);
+  const missingFeatures = (plan.selectedFeatureIds || []).filter((feature) => !selected.has(feature));
+  return {
+    status: problems.length || missingFeatures.length ? "incomplete" : "complete",
+    missingFeatures,
+    problems,
+  };
+}
+
+function completionItemFailures(items, startup) {
+  const startupPresent = new Set(startup?.present || []);
+  const missingBaselineItems = [];
+  const driftedBaselineItems = [];
+
+  for (const item of items) {
+    if (item.status === "missing") {
+      missingBaselineItems.push(item.path);
+      continue;
+    }
+    if (item.status === "drifted" && !completionAcceptsDrift(item.path, startupPresent)) {
+      driftedBaselineItems.push(item.path);
+    }
+  }
+
+  return {
+    missingBaselineItems: unique(missingBaselineItems),
+    driftedBaselineItems: unique(driftedBaselineItems),
+  };
+}
+
+function completionAcceptsDrift(path, startupPresent) {
+  return COMPLETION_DRIFT_EXCEPTIONS.has(path) && startupPresent.has(path);
 }
 
 async function startupReadiness(plan, items) {
