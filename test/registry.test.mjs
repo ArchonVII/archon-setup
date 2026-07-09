@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadRegistry, buildPlan } from "../src/server/planner/buildPlan.mjs";
+import { defaultLocalSelection } from "../src/server/onboard/headlessOnboard.mjs";
 
 test("registry loads and groups exist", async () => {
   const { features, groups, schema } = await loadRegistry();
@@ -27,6 +28,38 @@ test("every feature.requires points at a real feature id", async () => {
   }
 });
 
+test("standard onboarding defaults to a minimal solo-dev setup", async () => {
+  const { features } = await loadRegistry();
+  const selection = defaultLocalSelection(features);
+
+  assert.ok(selection.includes("foundation.readme"), "minimal setup still includes basic repo files");
+  assert.ok(selection.includes("foundation.git-init"), "minimal setup still initializes git");
+
+  for (const id of [
+    "foundation.hooks",
+    "foundation.friction-ledger",
+    "foundation.actionlint",
+    "foundation.codeowners",
+    "foundation.dependabot",
+    "foundation.pr-template",
+    "remote.labels",
+    "remote.branch-protection",
+    "agent-workflow.check-map",
+    "workflow.required-gate",
+    "workflow.node-ci",
+    "workflow.python-ci",
+    "workflow.minimal-ci",
+    "agent-workflow.anomaly-triage",
+    "agent-workflow.repo-update-log-fragment",
+    "agent-lifecycle.baseline",
+    "agent-workflow.doc-sweep",
+    "agent-workflow.doc-health",
+    "agent-workflow.template-library",
+  ]) {
+    assert.ok(!selection.includes(id), `${id} must be opt-in, not part of standard onboarding`);
+  }
+});
+
 test("plan.build closes over feature-id requires transitively", async () => {
   // required-gate requires the check-map feature (a real feature-id dependency)
   const plan = await buildPlan({
@@ -38,13 +71,13 @@ test("plan.build closes over feature-id requires transitively", async () => {
   assert.ok(!plan.selectedFeatureIds.includes("remote.github"), "must NOT pull in repo-create");
 });
 
-test("agent-workflow.anomaly-triage is a runtime feature, not coupled to repo-create", async () => {
+test("agent-workflow.anomaly-triage is an opt-in runtime feature, not coupled to repo-create", async () => {
   const { features, groups } = await loadRegistry();
   const triage = features.find((f) => f.id === "agent-workflow.anomaly-triage");
   assert.ok(triage, "anomaly-triage feature missing");
   assert.equal(triage.group, "agent-workflow");
-  assert.equal(triage.default, true);
-  assert.equal(triage.locked, true);
+  assert.equal(triage.default, false);
+  assert.ok(!triage.locked);
   assert.equal(triage.remoteRequirement, "runtime");
   assert.ok(!(triage.requires || []).includes("remote.github"));
   assert.ok(triage.creates.includes(".github/workflows/anomaly-triage.yml"));
@@ -52,14 +85,14 @@ test("agent-workflow.anomaly-triage is a runtime feature, not coupled to repo-cr
   assert.ok(group, "agent-workflow group missing from groups.json");
 });
 
-test("agent-workflow.repo-update-log-fragment is a locked runtime baseline caller", async () => {
+test("agent-workflow.repo-update-log-fragment is an opt-in runtime baseline caller", async () => {
   const { features } = await loadRegistry();
   const ledger = features.find((f) => f.id === "agent-workflow.repo-update-log-fragment");
 
   assert.ok(ledger, "repo-update-log fragment feature missing");
   assert.equal(ledger.group, "agent-workflow");
-  assert.equal(ledger.default, true);
-  assert.equal(ledger.locked, true);
+  assert.equal(ledger.default, false);
+  assert.ok(!ledger.locked);
   assert.equal(ledger.remoteRequirement, "runtime");
   assert.ok(!(ledger.requires || []).includes("remote.github"));
   assert.ok(ledger.creates.includes(".github/workflows/repo-update-log-fragment.yml"));
@@ -80,14 +113,14 @@ test("foundation.agents plans the repo update log with AGENTS.md", async () => {
   assert.ok(agents.creates.includes("docs/plans/README.md"));
 });
 
-test("friction ledger is a locked default foundation feature (#234)", async () => {
+test("friction ledger is an opt-in foundation feature (#234)", async () => {
   const { features } = await loadRegistry();
   const friction = features.find((f) => f.id === "foundation.friction-ledger");
 
   assert.ok(friction, "foundation.friction-ledger feature missing");
   assert.equal(friction.group, "foundations");
-  assert.equal(friction.default, true);
-  assert.equal(friction.locked, true);
+  assert.equal(friction.default, false);
+  assert.ok(!friction.locked);
   assert.deepEqual(friction.creates, [".claude/friction.md"]);
   assert.deepEqual(friction.tasks, ["writeFrictionLedger"]);
   for (const required of ["foundation.agents", "foundation.gitignore", "foundation.hooks"]) {
@@ -437,13 +470,13 @@ test("language-CI features point at existing snapshot files", async () => {
 
 // --- issue #16 / required gate + check map ---
 
-test("required-gate feature is the default CI contract", async () => {
+test("required-gate feature is an opt-in CI contract", async () => {
   const { features } = await loadRegistry();
   const gate = features.find((f) => f.id === "workflow.required-gate");
 
   assert.ok(gate, "workflow.required-gate feature missing");
   assert.equal(gate.group, "workflows.ci");
-  assert.equal(gate.default, true);
+  assert.equal(gate.default, false);
   assert.equal(gate.remoteRequirement, "runtime");
   assert.ok(gate.requires.includes("agent-workflow.check-map"));
   assert.ok(!gate.requires.includes("remote.github"));
@@ -452,13 +485,13 @@ test("required-gate feature is the default CI contract", async () => {
   assert.equal(gate.options.workflowName.value, "repo-required-gate");
 });
 
-test("check-map feature is installed with agent foundations", async () => {
+test("check-map feature is opt-in unless pulled by the required gate", async () => {
   const { features } = await loadRegistry();
   const checkMap = features.find((f) => f.id === "agent-workflow.check-map");
 
   assert.ok(checkMap, "agent-workflow.check-map feature missing");
   assert.equal(checkMap.group, "agent-workflow");
-  assert.equal(checkMap.default, true);
+  assert.equal(checkMap.default, false);
   assert.ok(checkMap.creates.includes(".agent/check-map.yml"));
   assert.equal(checkMap.tasks[0], "writeCheckMap");
 });
@@ -523,6 +556,9 @@ test("all local file-writing tasks are ordered before the initial push", async (
   const { features } = await loadRegistry();
   const selection = features.filter((feature) => feature.default).map((feature) => feature.id);
   if (!selection.includes("remote.github")) selection.push("remote.github");
+  for (const id of ["remote.labels", "remote.branch-protection", "workflow.required-gate"]) {
+    if (!selection.includes(id)) selection.push(id);
+  }
 
   const plan = await buildPlan({
     selection,
@@ -655,13 +691,13 @@ test("api-target + will-create with empty identity -> blocking error", async () 
 
 // --- #103: doc-sweep feature ---
 
-test("doc-sweep is a locked default agent-workflow feature installing the runner + spec", async () => {
+test("doc-sweep is an opt-in agent-workflow feature installing the runner + spec", async () => {
   const { features } = await loadRegistry();
   const ds = features.find((f) => f.id === "agent-workflow.doc-sweep");
   assert.ok(ds, "agent-workflow.doc-sweep feature missing");
   assert.equal(ds.group, "agent-workflow");
-  assert.equal(ds.default, true);
-  assert.equal(ds.locked, true);
+  assert.equal(ds.default, false);
+  assert.ok(!ds.locked);
   assert.equal(ds.tasks[0], "writeDocSweep");
   for (const f of [
     "scripts/doc-sweep/lib.mjs",
@@ -702,13 +738,13 @@ test("doc-sweep points at existing snapshot files and lands in the initial commi
 
 // --- doc-health feature (startup-readiness baseline gap) ---
 
-test("doc-health is a locked default agent-workflow feature installing the runner + spec", async () => {
+test("doc-health is an opt-in agent-workflow feature installing the runner + spec", async () => {
   const { features } = await loadRegistry();
   const dh = features.find((f) => f.id === "agent-workflow.doc-health");
   assert.ok(dh, "agent-workflow.doc-health feature missing");
   assert.equal(dh.group, "agent-workflow");
-  assert.equal(dh.default, true);
-  assert.equal(dh.locked, true);
+  assert.equal(dh.default, false);
+  assert.ok(!dh.locked);
   assert.equal(dh.tasks[0], "writeDocHealth");
   for (const f of [
     "scripts/doc-health/lib.mjs",
@@ -746,13 +782,13 @@ test("doc-health points at existing snapshot files and lands in the initial comm
 
 // --- #296: repo-template template library feature ---
 
-test("template library is a locked default agent-workflow feature installing templates/**", async () => {
+test("template library is an opt-in agent-workflow feature installing templates/**", async () => {
   const { features } = await loadRegistry();
   const tl = features.find((f) => f.id === "agent-workflow.template-library");
   assert.ok(tl, "agent-workflow.template-library feature missing");
   assert.equal(tl.group, "agent-workflow");
-  assert.equal(tl.default, true);
-  assert.equal(tl.locked, true);
+  assert.equal(tl.default, false);
+  assert.ok(!tl.locked);
   assert.equal(tl.tasks[0], "writeTemplateLibrary");
   for (const file of [
     "templates/README.md",

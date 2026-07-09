@@ -25,6 +25,15 @@ async function currentHooksPath(path) {
   return stdout.trim();
 }
 
+async function hasGithooksDir(path) {
+  try {
+    await access(join(path, ".githooks"), constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function activateHooksPath(path, { allowOverwrite = false } = {}) {
   const existing = await currentHooksPath(path);
   const normalized = existing.replace(/\\/g, "/");
@@ -62,9 +71,11 @@ export async function apply(ctx) {
     { timeoutMs: 15_000 }
   );
   if (commit.code !== 0) throw new Error(`git commit failed: ${commit.stderr}`);
-  const hooksPath = await activateHooksPath(cwd, {
-    allowOverwrite: ctx.taskOptions?.overwriteHooksPath === true || ctx.allowHooksPathOverwrite === true,
-  });
+  const hooksPath = (await hasGithooksDir(cwd))
+    ? await activateHooksPath(cwd, {
+        allowOverwrite: ctx.taskOptions?.overwriteHooksPath === true || ctx.allowHooksPathOverwrite === true,
+      })
+    : { status: "not-configured", reason: "hooks-not-installed" };
   return { result: "committed", hooksPath };
 }
 

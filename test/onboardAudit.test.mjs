@@ -23,6 +23,17 @@ async function deliveryWorkflowBlock() {
 
 const execFileP = promisify(execFile);
 const REPO_ROOT = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
+const FULL_STARTUP_FEATURES = [
+  "foundation.agents",
+  "foundation.coordination",
+  "foundation.pr-template",
+  "agent-workflow.check-map",
+  "agent-workflow.anomaly-triage",
+  "agent-workflow.repo-update-log-fragment",
+  "agent-lifecycle.baseline",
+  "agent-workflow.doc-sweep",
+  "agent-workflow.doc-health",
+];
 
 async function tempRoot(prefix = "archon-audit-") {
   return mkdtemp(join(tmpdir(), prefix));
@@ -148,7 +159,7 @@ test("onboard --audit reports template library files as missing, present, or dri
   assert.equal(byPath(result.audit, "templates/github/github.issue.standard.md").status, "missing");
 });
 
-test("onboard --audit reports warning-level startup readiness in JSON", async () => {
+test("onboard --audit reports minimal-profile startup readiness in JSON", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
   await mkdir(join(root, "docs", "superpowers", "plans"), { recursive: true });
@@ -164,6 +175,7 @@ test("onboard --audit reports warning-level startup readiness in JSON", async ()
   assert.equal(parsed.ok, true);
   assert.equal(parsed.mode, "audit");
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
+  assert.equal(parsed.audit.startupReadiness.profile, "minimal");
   assert.equal(parsed.audit.startupReadiness.baselineVersion, "2026-06-15-document-policy");
   assert.ok(parsed.audit.startupReadiness.missing.includes("docs/plans/README.md"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("AGENTS.md"));
@@ -235,12 +247,20 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
 
   const { stdout } = await execFileP(
     process.execPath,
-    [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit", "--json"],
+    [
+      join(REPO_ROOT, "bin", "onboard.mjs"),
+      root,
+      "--features",
+      FULL_STARTUP_FEATURES.join(","),
+      "--audit",
+      "--json",
+    ],
     { cwd: REPO_ROOT }
   );
   const parsed = JSON.parse(stdout);
 
   assert.equal(parsed.audit.startupReadiness.status, "complete");
+  assert.equal(parsed.audit.startupReadiness.profile, "full");
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.deepEqual(parsed.audit.startupReadiness.stale, []);
   assert.ok(parsed.audit.startupReadiness.present.includes("AGENTS.md"));
@@ -336,12 +356,20 @@ test("startup readiness reports stale concrete startup tooling", async () => {
 
   const { stdout } = await execFileP(
     process.execPath,
-    [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit", "--json"],
+    [
+      join(REPO_ROOT, "bin", "onboard.mjs"),
+      root,
+      "--features",
+      FULL_STARTUP_FEATURES.join(","),
+      "--audit",
+      "--json",
+    ],
     { cwd: REPO_ROOT }
   );
   const parsed = JSON.parse(stdout);
 
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
+  assert.equal(parsed.audit.startupReadiness.profile, "full");
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/agent/status.mjs"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/close/ci-guard.mjs"));
@@ -405,17 +433,25 @@ test("startup readiness reports stale same-version startup baseline contract", a
 
   const { stdout } = await execFileP(
     process.execPath,
-    [join(REPO_ROOT, "bin", "onboard.mjs"), root, "--features", "foundation.agents", "--audit", "--json"],
+    [
+      join(REPO_ROOT, "bin", "onboard.mjs"),
+      root,
+      "--features",
+      FULL_STARTUP_FEATURES.join(","),
+      "--audit",
+      "--json",
+    ],
     { cwd: REPO_ROOT }
   );
   const parsed = JSON.parse(stdout);
 
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
+  assert.equal(parsed.audit.startupReadiness.profile, "full");
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.ok(parsed.audit.startupReadiness.stale.includes(".agent/startup-baseline.json"));
 });
 
-test("human audit output distinguishes startup audit from workflow-only update", async () => {
+test("human audit output explains the minimal startup profile", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
 
@@ -426,8 +462,9 @@ test("human audit output distinguishes startup audit from workflow-only update",
   );
 
   assert.match(stdout, /Startup readiness:/);
-  assert.match(stdout, /This is the full startup\/process baseline audit/i);
-  assert.match(stdout, /workflow-only update/i);
+  assert.match(stdout, /minimal/i);
+  assert.match(stdout, /full startup\/process automation is opt-in/i);
+  assert.doesNotMatch(stdout, /workflow-only update/i);
 });
 
 test("target preflight can explicitly accept a populated existing repo", async () => {

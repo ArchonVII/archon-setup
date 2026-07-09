@@ -1,0 +1,8 @@
+# 2026-07-09 - #338 Standard onboarding defaults to minimal
+
+- **Issue/PR:** #338 / pending
+- **Branch:** `agent/codex/338-minimal-standard-onboarding`
+- **Changed paths:** `src/registry/features.json`, `src/registry/groups.json`, `src/server/onboard/auditPlan.mjs`, `src/server/onboard/headlessOnboard.mjs`, `src/server/tasks/initGitAndCommit.mjs`, `bin/onboard.mjs`, `README.md`, `docs/FEATURE_REGISTRY.md`, `test/registry.test.mjs`, `test/foundationParity.test.mjs`, `test/onboardHeadless.test.mjs`, `test/onboardAudit.test.mjs`, fragments.
+- **What changed:** Standard onboarding now selects only the low-ceremony local repo baseline by default. Hooks, friction/changelog/PR-template/CODEOWNERS/Dependabot extras, remote labels, branch protection, required gates, repo-update-log workflow callers, agent lifecycle scripts, doc-health/doc-sweep runners, and the template library are opt-in. `initGitAndCommit` now configures `core.hooksPath=.githooks` only when hooks were actually installed. `onboard --audit` now reports a `minimal` startup-readiness profile unless the selected features opt into the full agent process stack.
+- **Verification:** `node --test test/registry.test.mjs test/foundationParity.test.mjs test/onboardHeadless.test.mjs test/onboardAudit.test.mjs` -> 79 pass / 0 fail.
+- **Propagation:** `archon-setup` registry/default behavior is fixed in this lane. The provider snapshot still contains a full-process `.agent/startup-baseline.json`; a follow-up `repo-template` lane should introduce a true minimal startup-baseline source so generated metadata and provider source align without profile filtering.

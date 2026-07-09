@@ -2,7 +2,7 @@
 
 Plug-and-play repo bootstrapper for the ArchonVII ecosystem.
 
-A local browser wizard that scaffolds a new repository — files, git init, `gh` remote, labels, branch protection — driven by a dependency-aware feature registry.
+A local browser wizard that scaffolds a new repository — minimal files and git init by default, with optional `gh` remote, labels, branch protection, hooks, and workflows — driven by a dependency-aware feature registry.
 
 ## First End Goal
 
@@ -88,7 +88,7 @@ npm run onboard -- <targetPath> [options]
 
 | Option             | Effect                                                                                                   |
 | ------------------ | -------------------------------------------------------------------------------------------------------- |
-| `--features a,b,c` | Override the selection (default: the local baseline — every default feature except GitHub API mutations) |
+| `--features a,b,c` | Override the selection (default: minimal local baseline; remote mutations and runner-backed workflows are opt-in) |
 | `--owner <name>`   | GitHub owner/account; enables `CODEOWNERS` and the manifest owner                                        |
 | `--repo <name>`    | Repo name recorded in `.github/archon-setup.json`                                                        |
 | `--visibility <v>` | `private` (default) or `public`                                                                          |
@@ -96,25 +96,29 @@ npm run onboard -- <targetPath> [options]
 | `--dry-run`        | Print the plan and exit without writing                                                                  |
 | `--json`           | Emit the result as JSON instead of human-readable text                                                   |
 
-`--dry-run` shows exactly what the wizard's Review screen would, and onboarding
-writes the same baseline — including the F19-scrubbed `.githooks/` and local
+`--dry-run` shows exactly what the wizard's Review screen would. Standard
+onboarding writes the minimal solo-dev baseline: README, license, gitignore,
+agent pointers, neutral coordination docs, `.gitattributes`, manifest, and the
+initial git commit. Local hooks, changelog ceremony, CODEOWNERS, Dependabot, PR
+templates, branch protection, labels, lifecycle scripts, template libraries, and
 runtime workflow callers such as `repo-required-gate.yml` and
-`repo-update-log-fragment.yml`. This is the
-first-class version of the one-off script used to onboard existing repos during
-the F19 rollout.
+`repo-update-log-fragment.yml` are explicit opt-ins.
 
 `--audit` is the read-only existing-repo entrypoint: it builds the same plan but
 checks each planned baseline file in the target repo, reporting `present` when
 it matches, `missing` when absent, and `drifted` when the existing content
 differs from the managed baseline. The JSON result also includes
-`audit.startupReadiness`, a warning-level startup/process baseline summary with
-the baseline version, missing files, stale content, misplaced managed blocks,
-legacy plan paths, and a repair command. Startup readiness checks the concrete
-agent lifecycle and doc-sweep files named by `.agent/startup-baseline.json`,
-plus the `package.json` `agent:*` entries. Managed wiki markdown files may carry
+`audit.startupReadiness`, a selected-profile startup summary with the baseline
+version, missing files, stale content, misplaced managed blocks, legacy plan
+paths, and a repair command. The default profile checks only the minimal files
+selected by standard onboarding. Repos that opt into the full agent lifecycle,
+doc-health/doc-sweep, PR template, check-map, or required-gate features get the
+full startup/process audit, including concrete lifecycle files and
+`package.json` `agent:*` entries. Managed wiki markdown files may carry
 repo-local YAML frontmatter; audit and repair preserve that metadata when the
-baseline body is current. The startup baseline file itself is always checked as
-part of readiness, and same-version contract drift is treated as stale.
+baseline body is current. The startup baseline file itself is checked when it is
+part of the selected profile, and same-version contract drift is treated as
+stale.
 
 **Existing repos.** In the browser wizard, choose **Existing repo** on Location.
 The wizard accepts a populated git repo, detects its GitHub `origin`, runs a
@@ -282,16 +286,16 @@ Existing agent-facing capabilities:
   PRs easier to review without giving Copilot a separate authority source.
 - **Anomaly triage workflow** - optional agent workflow that turns side findings
   recorded during PR work into sticky PR comments or follow-up issues.
-- **Required gate plus check map** - `.agent/check-map.yml` and
+- **Required gate plus check map** - optional `.agent/check-map.yml` and
   `repo-required-gate.yml` give agents and branch protection one shared map from
-  changed paths to required verification.
+  changed paths to required verification when a repo wants enforced closeout.
 - **Versioned startup baseline** - `.agent/startup-baseline.json`,
   `docs/plans/README.md`, `AGENTS.md`, and `agent:status` give agents one
   canonical first-stop map for plans, process files, coordination, PR flow, and
   repair actions.
-- **Repo update log** - generated repos receive the repo update log guidance and
-  the `repo-update-log-fragment.yml` caller so applicable PRs leave durable
-  operational history separate from user-facing release notes.
+- **Repo update log** - generated repos receive repo update log guidance by
+  default; the `repo-update-log-fragment.yml` caller is opt-in for repos that
+  want GitHub to enforce durable operational history on applicable PRs.
 - **Global update records** - archon-setup records shared agent/workflow fixes
   that may need ecosystem-wide dissemination, exposes them in the Ecosystem UI,
   and logs per-repo distribution results.
@@ -360,7 +364,8 @@ Planned agent-facing capabilities:
   repo-specific `AGENTS.md` content.
 - `archon-setup update` is workflow-only. Use
   `node C:\GitHub\archon-setup\bin\onboard.mjs C:\path\to\repo --audit` to
-  check the full startup/process baseline.
+  check the selected onboarding profile; pass explicit full-process features
+  when you want the full startup/process audit.
 - Baseline branch protection can require PRs immediately, but named required
   checks must wait until the check has run at least once.
 - Use `node bin/archon-setup.mjs tighten-required-gate --target <repo-path>`
@@ -540,15 +545,16 @@ safe, repeatable ecosystem upgrade tool for fresh and existing repositories.
 Built or actively hardening:
 
 - Generate README, LICENSE, `.gitignore`, `AGENTS.md`, `CLAUDE.md`,
-  `GEMINI.md`, `.agent/check-map.yml`, `docs/repo-update-log.md`, and
-  `.github/archon-setup.json`.
-- Install the repo-template `templates/**` library so fresh repos get the
-  standard agent, prompt, report, operations, GitHub, and partial templates.
-- Initialize git, create the GitHub repo with `gh`, push the initial commit,
-  apply standard labels, and apply baseline branch protection.
-- Install one stable required branch-protection gate through
-  `repo-required-gate.yml`, with Node, Python, and minimal CI options available
-  as managed workflow callers.
+  `GEMINI.md`, `.agent/coordination/README.md`, `docs/repo-update-log.md`,
+  `.gitattributes`, and `.github/archon-setup.json` by default.
+- Keep the repo-template `templates/**` library available as an opt-in feature
+  for repos that want the standard agent, prompt, report, operations, GitHub,
+  and partial templates.
+- Initialize git by default; GitHub repo creation, labels, and baseline branch
+  protection are explicit feature selections.
+- Keep `repo-required-gate.yml`, check-map, and Node/Python/minimal CI callers
+  available as opt-in managed workflows instead of installing a required gate
+  into every repo.
 - Run Doctor checks for `git`, `gh`, GitHub auth, Node, network access,
   `actionlint`, and target write permissions.
 - Keep provider artifacts upstream: workflow bodies in `github-workflows`,

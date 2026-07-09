@@ -6,7 +6,7 @@
 //   npm run onboard -- <targetPath> [options]
 //
 // Options:
-//   --features a,b,c   Override the selection (default: local baseline)
+//   --features a,b,c   Override the selection (default: minimal local baseline)
 //   --owner <name>     GitHub owner/account (enables CODEOWNERS, manifest)
 //   --repo <name>      Repo name recorded in the manifest
 //   --visibility <v>   private | public  (default: private)
@@ -73,7 +73,7 @@ Usage:
   npm run onboard -- <targetPath> [options]
 
 Options:
-  --features a,b,c   Override feature selection (default: local baseline)
+  --features a,b,c   Override feature selection (default: minimal local baseline)
   --owner <name>     GitHub owner/account (enables CODEOWNERS + manifest)
   --repo <name>      Repo name recorded in the manifest
   --visibility <v>   private | public  (default: private)
@@ -111,8 +111,12 @@ function printAudit(audit) {
   );
   if (audit.startupReadiness) {
     const s = audit.startupReadiness;
-    console.log(`\nStartup readiness: ${s.status} (${s.baselineVersion})`);
-    console.log("This is the full startup/process baseline audit; `archon-setup update` is workflow-only update.");
+    console.log(`\nStartup readiness: ${s.status} (${s.profile || "full"} / ${s.baselineVersion})`);
+    if (s.profile === "minimal") {
+      console.log("This checks the selected minimal onboarding profile; full startup/process automation is opt-in.");
+    } else {
+      console.log("This is the full startup/process baseline audit; `archon-setup update` is workflow-only update.");
+    }
     if (s.missing.length) console.log(`  missing: ${s.missing.join(", ")}`);
     if (s.stale.length) console.log(`  stale: ${s.stale.join(", ")}`);
     if (s.misplaced.length) console.log(`  misplaced: ${s.misplaced.join(", ")}`);

@@ -214,8 +214,6 @@ test("executing the same local setup plan twice reports existing files as alread
     assert.equal(second.ok, true);
     assert.ok(second.results.every((result) => ["already-done", "skipped"].includes(result.status)));
     assert.deepEqual(second.manifest.createdFiles, []);
-    assert.deepEqual(second.manifest.skippedFiles, [
-      { path: ".github/CODEOWNERS", reason: "owner unknown" },
-    ]);
+    assert.deepEqual(second.manifest.skippedFiles, []);
   }));
 });

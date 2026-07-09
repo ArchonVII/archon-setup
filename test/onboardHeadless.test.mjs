@@ -12,31 +12,38 @@ import {
 } from "../src/server/onboard/headlessOnboard.mjs";
 import { loadRegistry, buildPlan } from "../src/server/planner/buildPlan.mjs";
 
-// Baseline files the local-default selection must produce (subset of the
-// repo-template baseline asserted in foundationParity.test.mjs).
-const BASELINE_FILES = [
+// Baseline files the minimal local-default selection must produce.
+const MINIMAL_BASELINE_FILES = [
   "README.md",
   "LICENSE",
   ".gitignore",
   "AGENTS.md",
   "CLAUDE.md",
   "GEMINI.md",
+  ".gitattributes",
+  ".agent/coordination/README.md",
+  ".github/archon-setup.json",
+  "docs/repo-update-log.md",
+  "docs/repo-update-log/README.md",
+  ".agent/startup-baseline.json",
+  "docs/plans/README.md",
+  "docs/agent-process/document-policy.md",
+  "docs/agent-process/message-protocol.md",
+];
+
+const OPT_IN_FILES = [
   ".githooks/pre-commit",
   ".githooks/scripts/checkout-role.sh",
-  ".gitattributes",
   "CHANGELOG.md",
+  ".changelog/unreleased/README.md",
   ".github/dependabot.yml",
   ".github/PULL_REQUEST_TEMPLATE.md",
   ".github/workflows/anomaly-triage.yml",
   ".github/workflows/repo-update-log-fragment.yml",
   ".github/workflows/repo-required-gate.yml",
-  ".github/archon-setup.json",
   "scripts/close/lib.mjs",
   "scripts/close/scan-complete.mjs",
   "scripts/close/ci-guard.mjs",
-  // 2026-06-15-document-policy startup-baseline files that previously had no
-  // feature generating them (startup-readiness gap fix).
-  "docs/repo-update-log/README.md",
   "scripts/doc-health/lib.mjs",
   "scripts/doc-health/health.mjs",
   "docs/agent-process/doc-health.md",
@@ -44,9 +51,6 @@ const BASELINE_FILES = [
   "templates/MANIFEST.md",
   "templates/github/github.issue.standard.md",
 ];
-
-// F19 / authority markers that the wizard scrubs out of generated hooks.
-const FORBIDDEN_HOOK_PATTERNS = [/\bF19\b/, /ADR-001/, /docs\/adr\/001/, /\bF18\b/];
 
 async function tempRoot(prefix = "archon-onboard-") {
   return mkdtemp(join(tmpdir(), prefix));
@@ -93,15 +97,24 @@ async function withGitIdentity(fn) {
   }
 }
 
-test("defaultLocalSelection includes local files and runtime workflow callers", async () => {
+test("defaultLocalSelection keeps standard onboarding local and minimal", async () => {
   const { features } = await loadRegistry();
   const expected = features
     .filter((f) => f.default && f.remoteRequirement !== "api-target")
     .map((f) => f.id);
   assert.deepEqual(defaultLocalSelection(features), expected);
-  assert.ok(expected.includes("foundation.hooks"));
+  assert.ok(expected.includes("foundation.readme"));
+  assert.ok(expected.includes("foundation.agents"));
+  assert.ok(expected.includes("foundation.git-init"));
   assert.ok(!expected.includes("remote.labels"), "api-target features are not in the local baseline");
-  assert.ok(expected.includes("workflow.required-gate"), "required gate caller is part of the local baseline");
+  assert.ok(!expected.includes("remote.branch-protection"), "remote branch protection is opt-in");
+  assert.ok(!expected.includes("foundation.hooks"), "local hooks are opt-in");
+  assert.ok(!expected.includes("foundation.pr-template"), "PR template ceremony is opt-in");
+  assert.ok(!expected.includes("workflow.required-gate"), "runner-backed gate caller is opt-in");
+  assert.ok(!expected.includes("agent-workflow.repo-update-log-fragment"), "repo-update-log workflow is opt-in");
+  assert.ok(!expected.includes("agent-lifecycle.baseline"), "agent lifecycle scripts are opt-in");
+  assert.ok(!expected.includes("agent-workflow.doc-health"), "doc-health runner is opt-in");
+  assert.ok(!expected.includes("agent-workflow.template-library"), "template library is opt-in");
 });
 
 test("dry-run builds a plan via the shared planner and writes nothing", async () => {
@@ -132,12 +145,12 @@ test("dry-run builds a plan via the shared planner and writes nothing", async ()
   assert.deepEqual(result.plan, reference);
 
   // Nothing was written to disk.
-  for (const rel of BASELINE_FILES) {
+  for (const rel of MINIMAL_BASELINE_FILES) {
     assert.equal(await exists(root, rel), false, `${rel} should not exist after dry-run`);
   }
 });
 
-test("onboard writes the local baseline, scrubbed identically to the wizard", async () => {
+test("onboard writes the minimal local baseline without opt-in process automation", async () => {
   const root = await tempRoot();
 
   const result = await withFetchStub(() =>
@@ -147,26 +160,24 @@ test("onboard writes the local baseline, scrubbed identically to the wizard", as
   assert.equal(result.ok, true, "onboard should succeed");
   assert.equal(result.result.ok, true, "executor should succeed");
 
-  for (const rel of BASELINE_FILES) {
+  for (const rel of MINIMAL_BASELINE_FILES) {
     assert.equal(await exists(root, rel), true, `expected onboard to create ${rel}`);
+  }
+  for (const rel of OPT_IN_FILES) {
+    assert.equal(await exists(root, rel), false, `standard onboard should not create opt-in file ${rel}`);
   }
 
   // Manifest is written and self-identifies.
   const manifest = JSON.parse(await readFile(join(root, ".github/archon-setup.json"), "utf8"));
   assert.equal(manifest.tool, "archon-setup");
-  assert.ok(manifest.selectedFeatures.includes("foundation.hooks"));
-  assert.ok(manifest.selectedFeatures.includes("agent-workflow.template-library"));
-
-  // Hooks are scrubbed of F19 / authority markers.
-  const preCommit = await readFile(join(root, ".githooks/pre-commit"), "utf8");
-  const checkoutRole = await readFile(join(root, ".githooks/scripts/checkout-role.sh"), "utf8");
-  for (const pattern of FORBIDDEN_HOOK_PATTERNS) {
-    assert.doesNotMatch(preCommit, pattern, `pre-commit leaked ${pattern}`);
-    assert.doesNotMatch(checkoutRole, pattern, `checkout-role leaked ${pattern}`);
-  }
+  assert.ok(manifest.selectedFeatures.includes("foundation.git-init"));
+  assert.ok(manifest.selectedFeatures.includes("foundation.agents"));
+  assert.ok(!manifest.selectedFeatures.includes("foundation.hooks"));
+  assert.ok(!manifest.selectedFeatures.includes("workflow.required-gate"));
+  assert.ok(!manifest.selectedFeatures.includes("agent-workflow.template-library"));
 });
 
-test("a default onboard reports startup readiness complete (no manual baseline patching)", async () => {
+test("a default onboard reports minimal startup readiness complete", async () => {
   const root = await tempRoot();
 
   const writeResult = await withFetchStub(() =>
@@ -174,31 +185,21 @@ test("a default onboard reports startup readiness complete (no manual baseline p
   );
   assert.equal(writeResult.ok, true, "onboard should succeed");
 
-  // The doc-health runner + repo-update-log fragments guide must be generated,
-  // not left for a human to hand-copy from the snapshot.
-  for (const rel of [
-    "docs/repo-update-log/README.md",
-    "scripts/doc-health/lib.mjs",
-    "scripts/doc-health/health.mjs",
-    "docs/agent-process/doc-health.md",
-    "templates/github/github.issue.standard.md",
-  ]) {
+  for (const rel of MINIMAL_BASELINE_FILES) {
     assert.equal(await exists(root, rel), true, `expected onboard to create ${rel}`);
   }
+  for (const rel of OPT_IN_FILES) {
+    assert.equal(await exists(root, rel), false, `standard onboard should not create opt-in file ${rel}`);
+  }
 
-  // Audit the freshly-onboarded repo: startup readiness must be complete with
-  // nothing missing or stale.
   const auditResult = await withFetchStub(() => runOnboard({ targetPath: root, audit: true }));
   assert.equal(auditResult.ok, true);
   assert.equal(auditResult.audit.startupReadiness.status, "complete");
+  assert.equal(auditResult.audit.startupReadiness.profile, "minimal");
   assert.deepEqual(auditResult.audit.startupReadiness.missing, []);
   assert.deepEqual(auditResult.audit.startupReadiness.stale, []);
   assert.ok(auditResult.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
-  assert.ok(auditResult.audit.startupReadiness.present.includes("scripts/doc-health/health.mjs"));
-  assert.equal(
-    auditResult.audit.items.find((item) => item.path === "templates/github/github.issue.standard.md")?.status,
-    "present"
-  );
+  assert.ok(!auditResult.audit.startupReadiness.present.includes("scripts/doc-health/health.mjs"));
 });
 
 test("unknown feature ids are rejected before any write", async () => {

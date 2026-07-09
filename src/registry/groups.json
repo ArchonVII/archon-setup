@@ -2,7 +2,7 @@
   {
     "id": "foundations",
     "label": "Foundations",
-    "description": "Files every repo gets. Locked on.",
+    "description": "Minimal files every repo gets. Process add-ons stay opt-in.",
     "order": 0,
     "locked": true
   },
@@ -15,20 +15,20 @@
   {
     "id": "remote",
     "label": "GitHub remote",
-    "description": "Create the repo on GitHub, apply labels, apply baseline branch protection.",
+    "description": "Optional GitHub remote setup, labels, and branch protection.",
     "order": 20,
     "capabilitiesNeeded": ["gh.repoCreateAllowed"]
   },
   {
     "id": "agent-workflow",
     "label": "Agent workflow",
-    "description": "Capabilities that AI agents use during PR work. The check map is on by default; optional automation can be added per repo.",
+    "description": "Optional agent process automation for repos that need multi-agent or strict closeout workflows.",
     "order": 25
   },
   {
     "id": "workflows.pr-contract",
     "label": "PR contract bundle",
-    "description": "Optional standalone PR title/body/branch workflows. The default repo-required-gate already enforces the merge contract.",
+    "description": "Optional PR title/body/branch workflows for repos that want enforced merge ceremony.",
     "order": 30
   },
   {
@@ -41,7 +41,7 @@
   {
     "id": "workflows.ci",
     "label": "Language CI",
-    "description": "Default single required gate plus legacy standalone CI callers. New repos should keep repo-required-gate and set its stack to node, python, or minimal.",
+    "description": "Optional runner-backed CI callers. Standard onboarding installs no required GitHub Actions gate.",
     "order": 50
   },
   {

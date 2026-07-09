@@ -25,6 +25,28 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const GITHUB_WORKFLOWS_SNAPSHOT = join(__dirname, "..", "..", "snapshots", "github-workflows");
 const REPO_ROOT = join(__dirname, "..", "..", "..");
 
+const FULL_STARTUP_FEATURE_IDS = new Set([
+  "agent-lifecycle.baseline",
+  "agent-workflow.check-map",
+  "agent-workflow.anomaly-triage",
+  "agent-workflow.repo-update-log-fragment",
+  "agent-workflow.doc-sweep",
+  "agent-workflow.doc-health",
+  "foundation.pr-template",
+  "workflow.required-gate",
+]);
+
+const MINIMAL_STARTUP_PATHS = [
+  "AGENTS.md",
+  "docs/repo-update-log.md",
+  "docs/repo-update-log/README.md",
+  ".agent/startup-baseline.json",
+  "docs/plans/README.md",
+  "docs/agent-process/document-policy.md",
+  "docs/agent-process/message-protocol.md",
+  ".agent/coordination/README.md",
+];
+
 async function repoTemplateBody(snapshotPath, transform = (body) => body) {
   return transform(normalizeSnapshotText(await readFile(join(REPO_TEMPLATE_SNAPSHOT, snapshotPath), "utf8")));
 }
@@ -271,8 +293,14 @@ export async function auditPlan(plan) {
 
 async function startupReadiness(plan, items) {
   const baseline = await readStartupBaseline();
-  const required = unique([".agent/startup-baseline.json", ...(Array.isArray(baseline.required) ? baseline.required : [])]);
-  const expectedDirectories = Array.isArray(baseline.expectedDirectories) ? baseline.expectedDirectories : [];
+  const profile = startupReadinessProfile(plan);
+  const itemPaths = new Set(items.map((item) => item.path));
+  const required = profile === "full"
+    ? unique([".agent/startup-baseline.json", ...(Array.isArray(baseline.required) ? baseline.required : [])])
+    : MINIMAL_STARTUP_PATHS.filter((path) => itemPaths.has(path));
+  const expectedDirectories = profile === "full" && Array.isArray(baseline.expectedDirectories)
+    ? baseline.expectedDirectories
+    : [];
   const legacy = Array.isArray(baseline.legacy) ? baseline.legacy : [];
   const byPath = new Map(items.map((item) => [item.path, item]));
   const present = [];
@@ -311,6 +339,7 @@ async function startupReadiness(plan, items) {
 
   return {
     status,
+    profile,
     baselineVersion: baseline.version || "unknown",
     missing: unique(missing),
     present: unique(present),
@@ -319,6 +348,11 @@ async function startupReadiness(plan, items) {
     legacyDetected: unique(legacyDetected),
     repairCommand: `node ${normalize(join(REPO_ROOT, "bin", "onboard.mjs")).replace(/\\/g, "/")} ${String(plan.context.targetPath).replace(/\\/g, "/")} --dry-run`,
   };
+}
+
+function startupReadinessProfile(plan) {
+  const selected = new Set(plan.selectedFeatureIds || []);
+  return [...FULL_STARTUP_FEATURE_IDS].some((id) => selected.has(id)) ? "full" : "minimal";
 }
 
 async function readStartupBaseline() {

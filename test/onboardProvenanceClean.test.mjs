@@ -6,12 +6,18 @@ import { promisify } from "node:util";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
+import { defaultLocalSelection, runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
+import { loadRegistry } from "../src/server/planner/buildPlan.mjs";
 
 const execFileP = promisify(execFile);
 
 async function tempRoot(prefix = "archon-onboard-clean-") {
   return mkdtemp(join(tmpdir(), prefix));
+}
+
+async function defaultFeaturesWith(...ids) {
+  const { features } = await loadRegistry();
+  return [...new Set([...defaultLocalSelection(features), ...ids])];
 }
 
 // Hermetic license/gitignore fetch stub (mirrors onboardHeadless.test.mjs).
@@ -73,7 +79,14 @@ test("a fresh onboard ends with a clean working tree (provenance committed) (#28
   const root = await tempRoot();
 
   const result = await withFetchStub(() =>
-    withGitIdentity(() => runOnboard({ targetPath: root, owner: "ArchonVII", repo: "example" }))
+    withGitIdentity(async () =>
+      runOnboard({
+        targetPath: root,
+        owner: "ArchonVII",
+        repo: "example",
+        features: await defaultFeaturesWith("foundation.codeowners"),
+      })
+    )
   );
   assert.equal(result.ok, true, "onboard should succeed");
 

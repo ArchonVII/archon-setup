@@ -6,13 +6,19 @@ import { promisify } from "node:util";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
+import { defaultLocalSelection, runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
+import { loadRegistry } from "../src/server/planner/buildPlan.mjs";
 import { HOOK_FILES, check, apply, verify } from "../src/server/tasks/writeGithooks.mjs";
 
 const execFileP = promisify(execFile);
 
 async function tempRoot(prefix = "archon-onboard-execbit-existing-") {
   return mkdtemp(join(tmpdir(), prefix));
+}
+
+async function defaultFeaturesWith(...ids) {
+  const { features } = await loadRegistry();
+  return [...new Set([...defaultLocalSelection(features), ...ids])];
 }
 
 // Hermetic license/gitignore fetch stub (mirrors onboardHookExecBit.test.mjs).
@@ -108,7 +114,14 @@ test("onboarding an existing repo stages every hook entrypoint at 100755 without
   const { stdout: headBefore } = await execFileP("git", ["-C", root, "rev-parse", "HEAD"]);
 
   const result = await withFetchStub(() =>
-    withGitIdentity(() => runOnboard({ targetPath: root, owner: "ArchonVII", repo: "example" }))
+    withGitIdentity(async () =>
+      runOnboard({
+        targetPath: root,
+        owner: "ArchonVII",
+        repo: "example",
+        features: await defaultFeaturesWith("foundation.hooks"),
+      })
+    )
   );
   assert.equal(result.ok, true, "onboard should succeed");
 
