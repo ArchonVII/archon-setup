@@ -1,0 +1,1 @@
+- **Deterministic onboarding contract.** Added `docs/agent-process/deterministic-onboarding.md` to define "fully onboarded" as current default-branch state with a clean post-merge audit, document which onboarding steps must be automated, and separate explicit human/agent decisions from repeatable tool-owned work. (#340)

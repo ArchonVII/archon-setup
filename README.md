@@ -22,6 +22,8 @@ human to understand what was installed and what was intentionally skipped.
 For a plain-English explanation of what onboarding checks, confirms, adds,
 edits, and leaves for review, see
 [`docs/REPO_ONBOARDING_WALKTHROUGH.md`](./docs/REPO_ONBOARDING_WALKTHROUGH.md).
+For the binding rule that defines when onboarding is actually complete, see
+[`docs/agent-process/deterministic-onboarding.md`](./docs/agent-process/deterministic-onboarding.md).
 For the current coordinator/review/close handoff, see
 [`docs/COORDINATOR_HANDOFF.md`](./docs/COORDINATOR_HANDOFF.md).
 For the current active-lane map and held decision gates, see
@@ -368,6 +370,10 @@ Planned agent-facing capabilities:
   when you want the full startup/process audit.
 - Baseline branch protection can require PRs immediately, but named required
   checks must wait until the check has run at least once.
+- A repo is not fully onboarded just because an onboarding branch or side branch
+  passed. The selected baseline and any required workflow callers must exist on
+  the current default branch; see
+  [`docs/agent-process/deterministic-onboarding.md`](./docs/agent-process/deterministic-onboarding.md).
 - Use `node bin/archon-setup.mjs tighten-required-gate --target <repo-path>`
   after the first `repo-required-gate` run. Re-running it is safe; it leaves an
   already-required gate in place and marks the manifest post-check complete.
