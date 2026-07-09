@@ -22,9 +22,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SNAPSHOT_MANIFEST = join(__dirname, "..", "..", "snapshots", "manifest.json");
 
 // The wizard's default Features screen pre-selects every `default` feature.
-// Headlessly we exclude only API-target features that mutate GitHub. Runtime
-// workflow callers are local files, so include them to keep generated policy
-// artifacts backed by the workflows they reference.
+// Headlessly we exclude API-target features that mutate GitHub. Runtime
+// workflow callers are local files, but they remain opt-in through the registry
+// so standard solo-dev onboarding does not create runner-backed closeout gates.
 export function defaultLocalSelection(features) {
   return features.filter((f) => f.default && f.remoteRequirement !== "api-target").map((f) => f.id);
 }
@@ -46,7 +46,7 @@ export async function loadSourceSnapshots() {
 //
 // input:
 //   targetPath  required — the repo to scaffold/onboard
-//   features    optional array of feature IDs; defaults to the local baseline
+//   features    optional array of feature IDs; defaults to the minimal local baseline
 //   owner/repo/visibility   manifest + CODEOWNERS context
 //   options     per-feature option overrides (e.g. { foundation.license: { spdx } })
 //   capabilities  capability bits for remote features (default none)

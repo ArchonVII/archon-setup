@@ -8,9 +8,9 @@ import assert from "node:assert/strict";
 
 const execFileP = promisify(execFile);
 
-const NEW_FOUNDATION_IDS = [
+const OPTIONAL_FOUNDATION_IDS = [
   "foundation.hooks",
-  "foundation.gitattributes",
+  "foundation.friction-ledger",
   "foundation.changelog",
   "foundation.actionlint",
   "foundation.codeowners",
@@ -28,7 +28,6 @@ const LOCAL_BASELINE_FILES = [
   "CLAUDE.md",
   "GEMINI.md",
   ".agent/coordination/README.md",
-  ".agent/check-map.yml",
   ".githooks/commit-msg",
   ".githooks/pre-commit",
   ".githooks/scripts/install-githooks.sh",
@@ -86,26 +85,34 @@ async function assertFilesExist(root, files) {
   assert.deepEqual(missing, []);
 }
 
-test("new foundation features are locked local defaults and plan the repo-template baseline subset", async () => {
+test("optional foundation add-ons remain available without bloating the default setup", async () => {
   const { loadRegistry, buildPlan } = await import("../src/server/planner/buildPlan.mjs");
   const { features } = await loadRegistry();
   const byId = new Map(features.map((feature) => [feature.id, feature]));
 
-  for (const id of NEW_FOUNDATION_IDS) {
+  for (const id of OPTIONAL_FOUNDATION_IDS) {
     const feature = byId.get(id);
     assert.ok(feature, `${id} should be registered`);
     assert.equal(feature.group, "foundations");
-    assert.equal(feature.default, true, `${id} should be selected by default`);
-    assert.equal(feature.locked, true, `${id} should be locked`);
+    assert.equal(feature.default, false, `${id} should be opt-in`);
+    assert.ok(!feature.locked, `${id} should not be locked`);
     assert.deepEqual(feature.capabilitiesNeeded || [], [], `${id} should not require remote capabilities`);
   }
 
-  const localDefaultSelection = features
-    .filter((feature) => feature.default && !feature.remoteRequirement)
-    .map((feature) => feature.id);
+  const explicitSelection = [
+    "foundation.readme",
+    "foundation.license",
+    "foundation.gitignore",
+    "foundation.agents",
+    "foundation.claude-md",
+    "foundation.gemini-md",
+    "foundation.coordination",
+    "foundation.gitattributes",
+    ...OPTIONAL_FOUNDATION_IDS,
+  ];
 
   const planWithoutOwner = await buildPlan({
-    selection: localDefaultSelection,
+    selection: explicitSelection,
     options: {},
     context: { targetPath: "X", owner: "", repo: "r", visibility: "private", capabilities: {} },
   });
@@ -128,7 +135,7 @@ test("new foundation features are locked local defaults and plan the repo-templa
   ]);
 
   const planWithOwner = await buildPlan({
-    selection: localDefaultSelection,
+    selection: explicitSelection,
     options: {},
     context: { targetPath: "X", owner: "ArchonVII", repo: "r", visibility: "private", capabilities: {} },
   });
@@ -284,5 +291,24 @@ test("initGitAndCommit activates .githooks when hooksPath is unset", async () =>
 
   const { stdout } = await execFileP("git", ["-C", root, "config", "--get", "core.hooksPath"]);
   assert.equal(stdout.trim(), ".githooks");
+  await rm(root, { recursive: true, force: true });
+});
+
+test("initGitAndCommit leaves hooksPath unset when hooks were not installed", async () => {
+  const root = await tempRoot();
+  await execFileP("git", ["-C", root, "init", "-b", "main"]);
+  await execFileP("git", ["-C", root, "config", "user.email", "test@example.invalid"]);
+  await execFileP("git", ["-C", root, "config", "user.name", "Test User"]);
+  await writeFile(join(root, "README.md"), "# Test\n", "utf8");
+
+  const task = await import("../src/server/tasks/initGitAndCommit.mjs");
+  const taskCtx = ctx(root);
+
+  await task.apply(taskCtx);
+
+  await assert.rejects(
+    execFileP("git", ["-C", root, "config", "--get", "core.hooksPath"]),
+    /Command failed/
+  );
   await rm(root, { recursive: true, force: true });
 });

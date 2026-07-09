@@ -15,7 +15,7 @@
   "id": "workflow.semantic-pr-title",
   "label": "Semantic PR title",
   "group": "workflows.pr-contract",
-  "default": true,
+  "default": false,
   "locked": false,
   "requires": ["remote.github"],
   "capabilitiesNeeded": ["gh.repoCreateAllowed"],
@@ -43,6 +43,18 @@
 - `capabilitiesNeeded` — preflight capability bits (e.g. `gh.repoCreateAllowed`).
 - `conflictsWith` — feature IDs that cannot be co-enabled.
 
+## Default policy
+
+Standard onboarding is intentionally minimal for solo-dev repos. `default: true`
+is reserved for local, low-ceremony files needed to create a usable repository:
+README, license, gitignore, agent pointers, neutral coordination docs,
+`.gitattributes`, and the initial git commit.
+
+Features that add local hooks, changelog ceremony, PR templates, CODEOWNERS,
+Dependabot, GitHub labels, branch protection, runner-backed workflows, agent
+lifecycle scripts, doc-health/doc-sweep runners, or template libraries stay
+`default: false` unless the user explicitly selects them.
+
 ## Staged (disabled) features
 
 Set `disabled: true` (and `default: false`) to register a capability that is
@@ -67,7 +79,7 @@ the headless CLI) — the gate is in the UI.
 4. If it references a new workflow snapshot, run `npm run refresh-snapshots`.
 5. Add a golden-file test under `test/golden/`.
 
-Default foundation features may compose existing baseline tasks through
+Optional foundation features may compose existing baseline tasks through
 `requires`. For example, `foundation.friction-ledger` owns only
 `.claude/friction.md`; it requires `foundation.agents`, `foundation.gitignore`,
 and `foundation.hooks` because those tasks carry the AGENTS.md instruction,

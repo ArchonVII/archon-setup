@@ -6,13 +6,19 @@ import { promisify } from "node:util";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
+import { defaultLocalSelection, runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
+import { loadRegistry } from "../src/server/planner/buildPlan.mjs";
 import { HOOK_FILES } from "../src/server/tasks/writeGithooks.mjs";
 
 const execFileP = promisify(execFile);
 
 async function tempRoot(prefix = "archon-onboard-execbit-") {
   return mkdtemp(join(tmpdir(), prefix));
+}
+
+async function defaultFeaturesWith(...ids) {
+  const { features } = await loadRegistry();
+  return [...new Set([...defaultLocalSelection(features), ...ids])];
 }
 
 // Hermetic license/gitignore fetch stub (mirrors onboardProvenanceClean.test.mjs).
@@ -68,7 +74,14 @@ test("a fresh onboard commits every hook entrypoint at mode 100755 (#317)", asyn
   await execFileP("git", ["-C", root, "config", "core.filemode", "false"]);
 
   const result = await withFetchStub(() =>
-    withGitIdentity(() => runOnboard({ targetPath: root, owner: "ArchonVII", repo: "example" }))
+    withGitIdentity(async () =>
+      runOnboard({
+        targetPath: root,
+        owner: "ArchonVII",
+        repo: "example",
+        features: await defaultFeaturesWith("foundation.hooks"),
+      })
+    )
   );
   assert.equal(result.ok, true, "onboard should succeed");
 
@@ -132,7 +145,14 @@ test("a truly-fresh onboard (no .git until bootstrap) commits hooks at 100755 (#
 
   await withFilemodelessEnv(async () => {
     const result = await withFetchStub(() =>
-      withGitIdentity(() => runOnboard({ targetPath: root, owner: "ArchonVII", repo: "example" }))
+      withGitIdentity(async () =>
+        runOnboard({
+          targetPath: root,
+          owner: "ArchonVII",
+          repo: "example",
+          features: await defaultFeaturesWith("foundation.hooks"),
+        })
+      )
     );
     assert.equal(result.ok, true, "onboard should succeed");
 
