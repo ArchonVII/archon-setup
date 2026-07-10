@@ -1,0 +1,1 @@
+- **Managed anomaly caller updates are byte-idempotent across mixed line endings.** Exact permission blocks no longer trigger whole-file EOL normalization on a second updater pass. (#344)

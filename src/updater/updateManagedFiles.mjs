@@ -175,6 +175,13 @@ function ensureAnomalyTriagePermissions(body) {
     while (end < lines.length && (lines[end].trim() === "" || /^[ \t]/.test(lines[end]))) {
       end += 1;
     }
+    const currentBlock = lines.slice(start, end).filter((line) => line.trim() !== "");
+    if (
+      currentBlock.length === ANOMALY_TRIAGE_PERMISSIONS.length
+      && currentBlock.every((line, index) => line === ANOMALY_TRIAGE_PERMISSIONS[index])
+    ) {
+      return body;
+    }
     const replacement = [...ANOMALY_TRIAGE_PERMISSIONS];
     if (end < lines.length) replacement.push("");
     lines.splice(start, end - start, ...replacement);
