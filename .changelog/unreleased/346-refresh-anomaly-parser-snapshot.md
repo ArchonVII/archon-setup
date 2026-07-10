@@ -1,0 +1,1 @@
+- **Anomaly-triage metadata routing now ships from the released provider pin.** Refreshed the `githubWorkflows` snapshot manifest to `f34893a`, which includes the parser compatibility fix for documented `**Field:** value` entries. (#346)
