@@ -1,0 +1,1 @@
+- **Anomaly triage callers now receive the least-privilege write scopes they need.** Refreshed provider snapshots and self-apply/updater contracts distribute `contents: read`, `pull-requests: write`, and `issues: write` without widening repository defaults. (#342)

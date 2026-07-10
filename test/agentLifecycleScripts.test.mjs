@@ -52,7 +52,6 @@ test("root lifecycle scripts stay byte-identical to their repo-template snapshot
     "scripts/close/ci-guard.mjs",
     "scripts/agent-close-preflight.mjs",
     "scripts/agent-pr-ready.mjs",
-    "docs/repo-update-log/README.md",
     "docs/agent-process/document-policy.md",
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",

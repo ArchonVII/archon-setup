@@ -37,12 +37,6 @@ export const SOURCES = [
       ".claude/friction.md",
       ".agent/startup-baseline.json",
       "docs/repo-update-log.md",
-      // Per-PR repo-update-log fragments front door (repo-template#89). The
-      // refreshed startup-baseline.json (2026-06-15-document-policy) requires
-      // docs/repo-update-log/README.md and the docs/repo-update-log/ directory,
-      // so the snapshot must ship the README to satisfy its own baseline. Only
-      // the README is mirrored; historical fragments stay in the provider.
-      "docs/repo-update-log/README.md",
       "docs/plans/README.md",
       "docs/template-library-inventory.md",
       "docs/agent-process/doc-sweep.md",
@@ -102,13 +96,11 @@ export const SOURCES = [
       ".githooks/scripts/test-checkout-role.sh",
       ".gitattributes",
       "CHANGELOG.md",
-      ".changelog/unreleased/README.md",
       ".github/CODEOWNERS",
       ".github/PULL_REQUEST_TEMPLATE.md",
       ".github/dependabot.yml",
       ".github/workflows/actionlint.yml",
       ".github/workflows/anomaly-triage.yml",
-      ".github/workflows/repo-update-log-fragment.yml",
       ".github/workflows/wiki-lint.yml",
     ],
     copyDirs: [

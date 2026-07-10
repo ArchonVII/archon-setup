@@ -26,9 +26,7 @@ export const ROOT = join(dirname(MODULE_PATH), "..");
 
 const STARTUP_BASELINE = ".agent/startup-baseline.json";
 const ANOMALY_TRIAGE_WORKFLOW = ".github/workflows/anomaly-triage.yml";
-const REPO_UPDATE_LOG_WORKFLOW = ".github/workflows/repo-update-log-fragment.yml";
 const ROOT_SUPPORT_DOCS = [
-  "docs/repo-update-log/README.md",
   "docs/agent-process/document-policy.md",
 ];
 
@@ -47,13 +45,6 @@ const anomalyTriageWorkflowTask = {
   check: (ctx) => checkAllMatch(ctx, [ANOMALY_TRIAGE_WORKFLOW]),
   apply: async (ctx) => [await writeSnapshotFile(ctx, ANOMALY_TRIAGE_WORKFLOW, { overwrite: true })],
   verify: (ctx) => verifyAllMatch(ctx, [ANOMALY_TRIAGE_WORKFLOW]),
-};
-
-const repoUpdateLogWorkflowTask = {
-  name: "repo-update-log-fragment-workflow",
-  check: (ctx) => checkAllMatch(ctx, [REPO_UPDATE_LOG_WORKFLOW]),
-  apply: async (ctx) => [await writeSnapshotFile(ctx, REPO_UPDATE_LOG_WORKFLOW, { overwrite: true })],
-  verify: (ctx) => verifyAllMatch(ctx, [REPO_UPDATE_LOG_WORKFLOW]),
 };
 
 // Snapshot-owned support docs named by the startup baseline. Do not fold in
@@ -82,7 +73,6 @@ export const TASKS = [
   rootSupportDocsTask,
   { name: "doc-health", check: docHealth.check, apply: docHealth.apply, verify: docHealth.verify },
   anomalyTriageWorkflowTask,
-  repoUpdateLogWorkflowTask,
   startupBaselineTask,
 ];
 

@@ -52,10 +52,10 @@
     "group": "foundations",
     "default": true,
     "locked": true,
-    "creates": ["AGENTS.md", "docs/repo-update-log.md", "docs/repo-update-log/README.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md", "docs/agent-process/message-protocol.md"],
+    "creates": ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md", "docs/agent-process/message-protocol.md"],
     "tasks": ["writeAgentsMd"],
     "beginnerDescription": "The cross-tool contract for AI agents (Claude, Codex, Gemini) working in this repo.",
-    "advancedDescription": "Copied from snapshots of ArchonVII/repo-template/AGENTS.md, docs/repo-update-log.md, the docs/repo-update-log/README.md per-PR fragments guide, the docs/agent-process/document-policy.md charter (document-policy spec §5.1, lane 1c), and the docs/agent-process/message-protocol.md charter that AGENTS.md's `## Message protocol` section links to (#278), with the CHANGELOG-mode placeholder resolved."
+    "advancedDescription": "Copied from snapshots of ArchonVII/repo-template/AGENTS.md, the frozen docs/repo-update-log.md archive, the docs/agent-process/document-policy.md charter (document-policy spec §5.1, lane 1c), and the docs/agent-process/message-protocol.md charter that AGENTS.md's `## Message protocol` section links to (#278)."
   },
   {
     "id": "foundation.claude-md",
@@ -137,13 +137,13 @@
   },
   {
     "id": "foundation.changelog",
-    "label": "CHANGELOG.md + fragments",
+    "label": "CHANGELOG.md (release-class)",
     "group": "foundations",
     "default": false,
-    "creates": ["CHANGELOG.md", ".changelog/unreleased/README.md"],
+    "creates": ["CHANGELOG.md"],
     "tasks": ["writeChangelog"],
-    "beginnerDescription": "Adds a Keep a Changelog file and unreleased-fragment folder.",
-    "advancedDescription": "Mode 2 changelog-fragment baseline copied from repo-template snapshots."
+    "beginnerDescription": "Adds the release-class changelog folded from Conventional Commit history at release time.",
+    "advancedDescription": "Release-class CHANGELOG baseline copied from repo-template; per-PR fragments are retired."
   },
   {
     "id": "foundation.actionlint",
@@ -292,19 +292,14 @@
   },
   {
     "id": "agent-workflow.repo-update-log-fragment",
-    "label": "Repo update log guard",
+    "label": "Repo update log guard (retired)",
     "group": "agent-workflow",
     "default": false,
-    "remoteRequirement": "runtime",
-    "creates": [".github/workflows/repo-update-log-fragment.yml"],
-    "tasks": ["installWorkflow"],
-    "options": {
-      "workflowName": { "type": "constant", "value": "repo-update-log-fragment" },
-      "snapshotSource": { "type": "constant", "value": "repo-template" }
-    },
-    "validations": ["workflowReferencesPinnedV1"],
-    "beginnerDescription": "Checks applicable PRs for a repo update log fragment so operational history is not silently skipped.",
-    "advancedDescription": "Caller to ArchonVII/github-workflows/repo-update-log-fragment.yml@v1, installed from the repo-template caller snapshot so it matches the startup baseline. The workflow is a non-required leaf guard; the stable branch-protection surface remains repo-required-gate / decision."
+    "disabled": true,
+    "creates": [],
+    "tasks": [],
+    "beginnerDescription": "Retired compatibility identifier for repositories whose existing setup manifest selected the former guard.",
+    "advancedDescription": "Disabled no-op retained so old manifests remain resolvable after repo-template retired the per-PR repo-update-log fragment regime."
   },
   {
     "id": "workflow.pr-policy",

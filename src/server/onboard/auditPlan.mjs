@@ -29,7 +29,6 @@ const FULL_STARTUP_FEATURE_IDS = new Set([
   "agent-lifecycle.baseline",
   "agent-workflow.check-map",
   "agent-workflow.anomaly-triage",
-  "agent-workflow.repo-update-log-fragment",
   "agent-workflow.doc-sweep",
   "agent-workflow.doc-health",
   "foundation.pr-template",
@@ -39,7 +38,6 @@ const FULL_STARTUP_FEATURE_IDS = new Set([
 const MINIMAL_STARTUP_PATHS = [
   "AGENTS.md",
   "docs/repo-update-log.md",
-  "docs/repo-update-log/README.md",
   ".agent/startup-baseline.json",
   "docs/plans/README.md",
   "docs/agent-process/document-policy.md",
@@ -76,21 +74,12 @@ async function expectedBodyFor({ path, unit, context }) {
       return readmeTemplate({ repo: context.repo, owner: context.owner });
     case "writeAgentsMd":
       if (path === "AGENTS.md") {
-        // #291 + #306: reuse the emitter's renderer so the audit's expected body
-        // never drifts from what onboarding actually writes (Mode 2 default,
-        // managed delivery-workflow block).
-        return renderAgentsBody(await repoTemplateBody("AGENTS.md"), unit.options?.changelogMode);
+        // Reuse the emitter's renderer so the audit's expected body never
+        // drifts from the release-class template and managed delivery block.
+        return renderAgentsBody(await repoTemplateBody("AGENTS.md"));
       }
       if (path === "docs/repo-update-log.md") {
         return repoTemplateBody(join("docs", "repo-update-log.md"));
-      }
-      if (path === "docs/repo-update-log/README.md") {
-        // Per-PR fragments guide. Like the plans README it tolerates repo-local
-        // YAML frontmatter in wiki-managed repos.
-        return {
-          comparison: "markdown-frontmatter",
-          body: await repoTemplateBody(join("docs", "repo-update-log", "README.md")),
-        };
       }
       if (path === ".agent/startup-baseline.json") {
         return repoTemplateBody(join(".agent", "startup-baseline.json"));
@@ -484,8 +473,6 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
       return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     case "docs/repo-update-log.md":
       return (await fileMatches(root, relativePath, /^# Repository Update Log/m)) ? "present" : "stale";
-    case "docs/repo-update-log/README.md":
-      return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     case "package.json":
       return (await packageHasAgentScripts(root)) ? "present" : "stale";
     case "docs/agent-process/doc-sweep.md":

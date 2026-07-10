@@ -1,6 +1,6 @@
 import { checkAllExist, verifyAllExist, writeSnapshotFile } from "./repoTemplateSnapshot.mjs";
 
-const FILES = ["CHANGELOG.md", ".changelog/unreleased/README.md"];
+const FILES = ["CHANGELOG.md"];
 
 export async function check(ctx) {
   return checkAllExist(ctx, FILES);
@@ -15,5 +15,5 @@ export async function verify(ctx) {
 }
 
 export function rollbackHint(ctx) {
-  return `Delete ${ctx.targetPath}/CHANGELOG.md and ${ctx.targetPath}/.changelog to retry.`;
+  return `Delete ${ctx.targetPath}/CHANGELOG.md to retry.`;
 }

@@ -38,7 +38,6 @@ const LOCAL_BASELINE_FILES = [
   ".githooks/scripts/test-checkout-role.sh",
   ".gitattributes",
   "CHANGELOG.md",
-  ".changelog/unreleased/README.md",
   ".github/workflows/actionlint.yml",
   ".github/dependabot.yml",
   ".github/PULL_REQUEST_TEMPLATE.md",
@@ -200,7 +199,7 @@ test("writeGitattributes writes the repo-template attributes file", async () => 
   assert.match(body, /\.githooks\/\*\s+text eol=lf/);
 });
 
-test("writeChangelog writes changelog mode 2 baseline files", async () => {
+test("writeChangelog writes the release-class changelog baseline", async () => {
   const root = await tempRoot();
   const task = await import("../src/server/tasks/writeChangelog.mjs");
   const taskCtx = ctx(root);
@@ -208,9 +207,7 @@ test("writeChangelog writes changelog mode 2 baseline files", async () => {
   await task.apply(taskCtx);
   assert.deepEqual(await task.verify(taskCtx), { ok: true });
   const changelog = await readFile(join(root, "CHANGELOG.md"), "utf8");
-  const fragments = await readFile(join(root, ".changelog/unreleased/README.md"), "utf8");
   assert.match(changelog, /Keep a Changelog/i);
-  assert.match(fragments, /unreleased/i);
 });
 
 test("writeCodeowners writes a known owner and records an intentional skip without one", async () => {

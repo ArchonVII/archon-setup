@@ -16,8 +16,6 @@ const ROOT = process.cwd();
 const BASELINE_FILES = [
   ".agent/startup-baseline.json",
   ".github/workflows/anomaly-triage.yml",
-  ".github/workflows/repo-update-log-fragment.yml",
-  "docs/repo-update-log/README.md",
   "docs/agent-process/document-policy.md",
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
@@ -108,8 +106,6 @@ test("selfApply repairs drifted root copies back to the snapshot (post-refresh u
   const drifted = [
     ".agent/startup-baseline.json",
     ".github/workflows/anomaly-triage.yml",
-    ".github/workflows/repo-update-log-fragment.yml",
-    "docs/repo-update-log/README.md",
     "docs/agent-process/document-policy.md",
     "scripts/agent/lib.mjs",
     "scripts/doc-sweep/sweep.mjs",

@@ -137,6 +137,19 @@ jobs:
       #   src/snapshots/
       # snapshot-test-command: npm run test:snapshots
 
+      # ------ Docs-system gate (repo-template docs-system repos) ----------
+      # Opt-in, PR events only, runs on EVERY lane (doc drift is precisely a
+      # docs-only concern). When true, a docs-gate job runs after detect:
+      #   npm run docs:render -- --check          (stale committed rendered blocks)
+      #   node scripts/doc-health/health.mjs --repo . --changed-from origin/<base> --json
+      #                                           (blocking doc-health findings)
+      # Requires the repo-template docs-system scripts (docs:render npm
+      # script + scripts/doc-health/health.mjs). Leave false/absent
+      # otherwise: the job is skipped and the decision check does not
+      # require it.
+      #
+      # docs-system: true
+
       # ------ Force-full escape hatch (any stack) -------------------------
       # Default label is `ci:full`. Apply it to a PR to bypass path-based
       # routing and run the full language CI surface — e.g. a workflow-only

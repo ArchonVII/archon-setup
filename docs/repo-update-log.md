@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-07-09 - Anomaly-triage caller permission propagation
+
+- **Issue/PR:** #342 / pending
+- **Branch:** agent/codex/342-anomaly-triage-write-permissions
+- **Changed paths:** `.github/workflows/anomaly-triage.yml`, `.github/workflows/repo-update-log-fragment.yml` (removed), `scripts/refresh-snapshots.mjs`, `scripts/agent-self-apply.mjs`, `src/registry/features.json`, `src/server/{onboard,tasks}/**`, `src/snapshots/**`, `test/**`, `README.md`, `docs/agent-process/**`, `docs/ecosystem-overview.md`
+- **What changed:** Refreshed the `githubWorkflows` snapshot from `990cbca` to `e6ef54c` and `repoTemplate` from `58aa9b8` to `32dd578`, self-applied the least-privilege anomaly-triage caller permissions, and aligned onboarding with the template's S3 retirement of per-PR changelog/repo-update-log fragments. The obsolete root repo-update-log caller was removed because its reusable workflow no longer exists at `github-workflows@v1`; its old feature ID remains a disabled no-op for manifest compatibility.
+- **Verification:** TDD proved the root and both snapshot callers failed the exact permission contract before refresh (0/3) and passed after refresh (3/3). `npm run agent:self-apply -- --check` reported all six tasks already done; the focused integration set passed 127/127; `npm test` passed 670 with 2 platform skips; `npm run snapshots:verify` passed for all three providers; `node scripts/update-ecosystem-overview.mjs --check` passed; scoped `actionlint` passed for the root and both snapshotted anomaly callers.
+- **Propagation:** pending consumer updater lanes for opted-in anomaly-triage callers; already-correct or non-opted-in repositories remain unchanged.
+
 ## 2026-06-20 - Repo-update-log fragment guard snapshot refresh
 
 - **Issue/PR:** #270 / #271

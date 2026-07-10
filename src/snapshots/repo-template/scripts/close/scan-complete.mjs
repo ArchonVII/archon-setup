@@ -8,18 +8,42 @@ import {
   validatePrContract,
 } from '../pr-contract.mjs';
 import {
+  RELEASE_CHANGELOG_DECISION,
   buildCloseScanMarker,
   classifyCloseScanScope,
-  evaluateChangelogDecision,
-  evaluateRepoUpdateLogDecision,
-  extractChangelogFragment,
+  evaluateDocsDecision,
+  freshDodCaptures,
   isSubstantiveDecision,
   listHookShellFiles,
   listWorkflowFiles,
   markerPath,
   parseRequiredGateCheckName,
+  readDodCapture,
   writeCloseScanMarker,
 } from './lib.mjs';
+
+// The doc-map lives with the docs generators (scripts/docs); consumers that
+// received the close scripts without the docs system (pre-T1 self-apply) must
+// not crash — the docs DoD degrades to auto-pass ONLY when the spine is
+// truly absent. A doc-map that EXISTS but cannot be imported/read/parsed
+// fails closed instead (#145 review): parseDocMap is a lenient line-parser,
+// so "malformed" often reads as an empty-but-truthy map — the version check
+// catches that shape too.
+async function readDocMapSafe(root) {
+  if (!existsSync(join(root, '.agent', 'doc-map.yml'))) {
+    return { docMap: null, docMapError: null };
+  }
+  try {
+    const { readDocMap } = await import('../docs/lib.mjs');
+    const docMap = readDocMap(root);
+    if (!docMap || docMap.version !== 1) {
+      return { docMap: null, docMapError: 'parsed but is not a valid version-1 doc-map' };
+    }
+    return { docMap, docMapError: null };
+  } catch (err) {
+    return { docMap: null, docMapError: String(err.message || err).split('\n')[0] };
+  }
+}
 
 function parseArgs(argv) {
   const args = {};
@@ -273,15 +297,7 @@ function validatePolicyFiles(root) {
   };
 }
 
-function checkChangelogFragment(root, decision) {
-  const fragment = extractChangelogFragment(decision);
-  if (!fragment) return null;
-  const absolute = join(root, fragment);
-  if (existsSync(absolute)) return null;
-  return `Changelog decision names \`${fragment}\`, but that file does not exist.`;
-}
-
-function runLocalChecks({ root, pr, files, scope, changelogDecision }) {
+function runLocalChecks({ root, pr, files, scope, docsResult }) {
   const localChecks = [];
 
   const contract = validatePrContract({
@@ -296,27 +312,21 @@ function runLocalChecks({ root, pr, files, scope, changelogDecision }) {
     summary: formatPrContractResult(contract),
   });
 
-  const repoUpdateLog = evaluateRepoUpdateLogDecision({
-    files,
-    body: pr.body,
-  });
+  // #124 S2: the docs section of the closeout DoD — evaluated in main() (it
+  // needs the doc-map and the captured/explicit decision), reported here so it
+  // fails the scan like any other local check.
   localChecks.push({
-    name: 'repo-update-log',
-    ok: repoUpdateLog.ok,
-    summary: repoUpdateLog.ok ? 'Repo update log decision accepted.' : repoUpdateLog.failures.join(' '),
+    name: 'docs',
+    ok: docsResult.ok,
+    summary: docsResult.ok
+      ? `Docs DoD satisfied: ${docsResult.decision}${docsResult.waived ? ' [docs:waived]' : ''}`
+      : docsResult.failures.join(' '),
   });
 
-  const changelog = evaluateChangelogDecision({
-    requiresChangelog: scope.requiresChangelog,
-    labels: pr.labels,
-    changelogDecision,
-  });
-  const missingFragment = changelog.ok ? checkChangelogFragment(root, changelogDecision) : null;
-  localChecks.push({
-    name: 'changelog',
-    ok: changelog.ok && !missingFragment,
-    summary: missingFragment || (changelog.ok ? 'Changelog decision accepted.' : changelog.failures.join(' ')),
-  });
+  // #124 S3: there is no repo-update-log or changelog LOCAL parity check — the
+  // fragment ledger is retired and CHANGELOG.md is release-class. The marker
+  // still records a substantive `changelog` DoD decision (main() defaults it to
+  // RELEASE_CHANGELOG_DECISION), but that is a marker section, not a check.
 
   if (scope.requiredChecks.some((check) => check.name === 'node-test')) {
     // A baseline'd repo has no `test` script (the required gate leaves
@@ -398,7 +408,7 @@ function truncate(text) {
   return text.length > 800 ? `${text.slice(0, 797)}...` : text;
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   const root = git(['rev-parse', '--show-toplevel']);
   process.chdir(root);
@@ -409,16 +419,44 @@ function main() {
   const files = collectChangedFiles({ base, fallbackFiles: pr.files });
   const stack = args.stack || stackFromRequiredGate(root);
   const scope = classifyCloseScanScope({ files, labels: pr.labels, stack });
-  const changelogDecision = args['changelog-decision'] || (scope.requiresChangelog ? '' : 'not required: docs-only change');
-  const findingsDecision = args['findings-decision'] || '';
-  const localChecks = runLocalChecks({ root, pr, files, scope, changelogDecision });
+
+  // #124 S2: decisions captured incrementally during the session (close:dod)
+  // are the defaults; explicit flags win; scope-derived defaults come last.
+  // Only captures made at the CURRENT HEAD are reusable (#145 review, P1) —
+  // stale ones are discarded loudly and must be recaptured.
+  const { sections: freshSections, discarded } = freshDodCaptures(readDodCapture(root), gitInfo.head);
+  if (discarded.length > 0) {
+    process.stderr.write(
+      `Discarded stale close:dod captures (recorded at a different HEAD): ${discarded.join(', ')} — `
+        + 'recapture at the current HEAD if still true.\n'
+    );
+  }
+  const captured = (section) => freshSections[section]?.decision || '';
+
+  // #124 S3: CHANGELOG.md is release-class — the marker's changelog DoD
+  // decision is auto-recorded with the release-class text unless the closer
+  // overrides it; there is no per-PR fragment to name.
+  const changelogDecision = args['changelog-decision'] || captured('changelog') || RELEASE_CHANGELOG_DECISION;
+  const findingsDecision = args['findings-decision'] || captured('findings');
+  const { docMap, docMapError } = await readDocMapSafe(root);
+  const docsResult = evaluateDocsDecision({
+    files,
+    docMap,
+    docMapError,
+    docsOnly: scope.docsOnly,
+    labels: pr.labels,
+    decision: args['docs-decision'] || captured('docs'),
+    // A deleted/renamed-away triggered doc must not satisfy its own trigger.
+    existsFn: (rel) => existsSync(join(root, rel)),
+  });
+  const localChecks = runLocalChecks({ root, pr, files, scope, docsResult });
   const failures = localChecks.filter((check) => !check.ok).map((check) => `[${check.name}] ${check.summary}`);
 
   if (!isSubstantiveDecision(findingsDecision)) {
     failures.push('Missing required --findings-decision value.');
   }
 
-  const verificationSummary = args['verification-summary']
+  const verificationSummary = args['verification-summary'] || captured('verification')
     || localChecks.map((check) => `${check.name}: ${check.summary}`).join(' ');
   if (!isSubstantiveDecision(verificationSummary)) {
     failures.push('Missing substantive verification summary.');
@@ -428,10 +466,11 @@ function main() {
     git: gitInfo,
     pr,
     scope,
-    decisions: {
-      changelog: changelogDecision,
-      findings: findingsDecision,
-      verification: verificationSummary,
+    dod: {
+      docs: { decision: docsResult.decision, waived: docsResult.waived, triggers: docsResult.triggers },
+      changelog: { decision: changelogDecision },
+      verification: { decision: verificationSummary },
+      findings: { decision: findingsDecision },
     },
     localChecks,
   });
@@ -451,5 +490,5 @@ function main() {
 export { checkHookSyntax, parseNameStatus, toBashPath, decideNodeTest, validatePolicyFiles };
 
 if (process.argv[1] && resolve(fileURLToPath(import.meta.url)) === resolve(process.argv[1])) {
-  main();
+  await main();
 }

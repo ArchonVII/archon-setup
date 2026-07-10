@@ -30,7 +30,6 @@ const FULL_STARTUP_FEATURES = [
   "foundation.pr-template",
   "agent-workflow.check-map",
   "agent-workflow.anomaly-triage",
-  "agent-workflow.repo-update-log-fragment",
   "agent-lifecycle.baseline",
   "agent-workflow.doc-sweep",
   "agent-workflow.doc-health",
@@ -103,7 +102,6 @@ async function seedCurrentMinimalAgentBaseline(root, selectedFeatures = ["founda
 
   for (const relativePath of [
     "docs/repo-update-log.md",
-    "docs/repo-update-log/README.md",
     ".agent/startup-baseline.json",
     "docs/plans/README.md",
     "docs/agent-process/document-policy.md",
@@ -344,7 +342,7 @@ test("onboard --audit reports minimal-profile startup readiness in JSON", async 
   assert.equal(parsed.mode, "audit");
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
   assert.equal(parsed.audit.startupReadiness.profile, "minimal");
-  assert.equal(parsed.audit.startupReadiness.baselineVersion, "2026-06-15-document-policy");
+  assert.equal(parsed.audit.startupReadiness.baselineVersion, "2026-07-04-s3-fragment-retirement");
   assert.ok(parsed.audit.startupReadiness.missing.includes("docs/plans/README.md"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("AGENTS.md"));
   assert.ok(parsed.audit.startupReadiness.legacyDetected.includes("docs/superpowers/plans/"));
@@ -370,9 +368,6 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await mkdir(join(root, "docs"), { recursive: true });
   await mkdir(join(root, "docs", "plans"), { recursive: true });
   await mkdir(join(root, "docs", "agent-process"), { recursive: true });
-  // Per-PR repo-update-log fragments dir + doc-health runner dir are now part of
-  // the 2026-06-15-document-policy startup baseline (lane 1c snapshot bump).
-  await mkdir(join(root, "docs", "repo-update-log"), { recursive: true });
   await mkdir(join(root, "scripts", "agent"), { recursive: true });
   await mkdir(join(root, "scripts", "doc-sweep"), { recursive: true });
   await mkdir(join(root, "scripts", "doc-health"), { recursive: true });
@@ -392,7 +387,6 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
 
   for (const relativePath of [
     ".github/workflows/anomaly-triage.yml",
-    ".github/workflows/repo-update-log-fragment.yml",
     "scripts/agent/lib.mjs",
     "scripts/agent/start-task.mjs",
     "scripts/agent/status.mjs",
@@ -409,7 +403,6 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
     "docs/agent-process/doc-sweep.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
-    "docs/repo-update-log/README.md",
   ]) {
     await copySnapshot(root, relativePath, { flipEol: relativePath.startsWith("scripts/") });
   }
@@ -433,8 +426,9 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.deepEqual(parsed.audit.startupReadiness.stale, []);
   assert.ok(parsed.audit.startupReadiness.present.includes("AGENTS.md"));
-  assert.ok(parsed.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
-  assert.ok(parsed.audit.startupReadiness.present.includes(".github/workflows/repo-update-log-fragment.yml"));
+  assert.ok(!parsed.audit.startupReadiness.present.includes("docs/repo-update-log.md"));
+  assert.ok(!parsed.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
+  assert.ok(!parsed.audit.startupReadiness.present.includes(".github/workflows/repo-update-log-fragment.yml"));
 });
 
 test("onboard --audit flags a missing managed delivery-workflow block on an existing repo", async () => {
@@ -498,7 +492,6 @@ test("startup readiness reports stale concrete startup tooling", async () => {
     ".agent/startup-baseline.json",
     "docs/plans/README.md",
     ".github/workflows/anomaly-triage.yml",
-    ".github/workflows/repo-update-log-fragment.yml",
     "scripts/agent/lib.mjs",
     "scripts/agent/start-task.mjs",
     "scripts/agent/prune.mjs",
@@ -508,13 +501,11 @@ test("startup readiness reports stale concrete startup tooling", async () => {
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",
     "scripts/doc-sweep/sweep.mjs",
-    // New 2026-06-15-document-policy baseline required files (lane 1c).
     "scripts/doc-health/lib.mjs",
     "scripts/doc-health/health.mjs",
     "docs/agent-process/doc-sweep.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
-    "docs/repo-update-log/README.md",
   ]) {
     await copySnapshot(root, relativePath);
   }
@@ -575,7 +566,6 @@ test("startup readiness reports stale same-version startup baseline contract", a
   for (const relativePath of [
     "docs/plans/README.md",
     ".github/workflows/anomaly-triage.yml",
-    ".github/workflows/repo-update-log-fragment.yml",
     "scripts/agent/lib.mjs",
     "scripts/agent/start-task.mjs",
     "scripts/agent/status.mjs",
@@ -587,15 +577,11 @@ test("startup readiness reports stale same-version startup baseline contract", a
     "scripts/doc-sweep/lib.mjs",
     "scripts/doc-sweep/git.mjs",
     "scripts/doc-sweep/sweep.mjs",
-    // New 2026-06-15-document-policy baseline required files (lane 1c). The
-    // staleBaseline above only drops scripts/ + package.json, so the doc-side
-    // required files stay in force and must be seeded.
     "scripts/doc-health/lib.mjs",
     "scripts/doc-health/health.mjs",
     "docs/agent-process/doc-sweep.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
-    "docs/repo-update-log/README.md",
   ]) {
     await copySnapshot(root, relativePath);
   }
