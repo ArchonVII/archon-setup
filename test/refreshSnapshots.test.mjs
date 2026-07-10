@@ -87,8 +87,8 @@ test("repo-template snapshot source includes startup-baseline workflow callers",
     "repo-template anomaly caller must be snapshotted because startup-baseline.json requires it"
   );
   assert.ok(
-    repoTemplate.copyFiles.includes(".github/workflows/repo-update-log-fragment.yml"),
-    "repo-template repo-update-log fragment caller must be snapshotted because startup-baseline.json requires it"
+    !repoTemplate.copyFiles.includes(".github/workflows/repo-update-log-fragment.yml"),
+    "repo-template repo-update-log fragment caller must remain retired from the snapshot copy list"
   );
 });
 

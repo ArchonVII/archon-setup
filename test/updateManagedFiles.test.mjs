@@ -88,6 +88,52 @@ test("preserves node-ci custom inputs while adding budget defaults", async () =>
   );
 });
 
+test("patches anomaly-triage permissions exactly while preserving bespoke job settings", async () => {
+  const root = await makeWorkflowTarget();
+  const target = callerPath(root, "anomaly-triage.yml");
+  await writeFile(
+    target,
+    [
+      "name: Anomaly triage",
+      "",
+      "on:",
+      "  pull_request:",
+      "",
+      "permissions:",
+      "  contents: write",
+      "  actions: write",
+      "",
+      "jobs:",
+      "  triage:",
+      "    uses: ArchonVII/github-workflows/.github/workflows/anomaly-triage.yml@v1",
+      "    with:",
+      "      default-downstream-repo: ArchonVII/custom-target",
+      "      dry-run: true",
+      "    secrets:",
+      "      triage-token: ${{ secrets.CUSTOM_TRIAGE_TOKEN }}",
+      "",
+    ].join("\n")
+  );
+
+  const first = await updateManagedFiles({ targetPath: root });
+  const afterFirst = await readFile(target, "utf8");
+  const second = await updateManagedFiles({ targetPath: root });
+  const afterSecond = await readFile(target, "utf8");
+
+  assert.equal(first.updated, 1);
+  assert.equal(second.updated, 0);
+  assert.equal(second.unchanged, 1);
+  assert.equal(afterSecond, afterFirst, "a second updater run must be byte-identical");
+  assert.match(
+    afterFirst,
+    /permissions:\n  contents: read\n  pull-requests: write\n  issues: write\n/
+  );
+  assert.doesNotMatch(afterFirst, /contents: write|actions: write/);
+  assert.match(afterFirst, /default-downstream-repo: ArchonVII\/custom-target/);
+  assert.match(afterFirst, /dry-run: true/);
+  assert.match(afterFirst, /triage-token: \$\{\{ secrets\.CUSTOM_TRIAGE_TOKEN \}\}/);
+});
+
 test("guards required-gate label triggers while preserving custom inputs", async () => {
   const root = await mkdtemp(join(tmpdir(), "archon-update-"));
   const workflowDir = join(root, ".github", "workflows");

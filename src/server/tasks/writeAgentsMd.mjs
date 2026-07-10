@@ -34,20 +34,6 @@ const UPDATE_LOG_SNAPSHOT = join(
   "docs",
   "repo-update-log.md"
 );
-// Per-PR repo-update-log fragments guide. It supersedes the frozen single-file
-// docs/repo-update-log.md archive (shipped just above) and is named by the
-// 2026-06-15-document-policy startup baseline. Frontmatter-tolerant like the
-// plans README: wiki-managed repos may prepend repo-local YAML.
-const UPDATE_LOG_README_SNAPSHOT = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "snapshots",
-  "repo-template",
-  "docs",
-  "repo-update-log",
-  "README.md"
-);
 const STARTUP_BASELINE_SNAPSHOT = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -109,26 +95,6 @@ function detectEol(value) {
   return value.includes("\r\n") ? "\r\n" : "\n";
 }
 
-// #291: the shipped baseline carries `.changelog/unreleased/` infra and a close
-// guard (scripts/close/lib.mjs `evaluateChangelogDecision`) that REQUIRES a
-// `.changelog/unreleased/*.md` fragment or the `no-changelog` label - i.e.
-// Mode 2. Onboarding therefore defaults to Mode 2 and resolves the snapshot's
-// "pick one and delete the other during initial setup" placeholder
-// deterministically instead of shipping the literal setup instruction.
-export function resolveChangelogMode(body, changelogMode) {
-  const directEdit = changelogMode === "direct" || changelogMode === "Mode 1: direct edit";
-  const resolved = directEdit
-    ? "This repo uses **Mode 1: direct edit**. Edit `CHANGELOG.md` directly for any PR " +
-      "that warrants a CHANGELOG entry; for PRs that do not, apply the `no-changelog` label."
-    : "This repo uses **Mode 2: `.changelog/unreleased/` fragments**. Add a " +
-      "`.changelog/unreleased/<slug>.md` fragment for any PR that warrants a CHANGELOG " +
-      "entry; for PRs that do not, apply the `no-changelog` label.";
-  return body.replace(
-    /This repo uses \*\*<Mode 1: direct edit \/ Mode 2: `\.changelog\/unreleased\/` fragments>\*\*[\s\S]*?`no-changelog` label\./,
-    () => resolved
-  );
-}
-
 // #306: wrap the snapshot's `## Workflow` delivery contract in an ArchonVII
 // managed block so it is re-syncable. The block body is generated from the
 // existing snapshot section (the same way agents-start-map is generated), so no
@@ -153,8 +119,8 @@ function wrapDeliveryWorkflow(body) {
 // Pure snapshot -> emitted-body transform. Exported and shared with the audit so
 // the audit's "expected" body never drifts from what onboarding actually writes:
 // resolve the changelog mode (#291) then wrap the delivery contract (#306).
-export function renderAgentsBody(rawBody, changelogMode) {
-  return wrapDeliveryWorkflow(resolveChangelogMode(rawBody, changelogMode));
+export function renderAgentsBody(rawBody) {
+  return wrapDeliveryWorkflow(rawBody);
 }
 
 export function extractDeliveryWorkflowBody(renderedBody) {
@@ -168,9 +134,9 @@ export function extractDeliveryWorkflowBody(renderedBody) {
   return renderedBody.slice(startIndex + start.length, endIndex).trim();
 }
 
-async function readAgentsSnapshot(ctx) {
+async function readAgentsSnapshot() {
   const body = await readFile(AGENTS_SNAPSHOT, "utf8");
-  return renderAgentsBody(body, ctx.taskOptions?.changelogMode);
+  return renderAgentsBody(body);
 }
 
 function managedAgentsBody(snapshotBody) {
@@ -234,14 +200,8 @@ function agentsContractCurrent(current, snapshotBody) {
 export async function check(ctx) {
   try {
     const current = await readFile(safeJoin(ctx.targetPath, "AGENTS.md"), "utf8");
-    const snapshotBody = await readAgentsSnapshot(ctx);
+    const snapshotBody = await readAgentsSnapshot();
     const updateLogDone = await fileExists(ctx.targetPath, "docs/repo-update-log.md");
-    const updateLogReadme = await readFile(UPDATE_LOG_README_SNAPSHOT, "utf8");
-    const updateLogReadmeDone = await fileMatchesMarkdownSnapshot(
-      ctx.targetPath,
-      "docs/repo-update-log/README.md",
-      updateLogReadme
-    );
     const startupDone = await startupBaselineCurrent(ctx.targetPath);
     const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
     const plansReadmeDone = await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/plans/README.md", plansReadme);
@@ -257,7 +217,7 @@ export async function check(ctx) {
       "docs/agent-process/message-protocol.md",
       messageProtocol
     );
-    return agentsContractCurrent(current, snapshotBody) && updateLogDone && updateLogReadmeDone && startupDone && plansReadmeDone && documentPolicyDone && messageProtocolDone
+    return agentsContractCurrent(current, snapshotBody) && updateLogDone && startupDone && plansReadmeDone && documentPolicyDone && messageProtocolDone
       ? "already-done"
       : "needs-apply";
   } catch {
@@ -266,13 +226,8 @@ export async function check(ctx) {
 }
 
 export async function apply(ctx) {
-  const body = await readAgentsSnapshot(ctx);
+  const body = await readAgentsSnapshot();
   const updateLog = await readFile(UPDATE_LOG_SNAPSHOT, "utf8");
-  const updateLogReadme = await snapshotBodyPreservingFrontmatter(
-    ctx.targetPath,
-    "docs/repo-update-log/README.md",
-    await readFile(UPDATE_LOG_README_SNAPSHOT, "utf8")
-  );
   const startupBaseline = await readFile(STARTUP_BASELINE_SNAPSHOT, "utf8");
   const plansReadme = await snapshotBodyPreservingFrontmatter(
     ctx.targetPath,
@@ -326,12 +281,6 @@ export async function apply(ctx) {
     "docs/repo-update-log.md",
     updateLog
   );
-  const updateLogReadmeResult = await safeWriteFile(
-    ctx.targetPath,
-    "docs/repo-update-log/README.md",
-    updateLogReadme,
-    { overwrite: true }
-  );
   const startupBaselineResult = await safeWriteFile(
     ctx.targetPath,
     ".agent/startup-baseline.json",
@@ -364,10 +313,6 @@ export async function apply(ctx) {
     path: "docs/repo-update-log.md",
     source: "snapshot:repo-template/docs/repo-update-log.md",
   });
-  recordCreatedOnly(ctx, updateLogReadmeResult, {
-    path: "docs/repo-update-log/README.md",
-    source: "snapshot:repo-template/docs/repo-update-log/README.md",
-  });
   recordCreatedOnly(ctx, startupBaselineResult, {
     path: ".agent/startup-baseline.json",
     source: "snapshot:repo-template/.agent/startup-baseline.json",
@@ -384,21 +329,17 @@ export async function apply(ctx) {
     path: "docs/agent-process/message-protocol.md",
     source: "snapshot:repo-template/docs/agent-process/message-protocol.md",
   });
-  return [agentsResult, updateLogResult, updateLogReadmeResult, startupBaselineResult, plansReadmeResult, documentPolicyResult, messageProtocolResult];
+  return [agentsResult, updateLogResult, startupBaselineResult, plansReadmeResult, documentPolicyResult, messageProtocolResult];
 }
 
 export async function verify(ctx) {
   try {
     const current = await readFile(safeJoin(ctx.targetPath, "AGENTS.md"), "utf8");
-    const snapshotBody = await readAgentsSnapshot(ctx);
+    const snapshotBody = await readAgentsSnapshot();
     if (!agentsContractCurrent(current, snapshotBody)) {
       return { ok: false, error: "AGENTS.md is missing the ArchonVII startup map" };
     }
     await access(safeJoin(ctx.targetPath, "docs/repo-update-log.md"), constants.F_OK);
-    const updateLogReadme = await readFile(UPDATE_LOG_README_SNAPSHOT, "utf8");
-    if (!(await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/repo-update-log/README.md", updateLogReadme))) {
-      return { ok: false, error: "docs/repo-update-log/README.md is missing or stale" };
-    }
     if (!(await startupBaselineCurrent(ctx.targetPath))) {
       return { ok: false, error: ".agent/startup-baseline.json is missing or stale" };
     }
@@ -421,7 +362,7 @@ export async function verify(ctx) {
 }
 
 export function rollbackHint(ctx) {
-  return `Delete ${ctx.targetPath}/AGENTS.md, ${ctx.targetPath}/docs/repo-update-log.md, ${ctx.targetPath}/docs/repo-update-log/README.md, ${ctx.targetPath}/.agent/startup-baseline.json, ${ctx.targetPath}/docs/plans/README.md, ${ctx.targetPath}/docs/agent-process/document-policy.md, and ${ctx.targetPath}/docs/agent-process/message-protocol.md to retry.`;
+  return `Delete ${ctx.targetPath}/AGENTS.md, ${ctx.targetPath}/docs/repo-update-log.md, ${ctx.targetPath}/.agent/startup-baseline.json, ${ctx.targetPath}/docs/plans/README.md, ${ctx.targetPath}/docs/agent-process/document-policy.md, and ${ctx.targetPath}/docs/agent-process/message-protocol.md to retry.`;
 }
 
 function recordCreatedOnly(ctx, result, entry) {

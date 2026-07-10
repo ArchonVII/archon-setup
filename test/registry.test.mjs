@@ -85,20 +85,17 @@ test("agent-workflow.anomaly-triage is an opt-in runtime feature, not coupled to
   assert.ok(group, "agent-workflow group missing from groups.json");
 });
 
-test("agent-workflow.repo-update-log-fragment is an opt-in runtime baseline caller", async () => {
+test("agent-workflow.repo-update-log-fragment remains a disabled compatibility identifier", async () => {
   const { features } = await loadRegistry();
   const ledger = features.find((f) => f.id === "agent-workflow.repo-update-log-fragment");
 
   assert.ok(ledger, "repo-update-log fragment feature missing");
   assert.equal(ledger.group, "agent-workflow");
   assert.equal(ledger.default, false);
+  assert.equal(ledger.disabled, true);
   assert.ok(!ledger.locked);
-  assert.equal(ledger.remoteRequirement, "runtime");
-  assert.ok(!(ledger.requires || []).includes("remote.github"));
-  assert.ok(ledger.creates.includes(".github/workflows/repo-update-log-fragment.yml"));
-  assert.deepEqual(ledger.tasks, ["installWorkflow"]);
-  assert.equal(ledger.options.workflowName.value, "repo-update-log-fragment");
-  assert.equal(ledger.options.snapshotSource.value, "repo-template");
+  assert.deepEqual(ledger.creates, []);
+  assert.deepEqual(ledger.tasks, []);
 });
 
 test("foundation.agents plans the repo update log with AGENTS.md", async () => {
@@ -108,7 +105,7 @@ test("foundation.agents plans the repo update log with AGENTS.md", async () => {
   assert.ok(agents, "foundation.agents feature missing");
   assert.ok(agents.creates.includes("AGENTS.md"));
   assert.ok(agents.creates.includes("docs/repo-update-log.md"));
-  assert.ok(agents.creates.includes("docs/repo-update-log/README.md"));
+  assert.ok(!agents.creates.includes("docs/repo-update-log/README.md"));
   assert.ok(agents.creates.includes(".agent/startup-baseline.json"));
   assert.ok(agents.creates.includes("docs/plans/README.md"));
 });
@@ -215,7 +212,7 @@ test("planning anomaly-triage plans the workflow without repo-create", async () 
   );
 });
 
-test("planning repo-update-log fragment guard plans the workflow without repo-create", async () => {
+test("planning the retired repo-update-log fragment identifier is a no-op", async () => {
   const plan = await buildPlan({
     selection: ["agent-workflow.repo-update-log-fragment"],
     options: {},
@@ -223,14 +220,8 @@ test("planning repo-update-log fragment guard plans the workflow without repo-cr
   });
   assert.ok(!plan.selectedFeatureIds.includes("remote.github"));
   assert.ok(!plan.ordered.some((u) => u.taskId === "ghRepoCreateAndPush"));
-  assert.ok(
-    plan.files.some((f) => f.path === ".github/workflows/repo-update-log-fragment.yml"),
-    "repo-update-log fragment workflow should be planned for creation"
-  );
-  assert.equal(
-    plan.ordered.find((u) => u.featureId === "agent-workflow.repo-update-log-fragment")?.options?.snapshotSource,
-    "repo-template"
-  );
+  assert.deepEqual(plan.files, []);
+  assert.deepEqual(plan.ordered, []);
 });
 
 test("plan with branch protection adds deferred post-check", async () => {

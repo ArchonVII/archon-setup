@@ -24,7 +24,6 @@ const MINIMAL_BASELINE_FILES = [
   ".agent/coordination/README.md",
   ".github/archon-setup.json",
   "docs/repo-update-log.md",
-  "docs/repo-update-log/README.md",
   ".agent/startup-baseline.json",
   "docs/plans/README.md",
   "docs/agent-process/document-policy.md",
@@ -111,7 +110,7 @@ test("defaultLocalSelection keeps standard onboarding local and minimal", async 
   assert.ok(!expected.includes("foundation.hooks"), "local hooks are opt-in");
   assert.ok(!expected.includes("foundation.pr-template"), "PR template ceremony is opt-in");
   assert.ok(!expected.includes("workflow.required-gate"), "runner-backed gate caller is opt-in");
-  assert.ok(!expected.includes("agent-workflow.repo-update-log-fragment"), "repo-update-log workflow is opt-in");
+  assert.ok(!expected.includes("agent-workflow.repo-update-log-fragment"), "retired repo-update-log workflow is disabled");
   assert.ok(!expected.includes("agent-lifecycle.baseline"), "agent lifecycle scripts are opt-in");
   assert.ok(!expected.includes("agent-workflow.doc-health"), "doc-health runner is opt-in");
   assert.ok(!expected.includes("agent-workflow.template-library"), "template library is opt-in");
@@ -198,7 +197,8 @@ test("a default onboard reports minimal startup readiness complete", async () =>
   assert.equal(auditResult.audit.startupReadiness.profile, "minimal");
   assert.deepEqual(auditResult.audit.startupReadiness.missing, []);
   assert.deepEqual(auditResult.audit.startupReadiness.stale, []);
-  assert.ok(auditResult.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
+  assert.ok(auditResult.audit.startupReadiness.present.includes("docs/repo-update-log.md"));
+  assert.ok(!auditResult.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
   assert.ok(!auditResult.audit.startupReadiness.present.includes("scripts/doc-health/health.mjs"));
 });
 

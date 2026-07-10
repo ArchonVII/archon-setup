@@ -18,7 +18,6 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
 
   const agents = await readFile(join(targetPath, "AGENTS.md"), "utf8");
   const updateLog = await readFile(join(targetPath, "docs", "repo-update-log.md"), "utf8");
-  const updateLogReadme = await readFile(join(targetPath, "docs", "repo-update-log", "README.md"), "utf8");
   const startupBaseline = await readFile(join(targetPath, ".agent", "startup-baseline.json"), "utf8");
   const plansReadme = await readFile(join(targetPath, "docs", "plans", "README.md"), "utf8");
   // document-policy spec §5.1, lane 1c: foundation.agents now distributes the
@@ -29,11 +28,9 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
   // dangling relative link that doc-health flags.
   const messageProtocol = await readFile(join(targetPath, "docs", "agent-process", "message-protocol.md"), "utf8");
 
-  assert.match(agents, /Repo update log/);
+  assert.match(agents, /docs\/repo-update-log\.md/);
   assert.match(agents, /Agent Start Map/);
-  // #291: onboarding defaults to Mode 2 (matches the shipped `.changelog/` infra
-  // and the close guard) and resolves the placeholder deterministically.
-  assert.match(agents, /Mode 2: `\.changelog\/unreleased\/` fragments/);
+  assert.match(agents, /Changelog is release-class/);
   assert.doesNotMatch(agents, /pick one and delete the other/);
   assert.doesNotMatch(agents, /<Mode 1: direct edit \/ Mode 2/);
   // #306: the delivery contract ships as its own managed block, guaranteed for
@@ -43,14 +40,13 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
   assert.match(agents, /agent\/<tool>\/<issue>-<slug>/);
   assert.match(agents, /Never commit feature work to `main`/);
   assert.match(updateLog, /# Repository Update Log/);
-  assert.match(updateLogReadme, /# Repository Update Log/);
-  assert.equal(JSON.parse(startupBaseline).version, "2026-06-15-document-policy");
+  assert.equal(JSON.parse(startupBaseline).version, "2026-07-04-s3-fragment-retirement");
   assert.match(plansReadme, /docs\/plans\/YYYY-MM-DD-<slug>\.md/);
   assert.ok(documentPolicy.length > 0, "document-policy.md is written");
   assert.match(messageProtocol, /# Message Protocol/, "message-protocol.md is written");
   assert.deepEqual(
     ctx.manifest.createdFiles.map((file) => file.path),
-    ["AGENTS.md", "docs/repo-update-log.md", "docs/repo-update-log/README.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md", "docs/agent-process/message-protocol.md"],
+    ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md", "docs/agent-process/message-protocol.md"],
   );
 });
 

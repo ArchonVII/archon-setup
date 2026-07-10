@@ -104,7 +104,8 @@ agent pointers, neutral coordination docs, `.gitattributes`, manifest, and the
 initial git commit. Local hooks, changelog ceremony, CODEOWNERS, Dependabot, PR
 templates, branch protection, labels, lifecycle scripts, template libraries, and
 runtime workflow callers such as `repo-required-gate.yml` and
-`repo-update-log-fragment.yml` are explicit opt-ins.
+`anomaly-triage.yml` are explicit opt-ins. The former repo-update-log fragment
+guard remains only as a disabled compatibility identifier for older manifests.
 
 `--audit` is the read-only existing-repo entrypoint: it builds the same plan but
 checks each planned baseline file in the target repo, reporting `present` when
@@ -295,9 +296,9 @@ Existing agent-facing capabilities:
   `docs/plans/README.md`, `AGENTS.md`, and `agent:status` give agents one
   canonical first-stop map for plans, process files, coordination, PR flow, and
   repair actions.
-- **Repo update log** - generated repos receive repo update log guidance by
-  default; the `repo-update-log-fragment.yml` caller is opt-in for repos that
-  want GitHub to enforce durable operational history on applicable PRs.
+- **Repo update log archive** - generated repos receive the frozen
+  `docs/repo-update-log.md` archive for compatibility; the former per-PR fragment
+  workflow is retired and its feature identifier resolves as a disabled no-op.
 - **Global update records** - archon-setup records shared agent/workflow fixes
   that may need ecosystem-wide dissemination, exposes them in the Ecosystem UI,
   and logs per-repo distribution results.
