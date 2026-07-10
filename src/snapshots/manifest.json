@@ -3,8 +3,8 @@
     "githubWorkflows": {
       "source": "ArchonVII/github-workflows",
       "ref": "v1",
-      "sha": "e6ef54c16f87930fe43857f8756a2c666c5ae6bd",
-      "capturedAt": "2026-07-10T02:51:32.129Z",
+      "sha": "f34893a3b67e5c17e59ca1413e92077833fdc571",
+      "capturedAt": "2026-07-10T04:09:07.992Z",
       "path": "src/snapshots/github-workflows/"
     },
     "repoTemplate": {
