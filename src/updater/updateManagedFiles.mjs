@@ -155,11 +155,46 @@ function ensureRequiredGateTriggerDefaults(body) {
   return next;
 }
 
+const ANOMALY_TRIAGE_PERMISSIONS = [
+  "permissions:",
+  "  contents: read",
+  "  pull-requests: write",
+  "  issues: write",
+];
+
+// Reusable workflows cannot elevate GITHUB_TOKEN permissions beyond the caller.
+// Replace the complete top-level block so missing scopes are added and widened
+// scopes are removed, while leaving bespoke job inputs/secrets byte-for-byte.
+function ensureAnomalyTriagePermissions(body) {
+  const eol = body.includes("\r\n") ? "\r\n" : "\n";
+  const lines = body.split(/\r?\n/);
+  const start = lines.findIndex((line) => /^permissions\s*:/.test(line));
+
+  if (start >= 0) {
+    let end = start + 1;
+    while (end < lines.length && (lines[end].trim() === "" || /^[ \t]/.test(lines[end]))) {
+      end += 1;
+    }
+    const replacement = [...ANOMALY_TRIAGE_PERMISSIONS];
+    if (end < lines.length) replacement.push("");
+    lines.splice(start, end - start, ...replacement);
+    return lines.join(eol);
+  }
+
+  const jobs = lines.findIndex((line) => /^jobs\s*:/.test(line));
+  if (jobs < 0) return body;
+  lines.splice(jobs, 0, ...ANOMALY_TRIAGE_PERMISSIONS, "");
+  return lines.join(eol);
+}
+
+// Historical name retained for compatibility; this now applies every safe,
+// structure-preserving managed-caller default, including token permissions.
 export function applyBudgetDefaults(body) {
   const managedName = managedWorkflowName(body);
   if (managedName === "node-ci.yml") return ensureNodeCiBudgetDefaults(body);
   if (managedName === "dependency-review.yml") return ensureDependencyReviewBudgetDefaults(body);
   if (managedName === "repo-required-gate.yml") return ensureRequiredGateTriggerDefaults(body);
+  if (managedName === "anomaly-triage.yml") return ensureAnomalyTriagePermissions(body);
   return body;
 }
 
