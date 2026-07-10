@@ -134,6 +134,34 @@ test("patches anomaly-triage permissions exactly while preserving bespoke job se
   assert.match(afterFirst, /triage-token: \$\{\{ secrets\.CUSTOM_TRIAGE_TOKEN \}\}/);
 });
 
+test("leaves an exact anomaly permission block byte-identical across mixed line endings", async () => {
+  const root = await makeWorkflowTarget();
+  const target = callerPath(root, "anomaly-triage.yml");
+  const mixedEolCaller = [
+    "name: Anomaly triage\r\n",
+    "\r\n",
+    "on:\n",
+    "  pull_request:\r\n",
+    "\r\n",
+    "permissions:\n",
+    "  contents: read\r\n",
+    "  pull-requests: write\n",
+    "  issues: write\r\n",
+    "\r\n",
+    "jobs:\n",
+    "  triage:\r\n",
+    "    uses: ArchonVII/github-workflows/.github/workflows/anomaly-triage.yml@v1\n",
+  ].join("");
+  await writeFile(target, mixedEolCaller);
+
+  const result = await updateManagedFiles({ targetPath: root });
+  const after = await readFile(target, "utf8");
+
+  assert.equal(result.updated, 0);
+  assert.equal(result.unchanged, 1);
+  assert.equal(after, mixedEolCaller);
+});
+
 test("guards required-gate label triggers while preserving custom inputs", async () => {
   const root = await mkdtemp(join(tmpdir(), "archon-update-"));
   const workflowDir = join(root, ".github", "workflows");

@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-07-09 - Byte-idempotent anomaly permission updates
+
+- **Issue/PR:** #344 / pending
+- **Branch:** agent/codex/344-anomaly-permission-byte-idempotency
+- **Changed paths:** `src/updater/updateManagedFiles.mjs`, `test/updateManagedFiles.test.mjs`, `.changelog/unreleased/344-anomaly-permission-byte-idempotency.md`, `docs/repo-update-log/2026-07-09-344-anomaly-permission-byte-idempotency.md`
+- **What changed:** The anomaly caller updater now returns the original bytes immediately when the exact permission block is already present, avoiding whole-file EOL normalization on mixed-line-ending callers while preserving repair behavior for missing or widened scopes.
+- **Verification:** TDD red at 10/11 before the fast path and green at 11/11 afterward; final `npm test` passed 672 with 2 platform skips after stale temp-fixture cleanup resolved an environmental `ENOSPC` failure.
+- **Propagation:** enables idempotent completion of the github-workflows#106 consumer rollout.
+
 ## 2026-07-09 - Anomaly-triage caller permission propagation
 
 - **Issue/PR:** #342 / pending
