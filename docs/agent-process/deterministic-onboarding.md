@@ -104,7 +104,7 @@ before the local audit can report completion. It also blocks completion when any
 selected audit item is missing or drifted, except for repo-local files that
 startup readiness validates semantically.
 
-### P1: Add A Default-Branch Completion Gate
+### P1: Default-Branch Completion Gate — Implemented
 
 Extend the local completion verdict into a default-branch gate that can only
 pass after the onboarding PR merges:
@@ -117,8 +117,11 @@ pass after the onboarding PR merges:
 - verify every required workflow caller exists on that commit
 - fail if branch protection requires a check whose caller is absent
 
-The gate should emit `fully_onboarded`, `partial_onboarding`, or `blocked`, with
-reasons.
+`node bin/onboard.mjs verify-merged <repo> --record <path>` now performs this
+gate in a detached worktree at fetched `origin/<default>` and emits
+`fully_onboarded`, `partial_onboarding`, or `blocked`. It also blocks a merged
+verification when branch protection requires the stable gate but its workflow
+caller is absent from that default-branch commit.
 
 ### P2: Harden `tighten-required-gate`
 
@@ -133,7 +136,7 @@ should prove:
 If any proof is missing, the command should leave branch protection unchanged
 and report a pending or blocked status.
 
-### P3: Make Manual Decisions Structured
+### P3: Make Manual Decisions Structured — Implemented
 
 For existing repos, generate a decision record before apply. Each non-automatic
 item gets one of:
@@ -144,11 +147,12 @@ item gets one of:
 - `defer`
 - `blocked`
 
-The apply path must only execute resolved items. `merge-manual`, `defer`, and
-`blocked` items must stay out of the automated apply set and appear in the PR
-body.
+`onboard repair <repo>` emits a versioned decision document (optionally saved
+as a GitHub issue). Intake re-audits the target and refuses unresolved, stale,
+or altered evidence. The apply path only accepts `apply-central`; all other
+states stay out of the automated apply set and appear in the PR body.
 
-### P4: Make Existing-Repo Repair A Tool Path
+### P4: Make Existing-Repo Repair A Tool Path — Implemented
 
 Replace "agent manually patches the repo" with a repair command that:
 
@@ -159,8 +163,10 @@ Replace "agent manually patches the repo" with a repair command that:
 - runs a post-apply audit before commit
 - marks incomplete remote-governance items as follow-ups
 
-The agent can still monitor, explain, and file follow-ups, but not decide the
-baseline by hand.
+`onboard repair --intake` now creates the isolated branch/worktree, runs the
+existing planner/executor, post-apply audit, conventional commit, push, and
+draft PR flow. It preserves the human boundary: agents can monitor, explain,
+and file follow-ups, but cannot invent decisions or auto-merge the repair.
 
 ### P5: Repair Affected Consumers Through The Contract
 

@@ -1,11 +1,8 @@
 # Onboarding an Existing Repo
 
-> **Status:** Interim runbook. The new-repo path is the wizard (`README` → "Canonical
-> New-Repo Setup"). Bringing an **existing** repo onto the baseline is the README's
-> "First End Goal" but is **not yet a guided wizard flow**. The headless CLI now has
-> read-only audit support plus targeted reconcile/tighten commands. Until [#68] lands,
-> follow the steps below. Each step notes where the tool helps vs. where you do it by
-> hand.
+> **Status:** Active runbook. The browser still provides audit/review, while the
+> headless repair flow owns the decision-gated existing-repo write lane and post-merge
+> completion audit.
 
 This is for a repo that **already exists** (has history, a remote, and likely its own
 `AGENTS.md`/`CLAUDE.md` and code) and needs to adopt the ArchonVII baseline: foundations,
@@ -34,6 +31,8 @@ For the binding completion rules, read
   copied hooks.
 - **Isolate from concurrent work.** If other agents/humans have uncommitted work on the
   default branch, do the setup in a **worktree** so you never touch their tree.
+- **Decide before writing.** Run `node bin/onboard.mjs repair <repo>` first. Only
+  `apply-central` decisions can write; all other resolutions remain explicit PR follow-ups.
 
 ## Steps
 
@@ -148,13 +147,18 @@ clone activate (do not flip shared `core.hooksPath` out from under them).
   conflicting tracked changes, remove the setup worktree, and **leave other agents'
   worktrees/branches untouched**.
 
-## Known gaps
+## Decisioned repair flow
 
-Fresh-repo gaps addressed by the wizard: `foundation.hooks` and manifest created/skipped
-file accuracy. The headless CLI can now run a read-only existing-repo audit,
-install workflow callers without forcing repo creation, reconcile AGENTS/CLAUDE
-managed blocks, and run the branch-protection tighten command. The remaining
-gap is guided browser wizard surfacing, tracked in [#68]. When that lands, this
-runbook collapses into "run the wizard."
+1. Create a read-only decision document with `node bin/onboard.mjs repair <repo>
+   --owner OWNER --repo REPO --save-issue`. The issue contains the canonical JSON;
+   resolve every item there or in an exported file.
+2. Execute only a current, fully resolved document with `--intake issue:#N`. The
+   tool checks the target identity and base SHA, fetches the default branch, creates
+   an issue-backed worktree, applies only `apply-central` missing items, audits,
+   commits, pushes, and opens a **draft** PR. It never auto-merges.
+3. After merge, run `node bin/onboard.mjs verify-merged <repo> --record <path>`.
+   It creates a detached worktree at fetched `origin/<default>` and reports
+   `fully_onboarded`, `partial_onboarding`, or `blocked`.
 
-[#68]: https://github.com/ArchonVII/archon-setup/issues/68
+The browser remains a useful review surface; the repair CLI is the authoritative
+write and completion path.
