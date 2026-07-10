@@ -14,7 +14,9 @@
 //   --dry-run          Print the plan and exit without writing
 //   --json             Emit the result as JSON instead of human text
 //   --help             Show this help
-import { resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
 
@@ -29,6 +31,11 @@ function parseArgs(argv) {
     dryRun: false,
     json: false,
     help: false,
+    intake: "",
+    issue: 0,
+    recordPath: "",
+    workRoot: "",
+    saveIssue: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -58,6 +65,21 @@ function parseArgs(argv) {
       case "--visibility":
         opts.visibility = argv[++i] || "private";
         break;
+      case "--intake":
+        opts.intake = argv[++i] || "";
+        break;
+      case "--issue":
+        opts.issue = Number(argv[++i] || 0);
+        break;
+      case "--record":
+        opts.recordPath = argv[++i] || "";
+        break;
+      case "--work-root":
+        opts.workRoot = argv[++i] || "";
+        break;
+      case "--save-issue":
+        opts.saveIssue = true;
+        break;
       default:
         if (arg.startsWith("--")) throw new Error(`unknown option: ${arg}`);
         if (opts.targetPath === null) opts.targetPath = arg;
@@ -81,6 +103,23 @@ Options:
   --dry-run          Print the plan and exit without writing
   --json             Emit the result as JSON instead of human text
   --help             Show this help`;
+
+const REPAIR_HELP = `archon-setup onboard repair — decisioned existing-repo onboarding
+
+Usage:
+  node bin/onboard.mjs repair <targetPath> [options]
+  node bin/onboard.mjs verify-merged <targetPath> --record <path> [--json]
+
+Repair options:
+  --features a,b,c   Selected onboarding profile to audit
+  --owner <name>     GitHub owner for rendered baseline files and the draft PR
+  --repo <name>      GitHub repository for rendered baseline files and the draft PR
+  --json             Emit the decision document or run result as JSON
+  --save-issue        Save the new decision document as a GitHub issue (requires --owner and --repo)
+  --intake <path>    Execute a completed decision document
+  --issue <number>   Existing issue that the repair draft PR closes (required with --intake)
+  --record <path>    Run ledger path (default: ~/.claude/archon-onboarding-repair/<runId>.jsonl)
+  --work-root <path> Parent directory for temporary worktrees`;
 
 function printPlan(plan) {
   console.log(`Selected features: ${plan.selectedFeatureIds.join(", ")}`);
@@ -216,7 +255,97 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((err) => {
+async function repairMain(argv) {
+  const opts = parseArgs(argv);
+  if (opts.help || !opts.targetPath) {
+    console.log(REPAIR_HELP);
+    process.exit(opts.help ? 0 : 1);
+  }
+  if (opts.audit || opts.dryRun) throw new Error("repair does not accept --audit or --dry-run; omit --intake to create a read-only decision document");
+  const targetPath = resolve(opts.targetPath);
+  const { buildOnboardingDecision, intakeOnboardingDecision } = await import("../src/server/onboard/repairDecision.mjs");
+
+  if (!opts.intake) {
+    const doc = await buildOnboardingDecision({
+      targetPath,
+      features: opts.features,
+      owner: opts.owner,
+      repo: opts.repo,
+    });
+    let saved = null;
+    if (opts.saveIssue) {
+      if (!opts.owner || !opts.repo) throw new Error("repair --save-issue requires --owner and --repo");
+      const { saveOnboardingDecisionIssue } = await import("../src/server/onboard/repairIssue.mjs");
+      saved = await saveOnboardingDecisionIssue({ doc, repoSlug: `${opts.owner}/${opts.repo}` });
+    }
+    if (opts.json) console.log(JSON.stringify(saved ? { ...doc, decisionIssue: saved } : doc, null, 2));
+    else {
+      console.log(`Decision document for ${doc.target.name} at ${doc.baseSha}`);
+      for (const item of doc.items) console.log(`  ${item.status}: ${item.itemId} (${item.options.join(", ")})`);
+      if (saved) console.log(`Decision issue: #${saved.number} ${saved.url}`);
+      console.log("Resolve every item, then rerun with --intake <decision.json> --issue <number> (or --intake issue:#N).");
+    }
+    return;
+  }
+
+  let input;
+  let issueFromRef = 0;
+  if (/^issue:#?\d+$/.test(opts.intake)) {
+    if (!opts.owner || !opts.repo) throw new Error("repair --intake issue:#N requires --owner and --repo");
+    const { resumeOnboardingDecisionIssue } = await import("../src/server/onboard/repairIssue.mjs");
+    const resumed = await resumeOnboardingDecisionIssue({ ref: opts.intake, repoSlug: `${opts.owner}/${opts.repo}` });
+    if (!resumed.ok) throw new Error(`repair intake: ${resumed.reason}`);
+    input = resumed.doc;
+    issueFromRef = Number(/\d+$/.exec(opts.intake)[0]);
+  } else {
+    input = await readFile(opts.intake, "utf8");
+  }
+  const sourceIssueNumber = opts.issue || issueFromRef;
+  if (!sourceIssueNumber || !Number.isInteger(sourceIssueNumber) || sourceIssueNumber < 1) {
+    throw new Error("repair --intake requires a positive --issue <number> or an issue:#N intake reference");
+  }
+  const intake = await intakeOnboardingDecision({ input, targetPath });
+  if (!intake.ok) {
+    if (opts.json) console.log(JSON.stringify(intake, null, 2));
+    else console.error(`intake rejected (${intake.code}): ${intake.detail}`);
+    process.exit(20);
+  }
+  const recordPath = opts.recordPath || join(homedir(), ".claude", "archon-onboarding-repair", `${intake.runId}.jsonl`);
+  const { runOnboardingRepair } = await import("../src/server/onboard/repairRun.mjs");
+  const result = await runOnboardingRepair({
+    intake,
+    targetPath,
+    sourceIssueNumber,
+    recordPath,
+    workRoot: opts.workRoot || null,
+    owner: opts.owner || intake.owner,
+    repo: opts.repo || intake.repo,
+  });
+  if (opts.json) console.log(JSON.stringify(result, null, 2));
+  else console.log(`draft PR #${result.pr.number}: ${result.pr.url}\nrun ledger: ${recordPath}`);
+}
+
+async function verifyMergedMain(argv) {
+  const opts = parseArgs(argv);
+  if (opts.help || !opts.targetPath || !opts.recordPath) {
+    console.log(REPAIR_HELP);
+    process.exit(1);
+  }
+  const { verifyMergedOnboardingRepair } = await import("../src/server/onboard/repairRun.mjs");
+  const result = await verifyMergedOnboardingRepair({
+    targetPath: resolve(opts.targetPath),
+    recordPath: opts.recordPath,
+    workRoot: opts.workRoot || null,
+  });
+  if (opts.json) console.log(JSON.stringify(result, null, 2));
+  else console.log(`${result.status}: ${result.mergeSha || result.reason}`);
+  process.exit(result.status === "fully_onboarded" ? 0 : 20);
+}
+
+const argv = process.argv.slice(2);
+const entrypoint = argv[0] === "repair" ? () => repairMain(argv.slice(1)) : argv[0] === "verify-merged" ? () => verifyMergedMain(argv.slice(1)) : main;
+
+entrypoint().catch((err) => {
   console.error(`onboard error: ${err.message}`);
   process.exit(1);
 });

@@ -132,6 +132,24 @@ repo that already has a GitHub `origin` and select GitHub features without
 `remote.github`. Pass `--owner`/`--repo` to target a specific repo (e.g. an
 upstream instead of a fork); explicit values win over the detected origin.
 
+**Decisioned existing-repo repair.** Use the repair flow when an existing repo
+needs a full baseline reconciliation rather than an ad-hoc agent patch:
+
+```bash
+# Read-only: create a versioned decision document (or add --save-issue).
+node bin/onboard.mjs repair C:\path\to\repo --owner OWNER --repo REPO --save-issue
+
+# After every decision is resolved in the document or issue, create a draft repair PR.
+node bin/onboard.mjs repair C:\path\to\repo --intake issue:#123 --owner OWNER --repo REPO
+
+# After merge, audit the fetched default-branch commit—not the old checkout.
+node bin/onboard.mjs verify-merged C:\path\to\repo --record C:\Users\you\.claude\archon-onboarding-repair\<run>.jsonl
+```
+
+Only `apply-central` decisions write files. `keep-local`, `merge-manual`,
+`defer`, and `blocked` are carried into the draft PR without automated writes;
+the repair flow never auto-merges or changes branch protection.
+
 ### Updating managed workflows
 
 Once a repo is onboarded, keep its managed workflow callers in step with the
