@@ -45,7 +45,52 @@
     "creates": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Files this feature writes into the generated repo."
+      "description": "Files this feature writes into the generated repo. A validated projection of installs[]: every file/dir install path appears here (see test/capabilityManifest.test.mjs)."
+    },
+    "installs": {
+      "type": "array",
+      "description": "Per-feature capability manifest (lane C): every filesystem effect this feature applies at onboard time. creates[], the per-task path constants, and refresh-snapshots SOURCES are all checked mirrors of this list (test/capabilityManifest.test.mjs). Shape enforced by that test against this sub-schema; the full registry is not yet machine-validated because schema.json still uses the `default` keyword the zero-dep validator rejects.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "kind", "contract"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Repo-relative destination path in the onboarded repo."
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Snapshot-relative origin, e.g. 'repo-template:scripts/agent/lib.mjs' or 'github-workflows:anomaly-triage.yml'. Omitted for generated/API-sourced files (README, LICENSE, CODEOWNERS) and for merge-kind entries, which carry npmScripts/appends instead."
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["file", "dir", "merge"],
+            "description": "'file'/'dir' = a whole path this feature owns and lists in creates[]; 'merge' = an idempotent merge into a file owned elsewhere (package.json npm scripts, .gitignore appends)."
+          },
+          "contract": {
+            "type": "string",
+            "enum": ["required", "optional"],
+            "description": "'required' = part of the startup-readiness floor (mirrors src/snapshots/repo-template/.agent/startup-baseline.json required[]); 'optional' = installed but not floor-mandated."
+          },
+          "npmScripts": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "For merge-kind package.json: the managed script entries merged in (mirrors the task module's exported constant)."
+          },
+          "appends": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "For merge-kind .gitignore: the managed lines appended (mirrors the task module's exported constant)."
+          },
+          "execBit": {
+            "type": "boolean",
+            "description": "True when the file must ship executable (git hook entrypoints)."
+          }
+        }
+      }
     },
     "commands": {
       "type": "array",

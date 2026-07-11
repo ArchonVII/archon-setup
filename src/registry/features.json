@@ -6,6 +6,9 @@
     "default": true,
     "locked": true,
     "creates": ["README.md"],
+    "installs": [
+      { "path": "README.md", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeReadme"],
     "beginnerDescription": "A short README so anyone landing on the repo knows what it is and how to run it.",
     "advancedDescription": "Quickstart template extracted from ArchonVII/.github/STARTER.md."
@@ -17,6 +20,9 @@
     "default": true,
     "locked": true,
     "creates": ["LICENSE"],
+    "installs": [
+      { "path": "LICENSE", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeLicense"],
     "options": {
       "spdx": {
@@ -35,6 +41,9 @@
     "default": true,
     "locked": true,
     "creates": [".gitignore"],
+    "installs": [
+      { "path": ".gitignore", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeGitignore"],
     "options": {
       "language": {
@@ -53,6 +62,14 @@
     "default": true,
     "locked": true,
     "creates": ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md", "docs/agent-process/message-protocol.md"],
+    "installs": [
+      { "path": "AGENTS.md", "source": "repo-template:AGENTS.md", "kind": "file", "contract": "required" },
+      { "path": "docs/repo-update-log.md", "source": "repo-template:docs/repo-update-log.md", "kind": "file", "contract": "optional" },
+      { "path": ".agent/startup-baseline.json", "source": "repo-template:.agent/startup-baseline.json", "kind": "file", "contract": "optional" },
+      { "path": "docs/plans/README.md", "source": "repo-template:docs/plans/README.md", "kind": "file", "contract": "required" },
+      { "path": "docs/agent-process/document-policy.md", "source": "repo-template:docs/agent-process/document-policy.md", "kind": "file", "contract": "required" },
+      { "path": "docs/agent-process/message-protocol.md", "source": "repo-template:docs/agent-process/message-protocol.md", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeAgentsMd"],
     "beginnerDescription": "The cross-tool contract for AI agents (Claude, Codex, Gemini) working in this repo.",
     "advancedDescription": "Copied from snapshots of ArchonVII/repo-template/AGENTS.md, the frozen docs/repo-update-log.md archive, the docs/agent-process/document-policy.md charter (document-policy spec §5.1, lane 1c), and the docs/agent-process/message-protocol.md charter that AGENTS.md's `## Message protocol` section links to (#278)."
@@ -64,6 +81,9 @@
     "default": true,
     "locked": true,
     "creates": ["CLAUDE.md"],
+    "installs": [
+      { "path": "CLAUDE.md", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeClaudeMd"],
     "beginnerDescription": "A short file that tells Claude to read AGENTS.md first.",
     "advancedDescription": "5-line stub. Claude-specific addenda land below the pointer."
@@ -75,6 +95,9 @@
     "default": true,
     "locked": true,
     "creates": ["GEMINI.md"],
+    "installs": [
+      { "path": "GEMINI.md", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeGeminiMd"],
     "beginnerDescription": "Same as CLAUDE.md but for Gemini.",
     "advancedDescription": "5-line stub pointing at AGENTS.md."
@@ -86,6 +109,9 @@
     "default": true,
     "locked": true,
     "creates": [".agent/coordination/README.md"],
+    "installs": [
+      { "path": ".agent/coordination/README.md", "source": "repo-template:.agent/coordination/README.md", "kind": "file", "contract": "required" }
+    ],
     "tasks": ["writeCoordinationReadme"],
     "beginnerDescription": "A short contract telling agents this repo coordinates only itself — no shared boards, no assumptions about other repos.",
     "advancedDescription": "Copied from snapshots of ArchonVII/repo-template/.agent/coordination/README.md. Locked neutral contract; the active board (.agent/coordination/board.md) is the separate opt-in coordination-board feature. Ordered before git-init so the contract lands in the initial commit."
@@ -105,6 +131,16 @@
       ".githooks/scripts/checkout-doctor.sh",
       ".githooks/scripts/test-checkout-role.sh"
     ],
+    "installs": [
+      { "path": ".githooks/commit-msg", "source": "repo-template:.githooks/commit-msg", "kind": "file", "contract": "optional", "execBit": true },
+      { "path": ".githooks/pre-commit", "source": "repo-template:.githooks/pre-commit", "kind": "file", "contract": "optional", "execBit": true },
+      { "path": ".githooks/scripts/install-githooks.sh", "source": "repo-template:.githooks/scripts/install-githooks.sh", "kind": "file", "contract": "optional", "execBit": true },
+      { "path": ".githooks/scripts/owner-maintenance.sh", "source": "repo-template:.githooks/scripts/owner-maintenance.sh", "kind": "file", "contract": "optional", "execBit": true },
+      { "path": ".githooks/scripts/test-owner-maintenance.sh", "source": "repo-template:.githooks/scripts/test-owner-maintenance.sh", "kind": "file", "contract": "optional", "execBit": true },
+      { "path": ".githooks/scripts/checkout-role.sh", "source": "repo-template:.githooks/scripts/checkout-role.sh", "kind": "file", "contract": "optional", "execBit": true },
+      { "path": ".githooks/scripts/checkout-doctor.sh", "source": "repo-template:.githooks/scripts/checkout-doctor.sh", "kind": "file", "contract": "optional", "execBit": true },
+      { "path": ".githooks/scripts/test-checkout-role.sh", "source": "repo-template:.githooks/scripts/test-checkout-role.sh", "kind": "file", "contract": "optional", "execBit": true }
+    ],
     "tasks": ["writeGithooks"],
     "beginnerDescription": "Installs the standard local git hooks for commit-message and protected-branch guardrails.",
     "advancedDescription": "Copied from repo-template snapshots with repo-template-internal references scrubbed. Includes the F19 checkout-role worktree guard (feature commits blocked in the primary checkout). core.hooksPath is activated by git-init when safe."
@@ -120,6 +156,10 @@
       "foundation.hooks"
     ],
     "creates": [".claude/friction.md"],
+    "installs": [
+      { "path": ".claude/friction.md", "source": "repo-template:.claude/friction.md", "kind": "file", "contract": "optional" },
+      { "path": ".gitignore", "kind": "merge", "contract": "optional", "appends": [".claude/*", "!.claude/friction.md", "!.claude/noticed.md", "!.claude/napkin.md"] }
+    ],
     "tasks": ["writeFrictionLedger"],
     "beginnerDescription": "Adds a structured .claude/friction.md ledger for non-bug workflow hiccups.",
     "advancedDescription": "Seeds the repo-template friction ledger, ensures the .gitignore exception, and relies on the required AGENTS.md and owner-maintenance hook baselines for the instruction line and append-log allowlist."
@@ -131,6 +171,9 @@
     "default": true,
     "locked": true,
     "creates": [".gitattributes"],
+    "installs": [
+      { "path": ".gitattributes", "source": "repo-template:.gitattributes", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeGitattributes"],
     "beginnerDescription": "Keeps shell hooks and scripts on LF endings.",
     "advancedDescription": "Copied from the repo-template baseline."
@@ -141,6 +184,9 @@
     "group": "foundations",
     "default": false,
     "creates": ["CHANGELOG.md"],
+    "installs": [
+      { "path": "CHANGELOG.md", "source": "repo-template:CHANGELOG.md", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeChangelog"],
     "beginnerDescription": "Adds the release-class changelog folded from Conventional Commit history at release time.",
     "advancedDescription": "Release-class CHANGELOG baseline copied from repo-template; per-PR fragments are retired."
@@ -151,6 +197,9 @@
     "group": "foundations",
     "default": false,
     "creates": [".github/workflows/actionlint.yml"],
+    "installs": [
+      { "path": ".github/workflows/actionlint.yml", "source": "github-workflows:actionlint.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "actionlint" },
@@ -166,6 +215,9 @@
     "group": "foundations",
     "default": false,
     "creates": [".github/CODEOWNERS"],
+    "installs": [
+      { "path": ".github/CODEOWNERS", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeCodeowners"],
     "beginnerDescription": "Adds a top-level CODEOWNERS file when the GitHub owner is known.",
     "advancedDescription": "Writes '* @<owner>'. If no owner is known, records an intentional skip instead of writing junk ownership."
@@ -176,6 +228,9 @@
     "group": "foundations",
     "default": false,
     "creates": [".github/dependabot.yml"],
+    "installs": [
+      { "path": ".github/dependabot.yml", "source": "repo-template:.github/dependabot.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeDependabot"],
     "beginnerDescription": "Adds weekly GitHub Actions dependency updates.",
     "advancedDescription": "Copied from the repo-template baseline. Inert until the repo is pushed."
@@ -186,6 +241,9 @@
     "group": "foundations",
     "default": false,
     "creates": [".github/PULL_REQUEST_TEMPLATE.md"],
+    "installs": [
+      { "path": ".github/PULL_REQUEST_TEMPLATE.md", "source": "repo-template:.github/PULL_REQUEST_TEMPLATE.md", "kind": "file", "contract": "required" }
+    ],
     "tasks": ["writePrTemplate"],
     "beginnerDescription": "Adds the standard ArchonVII PR body structure and verification checklist.",
     "advancedDescription": "Copied from the repo-template baseline."
@@ -261,6 +319,9 @@
     "group": "agent-workflow",
     "default": false,
     "creates": [".agent/check-map.yml"],
+    "installs": [
+      { "path": ".agent/check-map.yml", "source": "repo-template:.agent/check-map.yml", "kind": "file", "contract": "required" }
+    ],
     "tasks": ["writeCheckMap"],
     "beginnerDescription": "Records which local paths require which checks so agents and the required gate share one policy map.",
     "advancedDescription": "Copied from the repo-template baseline. The single required gate remains the branch-protection contract; this file documents and customizes the path-to-check matrix."
@@ -271,6 +332,10 @@
     "group": "agent-workflow",
     "default": false,
     "creates": [".agent/coordination/board.md", ".agent/coordination/claims/.gitkeep"],
+    "installs": [
+      { "path": ".agent/coordination/board.md", "source": "repo-template:.agent/coordination/board.md", "kind": "file", "contract": "optional" },
+      { "path": ".agent/coordination/claims/.gitkeep", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeCoordinationBoard", "writeCoordinationClaims"],
     "beginnerDescription": "Turns on ACTIVE multi-agent coordination for repos where several agents or people work concurrently: a board.md you edit by hand plus a live claims/ folder agents write to. Selecting this enables live claims — agent:status will report coordination installed and doc-sweep can see active lanes instead of guessing about stale worktrees. Skip it (the default) if only one agent works here at a time.",
     "advancedDescription": "Installs both halves of active coordination: the board.md human surface (from the repo-template snapshot) and an empty .agent/coordination/claims/ directory (kept by a .gitkeep placeholder) where agents drop one <lane>.json claim per active lane. Opt-in companion to the locked foundation.coordination contract — leaving it unselected keeps the repo claims-absent so agent:status reports 'not installed' and doc-sweep keeps its leave/log behavior for worktree docs. Names no other repo or machine-global board; live claims stay isolated to this repo."
@@ -282,6 +347,9 @@
     "default": false,
     "remoteRequirement": "runtime",
     "creates": [".github/workflows/anomaly-triage.yml"],
+    "installs": [
+      { "path": ".github/workflows/anomaly-triage.yml", "source": "github-workflows:anomaly-triage.yml", "kind": "file", "contract": "required" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "anomaly-triage" }
@@ -308,6 +376,9 @@
     "default": false,
     "remoteRequirement": "runtime",
     "creates": [".github/workflows/pr-policy.yml"],
+    "installs": [
+      { "path": ".github/workflows/pr-policy.yml", "source": "github-workflows:pr-policy.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "pr-policy" }
@@ -323,6 +394,9 @@
     "default": false,
     "remoteRequirement": "runtime",
     "creates": [".github/workflows/semantic-pr-title.yml"],
+    "installs": [
+      { "path": ".github/workflows/semantic-pr-title.yml", "source": "github-workflows:semantic-pr-title.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "semantic-pr-title" }
@@ -338,6 +412,9 @@
     "default": false,
     "remoteRequirement": "runtime",
     "creates": [".github/workflows/pr-body-autoinject.yml"],
+    "installs": [
+      { "path": ".github/workflows/pr-body-autoinject.yml", "source": "github-workflows:pr-body-autoinject.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "pr-body-autoinject" }
@@ -353,6 +430,9 @@
     "default": false,
     "remoteRequirement": "runtime",
     "creates": [".github/workflows/branch-naming.yml"],
+    "installs": [
+      { "path": ".github/workflows/branch-naming.yml", "source": "github-workflows:branch-naming.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "branch-naming" }
@@ -375,6 +455,9 @@
       "workflow.minimal-ci"
     ],
     "creates": [".github/workflows/repo-required-gate.yml"],
+    "installs": [
+      { "path": ".github/workflows/repo-required-gate.yml", "source": "github-workflows:repo-required-gate.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "repo-required-gate" }
@@ -395,6 +478,9 @@
       "workflow.minimal-ci"
     ],
     "creates": [".github/workflows/node-ci.yml"],
+    "installs": [
+      { "path": ".github/workflows/node-ci.yml", "source": "github-workflows:node-ci.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "node-ci" }
@@ -415,6 +501,9 @@
       "workflow.minimal-ci"
     ],
     "creates": [".github/workflows/python-ci.yml"],
+    "installs": [
+      { "path": ".github/workflows/python-ci.yml", "source": "github-workflows:python-ci.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "python-ci" }
@@ -435,6 +524,9 @@
       "workflow.python-ci"
     ],
     "creates": [".github/workflows/minimal-ci.yml"],
+    "installs": [
+      { "path": ".github/workflows/minimal-ci.yml", "source": "github-workflows:minimal-ci.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "minimal-ci" }
@@ -490,6 +582,30 @@
       "scripts/agent-pr-ready.mjs",
       "package.json"
     ],
+    "installs": [
+      { "path": "scripts/agent/lib.mjs", "source": "repo-template:scripts/agent/lib.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/agent/start-task.mjs", "source": "repo-template:scripts/agent/start-task.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/agent/status.mjs", "source": "repo-template:scripts/agent/status.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/agent/prune.mjs", "source": "repo-template:scripts/agent/prune.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/agent/pr-body.mjs", "source": "repo-template:scripts/agent/pr-body.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/pr-contract.mjs", "source": "repo-template:scripts/pr-contract.mjs", "kind": "file", "contract": "optional" },
+      { "path": "scripts/close/lib.mjs", "source": "repo-template:scripts/close/lib.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/close/scan-complete.mjs", "source": "repo-template:scripts/close/scan-complete.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/close/ci-guard.mjs", "source": "repo-template:scripts/close/ci-guard.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/agent-close-preflight.mjs", "source": "repo-template:scripts/agent-close-preflight.mjs", "kind": "file", "contract": "optional" },
+      { "path": "scripts/agent-pr-ready.mjs", "source": "repo-template:scripts/agent-pr-ready.mjs", "kind": "file", "contract": "optional" },
+      { "path": "package.json", "kind": "merge", "contract": "required", "npmScripts": {
+        "agent:status": "node scripts/agent/status.mjs",
+        "agent:prune": "node scripts/agent/prune.mjs",
+        "agent:start-task": "node scripts/agent/start-task.mjs",
+        "agent:pr-body": "node scripts/agent/pr-body.mjs",
+        "close:scan:complete": "node scripts/close/scan-complete.mjs",
+        "close:ci:guard": "node scripts/close/ci-guard.mjs",
+        "agent:close-preflight": "node scripts/agent-close-preflight.mjs",
+        "agent:pr-ready": "node scripts/agent-pr-ready.mjs"
+      } },
+      { "path": ".gitignore", "kind": "merge", "contract": "optional", "appends": [".agent/close-scan/"] }
+    ],
     "tasks": ["writeAgentLifecycle"],
     "beginnerDescription": "Installs the agent worktree-lifecycle and close-guard scripts, then wires their npm script entries.",
     "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune,pr-body}.mjs, scripts/pr-contract.mjs (the dependency the close scripts import), scripts/close/{lib,scan-complete,ci-guard}.mjs, and the strict closeout wrappers scripts/agent-{close-preflight,pr-ready}.mjs from the repo-template snapshot, then idempotently MERGES the managed agent:* and close:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison. The task also appends the ephemeral close-scan ignore rule to .gitignore, so it `requires` foundation.gitignore (the foundation that owns that file) to keep the file declared in the plan — same pattern as foundation.friction-ledger (#304)."
@@ -505,6 +621,12 @@
       "scripts/doc-sweep/sweep.mjs",
       "docs/agent-process/doc-sweep.md"
     ],
+    "installs": [
+      { "path": "scripts/doc-sweep/lib.mjs", "source": "repo-template:scripts/doc-sweep/lib.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/doc-sweep/git.mjs", "source": "repo-template:scripts/doc-sweep/git.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/doc-sweep/sweep.mjs", "source": "repo-template:scripts/doc-sweep/sweep.mjs", "kind": "file", "contract": "required" },
+      { "path": "docs/agent-process/doc-sweep.md", "source": "repo-template:docs/agent-process/doc-sweep.md", "kind": "file", "contract": "required" }
+    ],
     "tasks": ["writeDocSweep"],
     "beginnerDescription": "Installs the doc-sweep runner so agents recover and preserve docs across sessions (sweep-on-open / flush-on-close) instead of stranding them when a session dies.",
     "advancedDescription": "Copies scripts/doc-sweep/{lib,git,sweep}.mjs and docs/agent-process/doc-sweep.md from the repo-template snapshot, content-aware (drift-repairing, shares the agent-lifecycle checkAllMatch/verifyAllMatch helpers). The `## Doc Sweep-Up` AGENTS.md contract ships via the repo-template AGENTS.md snapshot; the github-workflows `doc-orphan-detector.yml@v1` cron backstop is a separate opt-in. Full spec: docs/agent-process/doc-sweep.md."
@@ -518,6 +640,11 @@
       "scripts/doc-health/lib.mjs",
       "scripts/doc-health/health.mjs",
       "docs/agent-process/doc-health.md"
+    ],
+    "installs": [
+      { "path": "scripts/doc-health/lib.mjs", "source": "repo-template:scripts/doc-health/lib.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/doc-health/health.mjs", "source": "repo-template:scripts/doc-health/health.mjs", "kind": "file", "contract": "required" },
+      { "path": "docs/agent-process/doc-health.md", "source": "repo-template:docs/agent-process/doc-health.md", "kind": "file", "contract": "required" }
     ],
     "tasks": ["writeDocHealth"],
     "beginnerDescription": "Installs the report-only doc-health runner so agents can find document drift (stale charters, dangling links, missing index entries) and turn it into the normal issue -> branch -> PR lane instead of silent rot.",
@@ -559,6 +686,37 @@
       "templates/reports/reports.decision-memo.standard.md",
       "templates/reports/reports.findings-report.standard.md"
     ],
+    "installs": [
+      { "path": "templates/README.md", "source": "repo-template:templates/README.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/MANIFEST.md", "source": "repo-template:templates/MANIFEST.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/assumptions.md", "source": "repo-template:templates/_partials/assumptions.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/context.md", "source": "repo-template:templates/_partials/context.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/evidence.md", "source": "repo-template:templates/_partials/evidence.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/footer.md", "source": "repo-template:templates/_partials/footer.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/header.md", "source": "repo-template:templates/_partials/header.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/next-actions.md", "source": "repo-template:templates/_partials/next-actions.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/open-questions.md", "source": "repo-template:templates/_partials/open-questions.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/risks.md", "source": "repo-template:templates/_partials/risks.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/status-banner.md", "source": "repo-template:templates/_partials/status-banner.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/_partials/status-line.md", "source": "repo-template:templates/_partials/status-line.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/agent/agent.blocked-or-partial.standard.md", "source": "repo-template:templates/agent/agent.blocked-or-partial.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/agent/agent.clarification-request.standard.md", "source": "repo-template:templates/agent/agent.clarification-request.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/agent/agent.final-response.standard.md", "source": "repo-template:templates/agent/agent.final-response.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/agent/agent.handoff.standard.md", "source": "repo-template:templates/agent/agent.handoff.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/agent/agent.presentation-message.standard.md", "source": "repo-template:templates/agent/agent.presentation-message.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/agent/agent.progress-update.standard.md", "source": "repo-template:templates/agent/agent.progress-update.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/github/github.issue.standard.md", "source": "repo-template:templates/github/github.issue.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/github/github.pull-request.standard.md", "source": "repo-template:templates/github/github.pull-request.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/operations/operations.task-intake.standard.md", "source": "repo-template:templates/operations/operations.task-intake.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/prompts/prompts.prompt-batch.standard.md", "source": "repo-template:templates/prompts/prompts.prompt-batch.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/prompts/prompts.prompt-builder.standard.md", "source": "repo-template:templates/prompts/prompts.prompt-builder.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/prompts/prompts.prompt-review.standard.md", "source": "repo-template:templates/prompts/prompts.prompt-review.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/prompts/prompts.prompt-run-report.standard.md", "source": "repo-template:templates/prompts/prompts.prompt-run-report.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/prompts/prompts.prompt-run-request.standard.md", "source": "repo-template:templates/prompts/prompts.prompt-run-request.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/prompts/prompts.prompt-spec.standard.md", "source": "repo-template:templates/prompts/prompts.prompt-spec.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/reports/reports.decision-memo.standard.md", "source": "repo-template:templates/reports/reports.decision-memo.standard.md", "kind": "file", "contract": "optional" },
+      { "path": "templates/reports/reports.findings-report.standard.md", "source": "repo-template:templates/reports/reports.findings-report.standard.md", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["writeTemplateLibrary"],
     "beginnerDescription": "Installs the standard reusable agent, prompt, report, operations, GitHub, and partial templates from the repo-template baseline.",
     "advancedDescription": "Copies the repo-template snapshot's templates/** library into generated repos and repairs drift with exact snapshot comparison. This makes the reusable template artifact library part of the default local/headless baseline instead of a future-only UI concept."
@@ -570,6 +728,9 @@
     "default": false,
     "remoteRequirement": "runtime",
     "creates": [".github/workflows/doc-orphan-detector.yml"],
+    "installs": [
+      { "path": ".github/workflows/doc-orphan-detector.yml", "source": "github-workflows:doc-orphan-detector.yml", "kind": "file", "contract": "optional" }
+    ],
     "tasks": ["installWorkflow"],
     "options": {
       "workflowName": { "type": "constant", "value": "doc-orphan-detector" }
