@@ -198,7 +198,7 @@
     "default": false,
     "creates": [".github/workflows/actionlint.yml"],
     "installs": [
-      { "path": ".github/workflows/actionlint.yml", "source": "github-workflows:actionlint.yml", "kind": "file", "contract": "optional" }
+      { "path": ".github/workflows/actionlint.yml", "source": "repo-template:.github/workflows/actionlint.yml", "kind": "file", "contract": "optional" }
     ],
     "tasks": ["installWorkflow"],
     "options": {

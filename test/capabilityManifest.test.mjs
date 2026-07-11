@@ -86,10 +86,12 @@ const SNAPSHOT_EXTRAS = [
   // foundation.codeowners GENERATES `* @<owner>` at onboard time; this vendored
   // snapshot is a reference copy, not the install source.
   ".github/CODEOWNERS",
-  // foundation.actionlint / agent-workflow.anomaly-triage install the
-  // github-workflows @v1 caller (src/snapshots/github-workflows/), not these
-  // repo-template reference copies.
-  ".github/workflows/actionlint.yml",
+  // agent-workflow.anomaly-triage installs the github-workflows @v1 caller
+  // (src/snapshots/github-workflows/anomaly-triage.yml), so this repo-template
+  // reference copy is a genuine extra. foundation.actionlint, by contrast, has
+  // NO github-workflows caller — it installs FROM repo-template (snapshotSource:
+  // "repo-template"), so .github/workflows/actionlint.yml is a real
+  // installs[].source, not an extra, and must NOT be listed here.
   ".github/workflows/anomaly-triage.yml",
   // Wiki-lint workflow: no onboarding feature installs it.
   ".github/workflows/wiki-lint.yml",
@@ -170,15 +172,30 @@ test("every repo-template copyFiles entry is an installs[].source or a justified
   }
 });
 
-test("every repo-template installs[].source exists in the committed snapshot", async () => {
+// Provider prefix -> committed snapshot root. Fail-closed: a source naming a
+// provider not listed here fails the existence test below rather than silently
+// passing, so a new snapshot family (or a mislabeled provider, e.g. PR #355's
+// actionlint pointing at github-workflows where the file only lives under
+// repo-template) can't slip through unvalidated.
+const SNAPSHOT_ROOTS = {
+  "repo-template": "src/snapshots/repo-template",
+  "github-workflows": "src/snapshots/github-workflows",
+};
+
+test("every installs[].source resolves to an existing file in its named snapshot", async () => {
   for (const feature of features) {
     for (const install of feature.installs || []) {
-      if (!install.source || !install.source.startsWith("repo-template:")) continue;
-      const rel = install.source.slice("repo-template:".length);
-      const abs = join(REPO_ROOT, "src/snapshots/repo-template", ...rel.split("/"));
+      if (!install.source) continue; // merge installs (package.json/.gitignore) carry no source
+      const idx = install.source.indexOf(":");
+      assert.ok(idx > 0, `${feature.id}: malformed installs[].source "${install.source}" (expected "<provider>:<path>")`);
+      const provider = install.source.slice(0, idx);
+      const rel = install.source.slice(idx + 1);
+      const root = SNAPSHOT_ROOTS[provider];
+      assert.ok(root, `${feature.id}: unknown source provider "${provider}" in "${install.source}" — add it to SNAPSHOT_ROOTS`);
+      const abs = join(REPO_ROOT, root, ...rel.split("/"));
       await assert.doesNotReject(
         access(abs, constants.F_OK),
-        `${feature.id}: snapshot file missing for source "${rel}"`
+        `${feature.id}: snapshot file missing for source "${install.source}" (looked under ${root})`
       );
     }
   }
