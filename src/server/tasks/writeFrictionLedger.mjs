@@ -12,7 +12,10 @@ const GITIGNORE_PATH = ".gitignore";
 // maintenance hook treat `.claude/{friction,noticed,napkin}.md` as ledgers that
 // agents/owners write to directly, so each needs a re-include or `git add`
 // fails on a freshly onboarded repo (#282).
-const REQUIRED_GITIGNORE_LINES = [
+// Exported for the capability-manifest cross-check: test/capabilityManifest.test.mjs
+// asserts the foundation.friction-ledger .gitignore merge install's appends[]
+// equals this list so features.json cannot drift from the lines this task writes.
+export const REQUIRED_GITIGNORE_LINES = [
   ".claude/*",
   "!.claude/friction.md",
   "!.claude/noticed.md",

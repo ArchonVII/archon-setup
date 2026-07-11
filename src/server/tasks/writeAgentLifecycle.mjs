@@ -14,7 +14,10 @@ const GITIGNORE_PATH = ".gitignore";
 // .agent/close-scan/complete.json (scripts/close/lib.mjs DEFAULT_MARKER_PATH).
 // It is ephemeral close-state, never committed, so onboarded repos must ignore
 // the whole directory or the marker shows up as committable junk (#253).
-const CLOSE_SCAN_IGNORE = ".agent/close-scan/";
+// Exported for the capability-manifest cross-check: test/capabilityManifest.test.mjs
+// asserts the agent-lifecycle.baseline .gitignore merge install's appends[] equals
+// [CLOSE_SCAN_IGNORE] so features.json cannot drift from the line this task writes.
+export const CLOSE_SCAN_IGNORE = ".agent/close-scan/";
 // Match the managed rule already present (with or without a leading slash or
 // trailing slash) so re-runs detect it and stay no-ops. Mirrors the
 // CLAUDE_DIR_IGNORE shape in writeFrictionLedger.mjs.
@@ -22,7 +25,9 @@ const CLOSE_SCAN_IGNORE_LINE = /^\/?\.agent\/close-scan\/?$/;
 
 // The repo-template agent worktree-lifecycle and close-guard scripts (shipped
 // upstream in repo-template and snapshotted under src/snapshots/repo-template).
-const SCRIPT_FILES = [
+// Exported for the capability-manifest cross-check: test/capabilityManifest.test.mjs
+// asserts this equals the agent-lifecycle.baseline file-kind installs[] projection.
+export const SCRIPT_FILES = [
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",

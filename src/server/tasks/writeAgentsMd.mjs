@@ -17,71 +17,44 @@ import {
 } from "./markdownFrontmatter.mjs";
 import { startupBaselineMatchesExpected } from "./startupBaselineContract.mjs";
 
-const AGENTS_SNAPSHOT = join(
+const SNAPSHOT_ROOT = join(
   dirname(fileURLToPath(import.meta.url)),
   "..",
   "..",
   "snapshots",
-  "repo-template",
-  "AGENTS.md"
+  "repo-template"
 );
-const UPDATE_LOG_SNAPSHOT = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "snapshots",
-  "repo-template",
-  "docs",
-  "repo-update-log.md"
-);
-const STARTUP_BASELINE_SNAPSHOT = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "snapshots",
-  "repo-template",
-  ".agent",
-  "startup-baseline.json"
-);
-const PLANS_README_SNAPSHOT = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "snapshots",
-  "repo-template",
-  "docs",
-  "plans",
-  "README.md"
-);
-// Document-policy charter + placement rules (document-policy spec §5.1, lane 1c).
-// foundation.agents distributes it alongside AGENTS.md so a new repo lands the
-// full policy the AGENTS.md Start Map points at. Frontmatter-tolerant like the
-// plans README: wiki-managed repos may prepend repo-local YAML.
-const DOCUMENT_POLICY_SNAPSHOT = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "snapshots",
-  "repo-template",
-  "docs",
-  "agent-process",
-  "document-policy.md"
-);
-// Message-protocol charter (status-tag vocabulary, For you / My work lanes,
-// machine-backed SAFE TO CLEAR rule). AGENTS.md's `## Message protocol` section
-// links here, so distributing it alongside AGENTS.md clears the dangling
-// relative link doc-health flags in every onboarded repo (#278). Frontmatter-
-// tolerant like document-policy: wiki-managed repos may prepend repo-local YAML.
-const MESSAGE_PROTOCOL_SNAPSHOT = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "..",
-  "snapshots",
-  "repo-template",
-  "docs",
-  "agent-process",
-  "message-protocol.md"
-);
+// The repo-relative destination paths foundation.agents writes on onboard. Single
+// source for the derived *_SNAPSHOT read paths below AND the capability-manifest
+// cross-check: test/capabilityManifest.test.mjs asserts this equals the
+// foundation.agents installs[] projection in src/registry/features.json. Keep the
+// order in sync with the positional reads that follow.
+export const AGENTS_MANAGED_FILES = [
+  "AGENTS.md",
+  "docs/repo-update-log.md",
+  ".agent/startup-baseline.json",
+  "docs/plans/README.md",
+  "docs/agent-process/document-policy.md",
+  "docs/agent-process/message-protocol.md",
+];
+const snapshotPath = (rel) => join(SNAPSHOT_ROOT, ...rel.split("/"));
+const AGENTS_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[0]);
+const UPDATE_LOG_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[1]);
+const STARTUP_BASELINE_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[2]);
+const PLANS_README_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[3]);
+// AGENTS_MANAGED_FILES[4] — document-policy charter + placement rules
+// (document-policy spec §5.1, lane 1c). foundation.agents distributes it
+// alongside AGENTS.md so a new repo lands the full policy the AGENTS.md Start Map
+// points at. Frontmatter-tolerant like the plans README: wiki-managed repos may
+// prepend repo-local YAML.
+const DOCUMENT_POLICY_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[4]);
+// AGENTS_MANAGED_FILES[5] — message-protocol charter (status-tag vocabulary,
+// For you / My work lanes, machine-backed SAFE TO CLEAR rule). AGENTS.md's
+// `## Message protocol` section links here, so distributing it alongside
+// AGENTS.md clears the dangling relative link doc-health flags in every
+// onboarded repo (#278). Frontmatter-tolerant like document-policy: wiki-managed
+// repos may prepend repo-local YAML.
+const MESSAGE_PROTOCOL_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[5]);
 const AGENTS_MANAGED_BLOCK_ID = "agents-start-map";
 // #306: the cross-tool delivery contract (issue -> branch -> atomic commits ->
 // PR, never commit feature work to `main`, Conventional Commits, branch naming
