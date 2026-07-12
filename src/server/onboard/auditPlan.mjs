@@ -172,7 +172,7 @@ export async function auditPlan(plan) {
   // The startup baseline this plan's resolved selection expects — generated once
   // from the capability manifest and shared by the per-file check and the
   // startup-readiness derivation so they never disagree (lane C2, #352).
-  const generatedBaseline = await loadStartupBaseline(plan.selectedFeatureIds);
+  const generatedBaseline = await loadStartupBaseline(plan.selectedFeatureIds || []);
   for (const file of plan.files) {
     const unit = unitForFile(plan, file);
     const fullPath = safeJoin(plan.context.targetPath, file.path);
