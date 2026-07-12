@@ -164,7 +164,7 @@ test("tasks record only the files actually written during a mixed apply", async 
     },
     {
       path: ".agent/startup-baseline.json",
-      source: "snapshot:repo-template/.agent/startup-baseline.json",
+      source: "generated:startup-baseline (selection-derived, lane C2)",
     },
     {
       path: "docs/plans/README.md",

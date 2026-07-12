@@ -5,12 +5,23 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import * as writeAgentsMd from "../src/server/tasks/writeAgentsMd.mjs";
+import { loadRegistry } from "../src/server/planner/buildPlan.mjs";
+import { generateStartupBaseline, loadProfileFeatures } from "../src/server/tasks/startupBaseline.mjs";
+
+// Lane C2 (#352): the startup baseline is generated per resolved selection, so
+// the pinned assertions below compare against the generator's output for the
+// selection under test rather than a hardcoded version/snapshot.
+const { features: REGISTRY_FEATURES } = await loadRegistry();
+const AGENT_STANDARD = await loadProfileFeatures("agent-standard");
 
 test("writeAgentsMd creates the agent contract and repo update log", async () => {
   const targetPath = await mkdtemp(join(tmpdir(), "archon-agents-"));
   const ctx = {
     targetPath,
     taskOptions: {},
+    // Bare foundation.agents selection: writeAgentsMd falls back to this when no
+    // selection is threaded, so the generated baseline is that feature's floor.
+    selectedFeatureIds: ["foundation.agents"],
     manifest: { createdFiles: [] },
   };
 
@@ -40,7 +51,11 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
   assert.match(agents, /agent\/<tool>\/<issue>-<slug>/);
   assert.match(agents, /Never commit feature work to `main`/);
   assert.match(updateLog, /# Repository Update Log/);
-  assert.equal(JSON.parse(startupBaseline).version, "2026-07-04-s3-fragment-retirement");
+  // Lane C2 (#352): the baseline is generated for the recorded selection, not a
+  // pinned snapshot version. It equals the generator's output for foundation.agents.
+  const expectedBaseline = generateStartupBaseline(["foundation.agents"], REGISTRY_FEATURES);
+  assert.equal(JSON.parse(startupBaseline).version, expectedBaseline.version);
+  assert.deepEqual(JSON.parse(startupBaseline), expectedBaseline);
   assert.match(plansReadme, /docs\/plans\/YYYY-MM-DD-<slug>\.md/);
   assert.ok(documentPolicy.length > 0, "document-policy.md is written");
   assert.match(messageProtocol, /# Message Protocol/, "message-protocol.md is written");
@@ -147,20 +162,26 @@ test("writeAgentsMd preserves plans README YAML frontmatter while repairing base
   assert.equal(await writeAgentsMd.check(ctx), "already-done");
 });
 
-test("writeAgentsMd repairs a stale same-version startup baseline contract", async () => {
+test("writeAgentsMd repairs a startup baseline that drifts from the generated expectation", async () => {
   const targetPath = await mkdtemp(join(tmpdir(), "archon-agents-baseline-contract-"));
+  // agent-standard selection so the generated floor contains the closeout
+  // scripts + package.json we tamper with below.
   const ctx = {
     targetPath,
     taskOptions: {},
+    selectedFeatureIds: AGENT_STANDARD,
     manifest: { createdFiles: [] },
   };
 
   await writeAgentsMd.apply(ctx);
   const baselinePath = join(targetPath, ".agent", "startup-baseline.json");
-  const current = JSON.parse(await readFile(baselinePath, "utf8"));
+  const generated = JSON.parse(await readFile(baselinePath, "utf8"));
+  // Lane C2 premise: the on-disk baseline no longer equals the generated
+  // expectation for the recorded selection (a hand-tampered floor with the
+  // scripts + package.json dropped), so check/verify must flag and repair it.
   const stale = {
-    ...current,
-    required: current.required.filter((path) => !path.startsWith("scripts/") && path !== "package.json"),
+    ...generated,
+    required: generated.required.filter((path) => !path.startsWith("scripts/") && path !== "package.json"),
   };
   await writeFile(baselinePath, JSON.stringify(stale, null, 2) + "\n", "utf8");
 
@@ -169,6 +190,6 @@ test("writeAgentsMd repairs a stale same-version startup baseline contract", asy
 
   await writeAgentsMd.apply(ctx);
 
-  assert.deepEqual(JSON.parse(await readFile(baselinePath, "utf8")), current);
+  assert.deepEqual(JSON.parse(await readFile(baselinePath, "utf8")), generated);
   assert.equal(await writeAgentsMd.check(ctx), "already-done");
 });

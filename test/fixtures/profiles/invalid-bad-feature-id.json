@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "docs-min",
+      "label": "Docs-only minimum",
+      "description": "AGENTS.md bundle only.",
+      "features": ["NotADottedId"]
+    }
+  ]
+}

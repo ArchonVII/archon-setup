@@ -176,7 +176,7 @@ test("onboard writes the minimal local baseline without opt-in process automatio
   assert.ok(!manifest.selectedFeatures.includes("agent-workflow.template-library"));
 });
 
-test("a default onboard reports minimal startup readiness complete", async () => {
+test("a default onboard reports docs-min startup readiness complete", async () => {
   const root = await tempRoot();
 
   const writeResult = await withFetchStub(() =>
@@ -194,11 +194,16 @@ test("a default onboard reports minimal startup readiness complete", async () =>
   const auditResult = await withFetchStub(() => runOnboard({ targetPath: root, audit: true }));
   assert.equal(auditResult.ok, true);
   assert.equal(auditResult.audit.startupReadiness.status, "complete");
-  assert.equal(auditResult.audit.startupReadiness.profile, "minimal");
+  // A default onboard = the nine docs-min foundations (lane C2, #352).
+  assert.equal(auditResult.audit.startupReadiness.profile, "docs-min");
   assert.deepEqual(auditResult.audit.startupReadiness.missing, []);
   assert.deepEqual(auditResult.audit.startupReadiness.stale, []);
-  assert.ok(auditResult.audit.startupReadiness.present.includes("docs/repo-update-log.md"));
-  assert.ok(!auditResult.audit.startupReadiness.present.includes("docs/repo-update-log/README.md"));
+  // The docs-min floor: AGENTS.md + the coordination/plans/document-policy docs.
+  assert.ok(auditResult.audit.startupReadiness.present.includes("AGENTS.md"));
+  assert.ok(auditResult.audit.startupReadiness.present.includes(".agent/coordination/README.md"));
+  // repo-update-log.md is installed but contract:"optional" — not in the docs-min
+  // floor — and no agent-standard scripts are demanded by a docs-min repo.
+  assert.ok(!auditResult.audit.startupReadiness.present.includes("docs/repo-update-log.md"));
   assert.ok(!auditResult.audit.startupReadiness.present.includes("scripts/doc-health/health.mjs"));
 });
 
