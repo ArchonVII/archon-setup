@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "archon-setup baseline profiles",
+  "description": "Named onboarding tiers (lane C2, #352). Each profile lists a closure-complete resolved feature set; --profile <id> resolves to features[] (unioned with any --features extras). Deliberately within the zero-dep validator's supported keyword subset (no `default`) so it is machine-validated at load time, unlike features' schema.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profiles"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "description", "features"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "Tier id, e.g. docs-min."
+          },
+          "label": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "features": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+            },
+            "description": "Dotted feature ids (must exist in features.json). Closure-complete: the profile's `requires` closure should equal this list."
+          }
+        }
+      }
+    }
+  }
+}
