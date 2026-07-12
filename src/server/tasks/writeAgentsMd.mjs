@@ -16,6 +16,7 @@ import {
   markdownMatchesSnapshotAllowingFrontmatter,
 } from "./markdownFrontmatter.mjs";
 import { startupBaselineMatchesExpected } from "./startupBaselineContract.mjs";
+import { loadStartupBaseline, serializeStartupBaseline } from "./startupBaseline.mjs";
 
 const SNAPSHOT_ROOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -40,7 +41,10 @@ export const AGENTS_MANAGED_FILES = [
 const snapshotPath = (rel) => join(SNAPSHOT_ROOT, ...rel.split("/"));
 const AGENTS_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[0]);
 const UPDATE_LOG_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[1]);
-const STARTUP_BASELINE_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[2]);
+// AGENTS_MANAGED_FILES[2] — .agent/startup-baseline.json is NO LONGER copied from
+// the snapshot (lane C2, #352). It is generated per resolved selection from the
+// capability manifest by startupBaseline.mjs, so there is no *_SNAPSHOT read path
+// for it; the vendored snapshot copy remains repo-template's own provider file.
 const PLANS_README_SNAPSHOT = snapshotPath(AGENTS_MANAGED_FILES[3]);
 // AGENTS_MANAGED_FILES[4] — document-policy charter + placement rules
 // (document-policy spec §5.1, lane 1c). foundation.agents distributes it
@@ -141,10 +145,21 @@ async function fileMatchesMarkdownSnapshot(root, relativePath, snapshotBody) {
   }
 }
 
-async function startupBaselineCurrent(root) {
+// The resolved selection whose floor this baseline is generated for. Onboarding
+// threads it via ctx (executePlan sets ctx.selectedFeatureIds = the plan's
+// resolved selection; the manifest carries the same list). Direct unit calls
+// that omit it fall back to the feature that owns this task.
+function selectionFrom(ctx) {
+  return ctx.selectedFeatureIds || ctx.manifest?.selectedFeatures || ["foundation.agents"];
+}
+
+// Current iff the on-disk baseline equals the GENERATED expectation for the
+// recorded selection (lane C2, #352) — no longer a comparison against the
+// snapshot copy. A selection-mismatched or drifted baseline reports needs-apply.
+async function startupBaselineCurrent(root, selection) {
   try {
     const current = JSON.parse(await readFile(safeJoin(root, ".agent/startup-baseline.json"), "utf8"));
-    const expected = JSON.parse(await readFile(STARTUP_BASELINE_SNAPSHOT, "utf8"));
+    const expected = await loadStartupBaseline(selection);
     return startupBaselineMatchesExpected(current, expected);
   } catch {
     return false;
@@ -175,7 +190,7 @@ export async function check(ctx) {
     const current = await readFile(safeJoin(ctx.targetPath, "AGENTS.md"), "utf8");
     const snapshotBody = await readAgentsSnapshot();
     const updateLogDone = await fileExists(ctx.targetPath, "docs/repo-update-log.md");
-    const startupDone = await startupBaselineCurrent(ctx.targetPath);
+    const startupDone = await startupBaselineCurrent(ctx.targetPath, selectionFrom(ctx));
     const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
     const plansReadmeDone = await fileMatchesMarkdownSnapshot(ctx.targetPath, "docs/plans/README.md", plansReadme);
     const documentPolicy = await readFile(DOCUMENT_POLICY_SNAPSHOT, "utf8");
@@ -201,7 +216,10 @@ export async function check(ctx) {
 export async function apply(ctx) {
   const body = await readAgentsSnapshot();
   const updateLog = await readFile(UPDATE_LOG_SNAPSHOT, "utf8");
-  const startupBaseline = await readFile(STARTUP_BASELINE_SNAPSHOT, "utf8");
+  // Generated per the recorded selection instead of copied from the snapshot
+  // (lane C2, #352) — the shipped repo-local checker then demands exactly what
+  // this selection installs.
+  const startupBaseline = serializeStartupBaseline(await loadStartupBaseline(selectionFrom(ctx)));
   const plansReadme = await snapshotBodyPreservingFrontmatter(
     ctx.targetPath,
     "docs/plans/README.md",
@@ -288,7 +306,7 @@ export async function apply(ctx) {
   });
   recordCreatedOnly(ctx, startupBaselineResult, {
     path: ".agent/startup-baseline.json",
-    source: "snapshot:repo-template/.agent/startup-baseline.json",
+    source: "generated:startup-baseline (selection-derived, lane C2)",
   });
   recordCreatedOnly(ctx, plansReadmeResult, {
     path: "docs/plans/README.md",
@@ -313,7 +331,7 @@ export async function verify(ctx) {
       return { ok: false, error: "AGENTS.md is missing the ArchonVII startup map" };
     }
     await access(safeJoin(ctx.targetPath, "docs/repo-update-log.md"), constants.F_OK);
-    if (!(await startupBaselineCurrent(ctx.targetPath))) {
+    if (!(await startupBaselineCurrent(ctx.targetPath, selectionFrom(ctx)))) {
       return { ok: false, error: ".agent/startup-baseline.json is missing or stale" };
     }
     const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");

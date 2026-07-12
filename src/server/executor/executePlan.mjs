@@ -77,6 +77,8 @@ export async function executePlan(plan, { onEvent, secretProvider } = {}) {
     visibility: plan.context.visibility,
     sourceSnapshots: plan.context.sourceSnapshots || {},
     selectedFeatures: plan.selectedFeatureIds,
+    // The tier name (or "custom") the resolved selection earned (lane C2, #352).
+    profile: plan.profile,
     createdFiles: [],
     skippedFiles: [],
     remoteActions: [],
@@ -106,6 +108,9 @@ export async function executePlan(plan, { onEvent, secretProvider } = {}) {
       ...plan.context,
       taskOptions: unit.options,
       featureId: unit.featureId,
+      // The resolved selection, so writeAgentsMd generates the startup baseline
+      // for exactly this plan's floor (lane C2, #352).
+      selectedFeatureIds: plan.selectedFeatureIds,
       manifest,
       onEvent,
       secretProvider,
