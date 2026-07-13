@@ -540,6 +540,10 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   await writeFile(join(root, "scripts", "agent", "status.mjs"), "console.log('old status without startup map');\n", "utf8");
   await mkdir(join(root, "scripts", "close"), { recursive: true });
   await writeFile(join(root, "scripts", "close", "ci-guard.mjs"), "console.log('old close guard');\n", "utf8");
+  // A tampered ROOT closeout script (not under scripts/{agent,close,doc-*}/) must
+  // read stale too. The readiness check formerly compared only those subdir
+  // prefixes and reported a drifted root required script present (Codex on #356).
+  await writeFile(join(root, "scripts", "pr-contract.mjs"), "console.log('old pr contract');\n", "utf8");
 
   const { stdout } = await execFileP(
     process.execPath,
@@ -560,6 +564,7 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/agent/status.mjs"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/close/ci-guard.mjs"));
+  assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/pr-contract.mjs"));
 });
 
 test("startup readiness reports stale same-version startup baseline contract", async () => {

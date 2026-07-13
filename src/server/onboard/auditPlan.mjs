@@ -498,12 +498,14 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
     case "docs/agent-process/doc-health.md":
       return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     default:
-      if (
-        relativePath.startsWith("scripts/agent/") ||
-        relativePath.startsWith("scripts/close/") ||
-        relativePath.startsWith("scripts/doc-sweep/") ||
-        relativePath.startsWith("scripts/doc-health/")
-      ) {
+      // Every required script under scripts/ is snapshot-backed (repo-template
+      // sources), so compare its content — not just the scripts/{agent,close,
+      // doc-sweep,doc-health}/ subdirs. Matching only those subdir prefixes let a
+      // tampered/stale root closeout script (scripts/pr-contract.mjs,
+      // scripts/agent-{close-preflight,pr-ready}.mjs — the three C2 flipped to
+      // contract:"required") fall through to "present" and report startup-ready,
+      // defeating the generated required contract (Codex review on #356).
+      if (relativePath.startsWith("scripts/")) {
         return (await fileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
       }
       return "present";
