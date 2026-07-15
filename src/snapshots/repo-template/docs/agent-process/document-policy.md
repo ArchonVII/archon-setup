@@ -43,7 +43,7 @@ consumer update path.
 | `VISION.md`                                | What experience are we building, and what is out of scope?   | human                 | 120 lines             | Experience, north star, scope, explicitly-not section      | Implementation detail, task lists, status logs         |
 | `docs/decisions/decision-log.md`           | What did the owner decide, when?                             | human, agent-appended | append-only           | Newest decision first with date, lane, one-line why        | Rationale essays, technical ADR content                |
 | `CHANGELOG.md` (release-class)             | What shipped for users?                                      | `docs:changelog`      | folded at release-cut | Conventional Commit history rendered into `[Unreleased]`   | Operational update notes, internal-only maintenance    |
-| `docs/STATUS.md` (replaced `docs/repo-update-log/`, retired #124) | What changed operationally / is in flight? | `docs:status` | rendered on demand | Open PRs/issues, roadmap %, doc-health summary | User-facing release notes |
+| `docs/STATUS.md` (planned under #124 — not yet generated; `docs/repo-update-log.md` stays the frozen archive meanwhile) | What changed operationally / is in flight? | `docs:status` | rendered on demand | Open PRs/issues, roadmap %, doc-health summary | User-facing release notes |
 | `ARCHITECTURE.md` / `docs/architecture/**` | Where do subsystems live and what boundaries matter?         | agents                | as needed             | System map and boundary rules before rationale             | Per-file documentation, transient plans                |
 | `docs/plans/**`                            | What implementation plan is active or historical?            | agents                | as needed             | Status, owner, source issue, next action, closeout state   | Project vision, ADR replacement, stale active guidance |
 | `projects/<slug>/PLAN.md`                  | What is the front door for one feature?                      | agents                | as needed             | Current state, next safe action, blocker, invariants       | Duplicate specs, code, generated artifacts             |
@@ -56,13 +56,29 @@ consumer update path.
 When a repo has not adopted a future document yet, the charter still defines where that
 document belongs once introduced.
 
+The `docs:changelog` and `docs:status` commands named in the table above run through
+`package.json` scripts, and (like the sibling `docs:render` and `pr:contract` commands) a
+repo has them only when it installs the agent-lifecycle feature. A repo onboarded without
+that feature has no `npm run`, so it folds the changelog and renders status another way or
+not at all.
+
 ## Owner Intent Layer
 
-`VISION.md` is human-owned. Agents may install or repair the template, but they do not fill
-it from inference. Keep it focused on experience, north star, scope, explicitly-not,
-current horizon, and drift tripwires; implementation detail, task lists, and status logs
-belong elsewhere. `Last reviewed` is stale after 90 days unless a repo-local policy sets a
-different cadence.
+`VISION.md` is human-owned. **Elicit, do not author.** For any `Owner: human` surface, a
+blank or thin section is a *question for the owner*, not a task for the agent — stop and ask
+the owner to fill it. Agents may **install or repair** the skeleton but never fill it from
+inference (decisions, code, git history, or other docs are not sources for owner intent).
+
+- **Install = copy verbatim.** The canonical skeleton is `repo-template/VISION.md` (the
+  scaffold source named in the Source-Of-Truth Hierarchy above). Installing means copying
+  that file; never compose a skeleton from prose — composing is where inference leaks in.
+  If the repo has no local copy and the canonical source is unreachable, ask the owner
+  rather than reconstructing one.
+- **Repair** touches structure only (missing sections, stale header), never content.
+
+Keep the file focused on experience, north star, scope, explicitly-not, current horizon, and
+drift tripwires; implementation detail, task lists, and status logs belong elsewhere.
+`Last reviewed` is stale after 90 days unless a repo-local policy sets a different cadence.
 
 `docs/decisions/decision-log.md` is the append-only owner-intent ledger, newest first.
 Entries stay to the title plus `Decision`, `Lane`, and `Why` one-liners. Use it for owner
