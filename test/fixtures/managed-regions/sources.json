@@ -6,7 +6,8 @@
     "adapter": "yaml",
     "group": "callers",
     "wholeFile": false,
-    "appliesToDefault": "existing-file-only"
+    "appliesToDefault": "existing-file-only",
+    "capabilityIds": ["workflow.required-gate"]
   },
   {
     "provider": "repo-template",
@@ -15,7 +16,8 @@
     "adapter": "markdown",
     "group": "agents",
     "wholeFile": false,
-    "appliesToDefault": "existing-file-only"
+    "appliesToDefault": "existing-file-only",
+    "capabilityIds": ["foundation.agents"]
   },
   {
     "provider": "repo-template",
@@ -24,6 +26,7 @@
     "adapter": "shell",
     "group": "hooks",
     "wholeFile": false,
-    "appliesToDefault": "existing-file-only"
+    "appliesToDefault": "existing-file-only",
+    "capabilityIds": ["foundation.hooks"]
   }
 ]

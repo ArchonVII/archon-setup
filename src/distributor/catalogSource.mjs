@@ -1,4 +1,5 @@
 import { getAdapter } from "./adapters/index.mjs";
+import { assertCapabilityIds } from "./capabilityRefs.mjs";
 import { parseRegions } from "./regionEngine.mjs";
 
 // Builds the desired-region catalog a distribute run works from. Two sources:
@@ -27,12 +28,17 @@ export function globalUpdatesCatalogEntries(updates) {
       // always unique, so adoption can carry a concrete insertion (A2).
       anchor: { kind: "eof-append" },
       protectedBranches: record.distribution.protectedBranches ?? ["main", "master"],
+      capabilityIds: assertCapabilityIds(
+        record.distribution.capabilityIds,
+        `global update ${record.id}`,
+      ),
     }));
 }
 
 export function manifestCatalogEntries(manifest, read) {
   const entries = [];
   for (const entry of manifest?.entries ?? []) {
+    assertCapabilityIds(entry.capabilityIds, `managed region ${entry.id}`);
     const adapter = getAdapter(entry.adapter);
     const snapshotBody = read(entry.snapshotFile);
     const parsed = parseRegions(snapshotBody, adapter.commentStyle);

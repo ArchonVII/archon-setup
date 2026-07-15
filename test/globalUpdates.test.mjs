@@ -55,9 +55,11 @@ test("global update catalog records the agent startup baseline", () => {
   assert.ok(record);
   assert.equal(record.status, "ready");
   assert.equal(record.distribution.kind, "agents-managed-block");
-  assert.match(record.distribution.body, /\.agent\/startup-baseline\.json/);
-  assert.match(record.distribution.body, /docs\/plans\/README\.md/);
-  assert.match(record.distribution.body, /archon-setup update.*workflow-only/s);
+  assert.deepEqual(record.distribution.capabilityIds, ["foundation.agents", "agent-lifecycle.baseline"]);
+  assert.match(record.distribution.body, /`foundation\.agents`/);
+  assert.match(record.distribution.body, /`agent-lifecycle\.baseline`/);
+  assert.doesNotMatch(record.distribution.body, /Canonical startup files and directories/);
+  assert.doesNotMatch(record.distribution.body, /  - `(?:AGENTS\.md|docs\/|scripts\/|\.agent\/)/);
   assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-06-09-agent-startup-baseline/);
 });
 

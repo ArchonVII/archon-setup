@@ -1,4 +1,5 @@
 import { getAdapter } from "./adapters/index.mjs";
+import { validateCapabilityIds } from "./capabilityRefs.mjs";
 import { parseRegions } from "./regionEngine.mjs";
 
 // Detects the BEGIN marker of each comment style, used to catch a source file
@@ -18,6 +19,20 @@ export function buildManifest(sources, read) {
   const idToFile = new Map();
 
   for (const src of sources) {
+    const capabilityDiagnostics = validateCapabilityIds(
+      src.capabilityIds,
+      `managed source ${src.snapshotFile}`,
+    );
+    if (capabilityDiagnostics.length) {
+      diagnostics.push(
+        ...capabilityDiagnostics.map((diagnostic) => ({
+          ...diagnostic,
+          snapshotFile: src.snapshotFile,
+        })),
+      );
+      continue;
+    }
+
     let adapter;
     try {
       adapter = getAdapter(src.adapter);
@@ -68,6 +83,7 @@ export function buildManifest(sources, read) {
         group: src.group,
         wholeFile: Boolean(src.wholeFile),
         appliesToDefault: src.appliesToDefault,
+        capabilityIds: src.capabilityIds,
       });
     }
   }
