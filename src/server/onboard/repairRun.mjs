@@ -160,6 +160,7 @@ export async function runOnboardingRepair({
     const applied = await runOnboard({
       targetPath: worktreePath,
       features: intake.applyFeatures,
+      baselineFeatures: intake.selectedFeatures,
       owner: resolvedOwner,
       repo: resolvedRepo,
     });
@@ -167,7 +168,14 @@ export async function runOnboardingRepair({
     failedStage = "applied";
     await appendRunState({ recordPath, state: "applied", entry: { ...base, branch, worktreePath }, now: now() });
 
-    const audit = await runOnboard({ targetPath: worktreePath, features: intake.applyFeatures, owner: resolvedOwner, repo: resolvedRepo, audit: true });
+    const audit = await runOnboard({
+      targetPath: worktreePath,
+      features: intake.applyFeatures,
+      baselineFeatures: intake.selectedFeatures,
+      owner: resolvedOwner,
+      repo: resolvedRepo,
+      audit: true,
+    });
     if (!appliedAuditPassed(audit.audit, intake.applyFeatures)) throw new Error("local audit did not confirm every apply-central item");
     failedStage = "verified_local";
     await appendRunState({ recordPath, state: "verified_local", entry: { ...base, branch, worktreePath }, now: now() });

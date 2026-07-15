@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { resolveRepoTarget, applyResolvedRepoTarget, isBlockingWarning } from "./repoTarget.mjs";
 import { serializableFeatureOptions } from "./secretOptions.mjs";
+import { validate, assertSchemaSupported } from "../../contracts/validate.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REGISTRY_DIR = join(__dirname, "..", "..", "registry");
@@ -11,17 +12,34 @@ let registryCache = null;
 
 export async function loadRegistry() {
   if (registryCache) return registryCache;
-  const [features, groups, schema] = await Promise.all([
+  const [features, groups, schema, profiles, profilesSchema] = await Promise.all([
     readFile(join(REGISTRY_DIR, "features.json"), "utf8").then(JSON.parse),
     readFile(join(REGISTRY_DIR, "groups.json"), "utf8").then(JSON.parse),
     readFile(join(REGISTRY_DIR, "schema.json"), "utf8").then(JSON.parse),
+    readFile(join(REGISTRY_DIR, "profiles.json"), "utf8").then(JSON.parse),
+    readFile(join(REGISTRY_DIR, "profiles.schema.json"), "utf8").then(JSON.parse),
   ]);
-  registryCache = { features, groups, schema };
+  // Fail-closed profiles validation (lane C2, #352). Unlike features' schema.json
+  // — which still uses the JSON-Schema `default` keyword the zero-dep validator
+  // rejects — profiles.schema.json stays within the supported subset, so we can
+  // both statically reject unsupported keywords AND validate the data at load
+  // time. A malformed profiles.json fails onboarding here rather than silently
+  // resolving to an unnamed selection later.
+  assertSchemaSupported(profilesSchema);
+  const profilesResult = validate(profilesSchema, profiles);
+  if (!profilesResult.valid) {
+    throw new Error(
+      `profiles.json fails schema: ${profilesResult.errors.map((e) => `${e.path}: ${e.message}`).join("; ")}`
+    );
+  }
+  registryCache = { features, groups, schema, profiles, profilesSchema };
   return registryCache;
 }
 
 // Resolves the closure of selected features (transitively includes `requires`).
-function resolveSelection(features, selection) {
+// Exported so the startup-baseline generator (lane C2) resolves the same closure
+// buildPlan does — the generated floor must match the plan's resolved selection.
+export function resolveSelection(features, selection) {
   const byId = new Map(features.map((f) => [f.id, f]));
   const out = new Set();
   function add(id) {
@@ -33,6 +51,21 @@ function resolveSelection(features, selection) {
   }
   for (const id of selection) add(id);
   return [...out].map((id) => byId.get(id));
+}
+
+// Names the resolved selection: a tier id (docs-min / agent-standard / flagship)
+// when the closure exactly equals that profile's resolved feature set, else
+// "custom" (lane C2, #352). Compares CLOSURES, not raw lists, so a selection and
+// a profile that differ only by an implied `requires` dependency still match.
+// This replaces auditPlan's deleted any-of-7 "full/minimal" heuristic — a repo
+// only earns a tier name it actually installed.
+export function resolveProfileId(selectedFeatureIds, features, profiles) {
+  const selected = new Set(resolveSelection(features, selectedFeatureIds).map((f) => f.id));
+  for (const profile of profiles?.profiles || []) {
+    const tier = new Set(resolveSelection(features, profile.features).map((f) => f.id));
+    if (tier.size === selected.size && [...tier].every((id) => selected.has(id))) return profile.id;
+  }
+  return "custom";
 }
 
 function codeownersOwner(context) {
@@ -88,7 +121,7 @@ function remoteMutationForTask(unit, context) {
 //
 // output: a plan object with .files, .commands, .remoteMutations, .postChecks, .ordered (task sequence)
 export async function buildPlan({ selection, options = {}, context }) {
-  const { features } = await loadRegistry();
+  const { features, profiles } = await loadRegistry();
   const resolved = resolveSelection(features, selection);
 
   const explicit = context.owner && context.repo ? { owner: context.owner, repo: context.repo } : null;
@@ -102,6 +135,9 @@ export async function buildPlan({ selection, options = {}, context }) {
   const plan = {
     context: { ...planContext },
     selectedFeatureIds: resolved.map((f) => f.id),
+    // The tier name (or "custom") the resolved selection earns (lane C2, #352).
+    // Recorded into the setup manifest and used by the audit's startup readiness.
+    profile: resolveProfileId(resolved.map((f) => f.id), features, profiles),
     files: [],
     skippedFiles: [],
     commands: [],

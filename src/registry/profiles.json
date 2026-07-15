@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "docs-min",
+      "label": "Docs-only minimum",
+      "description": "AGENTS.md bundle + coordination contract + git init; no npm, no scripts, no CI. The nine locked/default foundations.",
+      "features": [
+        "foundation.readme",
+        "foundation.license",
+        "foundation.gitignore",
+        "foundation.agents",
+        "foundation.claude-md",
+        "foundation.gemini-md",
+        "foundation.coordination",
+        "foundation.gitattributes",
+        "foundation.git-init"
+      ]
+    },
+    {
+      "id": "agent-standard",
+      "label": "Agent lifecycle standard",
+      "description": "docs-min plus the agent lifecycle scripts, check-map, anomaly triage, doc sweep/health, PR template, required gate, and git hooks — everything AGENTS.md's Start Map / Checkout Role references actually exists.",
+      "features": [
+        "foundation.readme",
+        "foundation.license",
+        "foundation.gitignore",
+        "foundation.agents",
+        "foundation.claude-md",
+        "foundation.gemini-md",
+        "foundation.coordination",
+        "foundation.gitattributes",
+        "foundation.git-init",
+        "agent-lifecycle.baseline",
+        "agent-workflow.check-map",
+        "agent-workflow.anomaly-triage",
+        "agent-workflow.doc-sweep",
+        "agent-workflow.doc-health",
+        "foundation.pr-template",
+        "workflow.required-gate",
+        "foundation.hooks"
+      ]
+    },
+    {
+      "id": "flagship",
+      "label": "Full governance",
+      "description": "agent-standard plus the friction ledger, changelog, CODEOWNERS, dependabot, template library, coordination board, and remote labels + baseline branch protection.",
+      "features": [
+        "foundation.readme",
+        "foundation.license",
+        "foundation.gitignore",
+        "foundation.agents",
+        "foundation.claude-md",
+        "foundation.gemini-md",
+        "foundation.coordination",
+        "foundation.gitattributes",
+        "foundation.git-init",
+        "agent-lifecycle.baseline",
+        "agent-workflow.check-map",
+        "agent-workflow.anomaly-triage",
+        "agent-workflow.doc-sweep",
+        "agent-workflow.doc-health",
+        "foundation.pr-template",
+        "workflow.required-gate",
+        "foundation.hooks",
+        "foundation.friction-ledger",
+        "foundation.changelog",
+        "foundation.codeowners",
+        "foundation.dependabot",
+        "agent-workflow.template-library",
+        "agent-workflow.coordination-board",
+        "remote.labels",
+        "remote.branch-protection"
+      ]
+    }
+  ]
+}

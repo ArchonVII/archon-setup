@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "id": "docs-min",
+      "label": "Docs-only minimum",
+      "description": "AGENTS.md bundle only.",
+      "features": ["foundation.agents", "foundation.coordination"]
+    },
+    {
+      "id": "agent-standard",
+      "label": "Agent lifecycle standard",
+      "description": "Adds the agent lifecycle scripts.",
+      "features": ["foundation.agents", "foundation.coordination", "agent-lifecycle.baseline"]
+    }
+  ]
+}

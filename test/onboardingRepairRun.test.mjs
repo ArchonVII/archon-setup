@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { buildOnboardingDecision, intakeOnboardingDecision } from "../src/server/onboard/repairDecision.mjs";
 import { runOnboardingRepair, verifyMergedOnboardingRepair } from "../src/server/onboard/repairRun.mjs";
 import { readRunRecord } from "../src/server/prlane/runRecord.mjs";
+import { loadProfileFeatures, loadStartupBaseline } from "../src/server/tasks/startupBaseline.mjs";
 
 function git(cwd, args) {
   return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -76,6 +77,49 @@ test("onboarding repair creates a draft PR from a fresh worktree and never queue
   assert.deepEqual(record.entries.map((entry) => entry.state), [
     "planned", "preflight_started", "preflight_passed", "issue_created", "worktree_created", "applied", "verified_local", "committed", "pushed", "pr_created",
   ]);
+});
+
+test("onboarding repair generates the baseline from the full decision selection", async () => {
+  const repo = await fixtureRepo();
+  const selectedFeatures = await loadProfileFeatures("agent-standard");
+  const doc = await buildOnboardingDecision({
+    targetPath: repo.targetPath,
+    features: selectedFeatures,
+    runId: "repair-run-full-selection",
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+  });
+  const selectivelyResolved = {
+    ...doc,
+    items: doc.items.map((item) => ({
+      ...item,
+      resolution: {
+        choice: item.feature === "foundation.agents" ? "apply-central" : "defer",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+      },
+    })),
+  };
+  const intake = await intakeOnboardingDecision({ input: selectivelyResolved, targetPath: repo.targetPath });
+  assert.deepEqual(intake.applyFeatures, ["foundation.agents"]);
+
+  const result = await runOnboardingRepair({
+    intake,
+    targetPath: repo.targetPath,
+    sourceIssueNumber: 123,
+    recordPath: join(repo.root, "repair-full-selection.jsonl"),
+    workRoot: join(repo.root, "worktrees"),
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    runGh: async () => ({ code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/456\n", stderr: "" }),
+  });
+
+  const baseline = JSON.parse(await readFile(join(result.worktreePath, ".agent", "startup-baseline.json"), "utf8"));
+  assert.deepEqual(baseline, await loadStartupBaseline(intake.selectedFeatures));
+  assert.equal(result.audit.audit.startupReadiness.profile, "agent-standard");
+  const manifest = JSON.parse(await readFile(join(result.worktreePath, ".github", "archon-setup.json"), "utf8"));
+  assert.deepEqual(manifest.selectedFeatures, intake.selectedFeatures);
+  assert.equal(manifest.profile, "agent-standard");
 });
 
 test("merged verification audits the fetched default branch rather than the source checkout", async () => {

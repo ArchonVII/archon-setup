@@ -90,6 +90,7 @@ npm run onboard -- <targetPath> [options]
 
 | Option             | Effect                                                                                                   |
 | ------------------ | -------------------------------------------------------------------------------------------------------- |
+| `--profile <id>`   | Select `docs-min`, `agent-standard`, or `flagship`; additional `--features` are unioned into a custom selection |
 | `--features a,b,c` | Override the selection (default: minimal local baseline; remote mutations and runner-backed workflows are opt-in) |
 | `--owner <name>`   | GitHub owner/account; enables `CODEOWNERS` and the manifest owner                                        |
 | `--repo <name>`    | Repo name recorded in `.github/archon-setup.json`                                                        |
@@ -137,7 +138,7 @@ needs a full baseline reconciliation rather than an ad-hoc agent patch:
 
 ```bash
 # Read-only: create a versioned decision document (or add --save-issue).
-node bin/onboard.mjs repair C:\path\to\repo --owner OWNER --repo REPO --save-issue
+node bin/onboard.mjs repair C:\path\to\repo --profile agent-standard --owner OWNER --repo REPO --save-issue
 
 # After every decision is resolved in the document or issue, create a draft repair PR.
 node bin/onboard.mjs repair C:\path\to\repo --intake issue:#123 --owner OWNER --repo REPO
@@ -148,7 +149,10 @@ node bin/onboard.mjs verify-merged C:\path\to\repo --record C:\Users\you\.claude
 
 Only `apply-central` decisions write files. `keep-local`, `merge-manual`,
 `defer`, and `blocked` are carried into the draft PR without automated writes;
-the repair flow never auto-merges or changes branch protection.
+the repair flow never auto-merges or changes branch protection. A selective
+repair applies only the resolved `apply-central` features, while its generated
+startup baseline and setup manifest retain the decision document's full
+selection and named profile.
 
 ### Updating managed workflows
 

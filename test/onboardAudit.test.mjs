@@ -14,6 +14,12 @@ import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
 import { extractDeliveryWorkflowBody, renderAgentsBody } from "../src/server/tasks/writeAgentsMd.mjs";
 import { loadCheckMapBody } from "../src/server/tasks/writeCheckMap.mjs";
 import { formatManagedBlock } from "../src/server/tasks/managedMarkdownBlock.mjs";
+import { loadRegistry } from "../src/server/planner/buildPlan.mjs";
+import {
+  generateStartupBaseline,
+  serializeStartupBaseline,
+  loadProfileFeatures,
+} from "../src/server/tasks/startupBaseline.mjs";
 
 // #306: the managed delivery-workflow block as onboarding renders it, used to
 // seed a "current" AGENTS.md in audit tests without hardcoding the contract.
@@ -24,16 +30,25 @@ async function deliveryWorkflowBlock() {
 
 const execFileP = promisify(execFile);
 const REPO_ROOT = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
-const FULL_STARTUP_FEATURES = [
-  "foundation.agents",
-  "foundation.coordination",
-  "foundation.pr-template",
-  "agent-workflow.check-map",
-  "agent-workflow.anomaly-triage",
-  "agent-lifecycle.baseline",
-  "agent-workflow.doc-sweep",
-  "agent-workflow.doc-health",
+
+// Lane C2 (#352): the drifted 8-feature FULL_STARTUP_FEATURES twin is deleted.
+// The "full floor" tests now select the real agent-standard tier, and every
+// seeded .agent/startup-baseline.json is the GENERATED baseline for the seeded
+// selection (not the snapshot), matching what onboarding actually writes.
+const { features: REGISTRY_FEATURES } = await loadRegistry();
+const AGENT_STANDARD = await loadProfileFeatures("agent-standard");
+
+// The three closeout scripts flipped to contract:"required" this lane. Seeded
+// alongside the historical floor so an agent-standard repo audits complete.
+const NEWLY_REQUIRED_SCRIPTS = [
+  "scripts/pr-contract.mjs",
+  "scripts/agent-close-preflight.mjs",
+  "scripts/agent-pr-ready.mjs",
 ];
+
+function generatedBaselineBody(selection) {
+  return serializeStartupBaseline(generateStartupBaseline(selection, REGISTRY_FEATURES));
+}
 
 async function tempRoot(prefix = "archon-audit-") {
   return mkdtemp(join(tmpdir(), prefix));
@@ -102,13 +117,16 @@ async function seedCurrentMinimalAgentBaseline(root, selectedFeatures = ["founda
 
   for (const relativePath of [
     "docs/repo-update-log.md",
-    ".agent/startup-baseline.json",
     "docs/plans/README.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/message-protocol.md",
   ]) {
     await copySnapshot(root, relativePath);
   }
+  // Lane C2 (#352): the baseline is generated per selection, so seed the
+  // GENERATED expectation for the recorded selection rather than the snapshot.
+  await mkdir(join(root, ".agent"), { recursive: true });
+  await writeFile(join(root, ".agent", "startup-baseline.json"), generatedBaselineBody(selectedFeatures), "utf8");
 }
 
 test("audit mode reports present, missing, and drifted baseline files without writing", async () => {
@@ -325,7 +343,7 @@ test("onboard --audit reports template library files as missing, present, or dri
   assert.equal(byPath(result.audit, "templates/github/github.issue.standard.md").status, "missing");
 });
 
-test("onboard --audit reports minimal-profile startup readiness in JSON", async () => {
+test("onboard --audit reports custom-profile startup readiness in JSON", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
   await mkdir(join(root, "docs", "superpowers", "plans"), { recursive: true });
@@ -341,8 +359,12 @@ test("onboard --audit reports minimal-profile startup readiness in JSON", async 
   assert.equal(parsed.ok, true);
   assert.equal(parsed.mode, "audit");
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
-  assert.equal(parsed.audit.startupReadiness.profile, "minimal");
-  assert.equal(parsed.audit.startupReadiness.baselineVersion, "2026-07-04-s3-fragment-retirement");
+  // foundation.agents alone matches no tier => "custom"; version is generated.
+  assert.equal(parsed.audit.startupReadiness.profile, "custom");
+  assert.equal(
+    parsed.audit.startupReadiness.baselineVersion,
+    generateStartupBaseline(["foundation.agents"], REGISTRY_FEATURES).version
+  );
   assert.ok(parsed.audit.startupReadiness.missing.includes("docs/plans/README.md"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("AGENTS.md"));
   assert.ok(parsed.audit.startupReadiness.legacyDetected.includes("docs/superpowers/plans/"));
@@ -354,10 +376,6 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await seedGitRepo(root);
   const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
   const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
-  const startupBaseline = await readFile(
-    join(REPO_ROOT, "src", "snapshots", "repo-template", ".agent", "startup-baseline.json"),
-    "utf8"
-  );
   const plansReadme = await readFile(
     join(REPO_ROOT, "src", "snapshots", "repo-template", "docs", "plans", "README.md"),
     "utf8"
@@ -371,13 +389,14 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await mkdir(join(root, "scripts", "agent"), { recursive: true });
   await mkdir(join(root, "scripts", "doc-sweep"), { recursive: true });
   await mkdir(join(root, "scripts", "doc-health"), { recursive: true });
-  await writeCurrentSetupManifest(root, FULL_STARTUP_FEATURES);
+  await writeCurrentSetupManifest(root, AGENT_STANDARD);
   await writeFile(
     join(root, "AGENTS.md"),
     `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n\n## Local workflow\n\nKeep repo-specific rules.\n\n${await deliveryWorkflowBlock()}\n`,
     "utf8"
   );
-  await writeFile(join(root, ".agent", "startup-baseline.json"), startupBaseline, "utf8");
+  // Lane C2 (#352): seed the GENERATED baseline for the agent-standard tier.
+  await writeFile(join(root, ".agent", "startup-baseline.json"), generatedBaselineBody(AGENT_STANDARD), "utf8");
   await writeFile(join(root, "docs", "plans", "README.md"), plansReadme, "utf8");
   await writeFile(join(root, "docs", "repo-update-log.md"), "# Repository Update Log\n\nLocal entries.\n", "utf8");
   await writeFile(join(root, ".agent", "check-map.yml"), await loadCheckMapBody(), "utf8");
@@ -403,6 +422,9 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
     "docs/agent-process/doc-sweep.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
+    // Lane C2 (#352): the closeout scripts flipped to required must be present
+    // for an agent-standard repo to audit complete.
+    ...NEWLY_REQUIRED_SCRIPTS,
   ]) {
     await copySnapshot(root, relativePath, { flipEol: relativePath.startsWith("scripts/") });
   }
@@ -413,7 +435,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
       join(REPO_ROOT, "bin", "onboard.mjs"),
       root,
       "--features",
-      FULL_STARTUP_FEATURES.join(","),
+      AGENT_STANDARD.join(","),
       "--audit",
       "--json",
     ],
@@ -422,7 +444,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   const parsed = JSON.parse(stdout);
 
   assert.equal(parsed.audit.startupReadiness.status, "complete");
-  assert.equal(parsed.audit.startupReadiness.profile, "full");
+  assert.equal(parsed.audit.startupReadiness.profile, "agent-standard");
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.deepEqual(parsed.audit.startupReadiness.stale, []);
   assert.ok(parsed.audit.startupReadiness.present.includes("AGENTS.md"));
@@ -488,8 +510,10 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   await writeFile(join(root, ".agent", "coordination", "README.md"), "# Coordination\n", "utf8");
   await writeFile(join(root, ".github", "PULL_REQUEST_TEMPLATE.md"), "## Summary\n", "utf8");
 
+  // Lane C2 (#352): the baseline is generated per selection — seed the correct
+  // agent-standard baseline so only the tampered scripts (below) read stale.
+  await writeFile(join(root, ".agent", "startup-baseline.json"), generatedBaselineBody(AGENT_STANDARD), "utf8");
   for (const relativePath of [
-    ".agent/startup-baseline.json",
     "docs/plans/README.md",
     ".github/workflows/anomaly-triage.yml",
     "scripts/agent/lib.mjs",
@@ -506,6 +530,9 @@ test("startup readiness reports stale concrete startup tooling", async () => {
     "docs/agent-process/doc-sweep.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
+    // The closeout scripts flipped to required this lane — present so only the
+    // deliberately tampered status.mjs / ci-guard.mjs are stale.
+    ...NEWLY_REQUIRED_SCRIPTS,
   ]) {
     await copySnapshot(root, relativePath);
   }
@@ -513,6 +540,10 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   await writeFile(join(root, "scripts", "agent", "status.mjs"), "console.log('old status without startup map');\n", "utf8");
   await mkdir(join(root, "scripts", "close"), { recursive: true });
   await writeFile(join(root, "scripts", "close", "ci-guard.mjs"), "console.log('old close guard');\n", "utf8");
+  // A tampered ROOT closeout script (not under scripts/{agent,close,doc-*}/) must
+  // read stale too. The readiness check formerly compared only those subdir
+  // prefixes and reported a drifted root required script present (Codex on #356).
+  await writeFile(join(root, "scripts", "pr-contract.mjs"), "console.log('old pr contract');\n", "utf8");
 
   const { stdout } = await execFileP(
     process.execPath,
@@ -520,7 +551,7 @@ test("startup readiness reports stale concrete startup tooling", async () => {
       join(REPO_ROOT, "bin", "onboard.mjs"),
       root,
       "--features",
-      FULL_STARTUP_FEATURES.join(","),
+      AGENT_STANDARD.join(","),
       "--audit",
       "--json",
     ],
@@ -529,10 +560,11 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   const parsed = JSON.parse(stdout);
 
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
-  assert.equal(parsed.audit.startupReadiness.profile, "full");
+  assert.equal(parsed.audit.startupReadiness.profile, "agent-standard");
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/agent/status.mjs"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/close/ci-guard.mjs"));
+  assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/pr-contract.mjs"));
 });
 
 test("startup readiness reports stale same-version startup baseline contract", async () => {
@@ -540,12 +572,13 @@ test("startup readiness reports stale same-version startup baseline contract", a
   await seedGitRepo(root);
   const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
   const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
-  const currentBaseline = JSON.parse(
-    await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", ".agent", "startup-baseline.json"), "utf8")
-  );
+  // Lane C2 premise (#352): the on-disk baseline differs from the GENERATED
+  // expectation for the recorded selection — same generated version string but a
+  // floor with the scripts + package.json dropped, so it reads stale.
+  const generated = generateStartupBaseline(AGENT_STANDARD, REGISTRY_FEATURES);
   const staleBaseline = {
-    ...currentBaseline,
-    required: currentBaseline.required.filter((path) => !path.startsWith("scripts/") && path !== "package.json"),
+    ...generated,
+    required: generated.required.filter((path) => !path.startsWith("scripts/") && path !== "package.json"),
   };
 
   await mkdir(join(root, ".agent", "coordination"), { recursive: true });
@@ -582,6 +615,9 @@ test("startup readiness reports stale same-version startup baseline contract", a
     "docs/agent-process/doc-sweep.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
+    // The closeout scripts flipped to required this lane — present so only the
+    // baseline itself reads stale.
+    ...NEWLY_REQUIRED_SCRIPTS,
   ]) {
     await copySnapshot(root, relativePath);
   }
@@ -592,7 +628,7 @@ test("startup readiness reports stale same-version startup baseline contract", a
       join(REPO_ROOT, "bin", "onboard.mjs"),
       root,
       "--features",
-      FULL_STARTUP_FEATURES.join(","),
+      AGENT_STANDARD.join(","),
       "--audit",
       "--json",
     ],
@@ -601,12 +637,12 @@ test("startup readiness reports stale same-version startup baseline contract", a
   const parsed = JSON.parse(stdout);
 
   assert.equal(parsed.audit.startupReadiness.status, "incomplete");
-  assert.equal(parsed.audit.startupReadiness.profile, "full");
+  assert.equal(parsed.audit.startupReadiness.profile, "agent-standard");
   assert.deepEqual(parsed.audit.startupReadiness.missing, []);
   assert.ok(parsed.audit.startupReadiness.stale.includes(".agent/startup-baseline.json"));
 });
 
-test("human audit output explains the minimal startup profile", async () => {
+test("human audit output names the derived profile and generated baseline", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
 
@@ -617,9 +653,12 @@ test("human audit output explains the minimal startup profile", async () => {
   );
 
   assert.match(stdout, /Startup readiness:/);
-  assert.match(stdout, /minimal/i);
-  assert.match(stdout, /full startup\/process automation is opt-in/i);
+  // foundation.agents alone => "custom"; the wording explains generation.
+  assert.match(stdout, /profile: custom/);
+  assert.match(stdout, /generated per profile/i);
+  // The retired full/minimal wording is gone.
   assert.doesNotMatch(stdout, /workflow-only update/i);
+  assert.doesNotMatch(stdout, /automation is opt-in/i);
 });
 
 test("target preflight can explicitly accept a populated existing repo", async () => {

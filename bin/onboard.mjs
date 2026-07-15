@@ -6,6 +6,8 @@
 //   npm run onboard -- <targetPath> [options]
 //
 // Options:
+//   --profile <id>     Named tier: docs-min | agent-standard | flagship
+//                      (resolves to the tier's features; unions with --features)
 //   --features a,b,c   Override the selection (default: minimal local baseline)
 //   --owner <name>     GitHub owner/account (enables CODEOWNERS, manifest)
 //   --repo <name>      Repo name recorded in the manifest
@@ -19,11 +21,13 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
+import { loadProfileFeatures } from "../src/server/tasks/startupBaseline.mjs";
 
 function parseArgs(argv) {
   const opts = {
     targetPath: null,
     features: null,
+    profile: "",
     owner: "",
     repo: "",
     visibility: "private",
@@ -55,6 +59,9 @@ function parseArgs(argv) {
         break;
       case "--features":
         opts.features = (argv[++i] || "").split(",").map((s) => s.trim()).filter(Boolean);
+        break;
+      case "--profile":
+        opts.profile = argv[++i] || "";
         break;
       case "--owner":
         opts.owner = argv[++i] || "";
@@ -95,6 +102,8 @@ Usage:
   npm run onboard -- <targetPath> [options]
 
 Options:
+  --profile <id>     Named tier: docs-min | agent-standard | flagship
+                     (resolves to the tier's features; unions with --features)
   --features a,b,c   Override feature selection (default: minimal local baseline)
   --owner <name>     GitHub owner/account (enables CODEOWNERS + manifest)
   --repo <name>      Repo name recorded in the manifest
@@ -111,6 +120,8 @@ Usage:
   node bin/onboard.mjs verify-merged <targetPath> --record <path> [--json]
 
 Repair options:
+  --profile <id>     Named tier: docs-min | agent-standard | flagship
+                     (resolves to the tier's features; unions with --features)
   --features a,b,c   Selected onboarding profile to audit
   --owner <name>     GitHub owner for rendered baseline files and the draft PR
   --repo <name>      GitHub repository for rendered baseline files and the draft PR
@@ -160,12 +171,8 @@ function printAudit(audit) {
   }
   if (audit.startupReadiness) {
     const s = audit.startupReadiness;
-    console.log(`\nStartup readiness: ${s.status} (${s.profile || "full"} / ${s.baselineVersion})`);
-    if (s.profile === "minimal") {
-      console.log("This checks the selected minimal onboarding profile; full startup/process automation is opt-in.");
-    } else {
-      console.log("This is the full startup/process baseline audit; `archon-setup update` is workflow-only update.");
-    }
+    console.log(`\nStartup readiness: ${s.status} (profile: ${s.profile} / ${s.baselineVersion})`);
+    console.log("Readiness reflects the resolved selection; the startup baseline is generated per profile.");
     if (s.missing.length) console.log(`  missing: ${s.missing.join(", ")}`);
     if (s.stale.length) console.log(`  stale: ${s.stale.join(", ")}`);
     if (s.misplaced.length) console.log(`  misplaced: ${s.misplaced.join(", ")}`);
@@ -177,6 +184,15 @@ function printAudit(audit) {
     const label = item.status.padEnd(7, " ");
     console.log(`  ${label} ${item.path} (${item.feature})`);
   }
+}
+
+async function resolvedFeatures(opts) {
+  let features = opts.features;
+  if (opts.profile) {
+    const profileFeatures = await loadProfileFeatures(opts.profile);
+    features = [...new Set([...profileFeatures, ...(opts.features || [])])];
+  }
+  return features;
 }
 
 async function main() {
@@ -197,9 +213,15 @@ async function main() {
   if (!opts.dryRun && !opts.audit && !opts.json) console.log(`Onboarding ${opts.targetPath} ...\n`);
   const targetPath = resolve(opts.targetPath);
 
+  // --profile resolves to the tier's feature list, unioned with any --features
+  // extras (lane C2, #352). The recorded profile is DERIVED from the resolved
+  // selection (buildPlan.resolveProfileId), so --profile + extras records
+  // "custom" while --profile alone records the tier id.
+  const features = await resolvedFeatures(opts);
+
   const res = await runOnboard({
     targetPath,
-    features: opts.features,
+    features,
     owner: opts.owner,
     repo: opts.repo,
     visibility: opts.visibility,
@@ -268,7 +290,7 @@ async function repairMain(argv) {
   if (!opts.intake) {
     const doc = await buildOnboardingDecision({
       targetPath,
-      features: opts.features,
+      features: await resolvedFeatures(opts),
       owner: opts.owner,
       repo: opts.repo,
     });

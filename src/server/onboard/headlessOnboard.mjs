@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-import { loadRegistry, buildPlan } from "../planner/buildPlan.mjs";
+import { loadRegistry, buildPlan, resolveProfileId, resolveSelection } from "../planner/buildPlan.mjs";
 import { executePlan } from "../executor/executePlan.mjs";
 import { checkOriginRemote } from "../preflight/checkOriginRemote.mjs";
 import { auditPlan } from "./auditPlan.mjs";
@@ -47,6 +47,8 @@ export async function loadSourceSnapshots() {
 // input:
 //   targetPath  required — the repo to scaffold/onboard
 //   features    optional array of feature IDs; defaults to the minimal local baseline
+//   baselineFeatures optional full recorded selection when a repair applies only
+//                    a subset now but must preserve the repository's full floor
 //   owner/repo/visibility   manifest + CODEOWNERS context
 //   options     per-feature option overrides (e.g. { foundation.license: { spdx } })
 //   capabilities  capability bits for remote features (default none)
@@ -62,6 +64,7 @@ export async function loadSourceSnapshots() {
 export async function runOnboard({
   targetPath,
   features = null,
+  baselineFeatures = null,
   owner = "",
   repo = "",
   visibility = "private",
@@ -73,11 +76,12 @@ export async function runOnboard({
 } = {}) {
   if (!targetPath) throw new Error("targetPath is required");
 
-  const { features: allFeatures } = await loadRegistry();
+  const { features: allFeatures, profiles } = await loadRegistry();
   const selection = features && features.length ? features : defaultLocalSelection(allFeatures);
+  const baselineSelection = baselineFeatures && baselineFeatures.length ? baselineFeatures : selection;
 
   const known = new Set(allFeatures.map((f) => f.id));
-  const unknown = selection.filter((id) => !known.has(id));
+  const unknown = [...new Set([...selection, ...baselineSelection])].filter((id) => !known.has(id));
   if (unknown.length) throw new Error(`unknown feature(s): ${unknown.join(", ")}`);
 
   if (Boolean(owner) !== Boolean(repo)) {
@@ -98,6 +102,10 @@ export async function runOnboard({
   };
 
   const plan = await buildPlan({ selection, options, context });
+  if (baselineFeatures && baselineFeatures.length) {
+    plan.baselineFeatureIds = resolveSelection(allFeatures, baselineSelection).map((feature) => feature.id);
+    plan.baselineProfile = resolveProfileId(plan.baselineFeatureIds, allFeatures, profiles);
+  }
   const blockingWarnings = (plan.warnings || []).filter((w) => w.blocking);
 
   if (audit) {

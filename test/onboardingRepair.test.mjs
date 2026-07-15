@@ -11,6 +11,7 @@ import {
   intakeOnboardingDecision,
 } from "../src/server/onboard/repairDecision.mjs";
 import { parseOnboardingDecisionIssue, serializeOnboardingDecisionIssue } from "../src/server/onboard/repairIssue.mjs";
+import { loadProfileFeatures } from "../src/server/tasks/startupBaseline.mjs";
 
 const execFileP = promisify(execFile);
 
@@ -125,6 +126,21 @@ test("onboard repair CLI emits a machine-readable decision document without writ
   const doc = JSON.parse(stdout);
   assert.equal(doc.kind, "onboarding-decision");
   assert.equal(doc.items[0].itemId, "foundation.readme:README.md");
+});
+
+test("onboard repair CLI resolves --profile before building the decision document", async () => {
+  const targetPath = await fixtureRepo();
+  const { stdout } = await execFileP(process.execPath, [
+    join(process.cwd(), "bin", "onboard.mjs"),
+    "repair",
+    targetPath,
+    "--profile",
+    "agent-standard",
+    "--json",
+  ]);
+
+  const doc = JSON.parse(stdout);
+  assert.deepEqual(doc.selectedFeatures, await loadProfileFeatures("agent-standard"));
 });
 
 test("onboarding repair decision issues round-trip only the canonical decision document", async () => {

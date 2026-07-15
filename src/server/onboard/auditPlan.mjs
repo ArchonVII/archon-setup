@@ -19,31 +19,18 @@ import {
 } from "../tasks/writeAgentsMd.mjs";
 import { markdownMatchesSnapshotAllowingFrontmatter } from "../tasks/markdownFrontmatter.mjs";
 import { startupBaselineMatchesExpected } from "../tasks/startupBaselineContract.mjs";
+import { loadStartupBaseline } from "../tasks/startupBaseline.mjs";
 import { loadCheckMapBody } from "../tasks/writeCheckMap.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GITHUB_WORKFLOWS_SNAPSHOT = join(__dirname, "..", "..", "snapshots", "github-workflows");
 const REPO_ROOT = join(__dirname, "..", "..", "..");
 
-const FULL_STARTUP_FEATURE_IDS = new Set([
-  "agent-lifecycle.baseline",
-  "agent-workflow.check-map",
-  "agent-workflow.anomaly-triage",
-  "agent-workflow.doc-sweep",
-  "agent-workflow.doc-health",
-  "foundation.pr-template",
-  "workflow.required-gate",
-]);
-
-const MINIMAL_STARTUP_PATHS = [
-  "AGENTS.md",
-  "docs/repo-update-log.md",
-  ".agent/startup-baseline.json",
-  "docs/plans/README.md",
-  "docs/agent-process/document-policy.md",
-  "docs/agent-process/message-protocol.md",
-  ".agent/coordination/README.md",
-];
+// The baseline file audits itself in addition to the manifest-derived floor, so
+// a present-but-stale/selection-mismatched baseline is reported (lane C2, #352).
+// It is prepended to the checked `required` set whenever foundation.agents (the
+// feature that installs it) is in the selection.
+const STARTUP_BASELINE_PATH = ".agent/startup-baseline.json";
 
 const ONBOARDING_COMPLETION_ANCHORS = [
   "AGENTS.md",
@@ -68,7 +55,7 @@ async function workflowBody(unit) {
   return readFile(join(GITHUB_WORKFLOWS_SNAPSHOT, `${name}.yml`), "utf8").then(normalizeSnapshotText);
 }
 
-async function expectedBodyFor({ path, unit, context }) {
+async function expectedBodyFor({ path, unit, context, generatedBaseline }) {
   switch (unit?.taskId) {
     case "writeReadme":
       return readmeTemplate({ repo: context.repo, owner: context.owner });
@@ -82,7 +69,10 @@ async function expectedBodyFor({ path, unit, context }) {
         return repoTemplateBody(join("docs", "repo-update-log.md"));
       }
       if (path === ".agent/startup-baseline.json") {
-        return repoTemplateBody(join(".agent", "startup-baseline.json"));
+        // Generated per selection (lane C2, #352), not a snapshot copy. Compared
+        // order-insensitively against the generated expectation for this plan's
+        // resolved selection.
+        return { comparison: "startup-baseline", baseline: generatedBaseline };
       }
       if (path === "docs/plans/README.md") {
         return {
@@ -179,10 +169,15 @@ function summarize(items) {
 
 export async function auditPlan(plan) {
   const items = [];
+  const baselineFeatureIds = plan.baselineFeatureIds || plan.selectedFeatureIds || [];
+  // The startup baseline this plan's resolved selection expects — generated once
+  // from the capability manifest and shared by the per-file check and the
+  // startup-readiness derivation so they never disagree (lane C2, #352).
+  const generatedBaseline = await loadStartupBaseline(baselineFeatureIds);
   for (const file of plan.files) {
     const unit = unitForFile(plan, file);
     const fullPath = safeJoin(plan.context.targetPath, file.path);
-    const expected = await expectedBodyFor({ path: file.path, unit, context: plan.context });
+    const expected = await expectedBodyFor({ path: file.path, unit, context: plan.context, generatedBaseline });
     let exists = false;
     try {
       await access(fullPath, constants.F_OK);
@@ -216,6 +211,40 @@ export async function auditPlan(plan) {
         status: allPresent ? "present" : anyDrifted ? "drifted" : "missing",
         comparison: "entries",
         detail: entries,
+      });
+      continue;
+    }
+
+    // "startup-baseline" comparison: the .agent/startup-baseline.json is generated
+    // per selection, so it audits order-insensitively (version + sorted floor)
+    // against the generated expectation rather than by exact-string snapshot match.
+    if (expected && typeof expected === "object" && expected.comparison === "startup-baseline") {
+      if (!exists) {
+        items.push({
+          path: file.path,
+          feature: file.feature,
+          taskId: unit?.taskId || null,
+          status: "missing",
+          comparison: "startup-baseline",
+          detail: "file is absent",
+        });
+        continue;
+      }
+      let matches = false;
+      try {
+        matches = startupBaselineMatchesExpected(JSON.parse(await readFile(fullPath, "utf8")), expected.baseline);
+      } catch {
+        matches = false;
+      }
+      items.push({
+        path: file.path,
+        feature: file.feature,
+        taskId: unit?.taskId || null,
+        status: matches ? "present" : "drifted",
+        comparison: "startup-baseline",
+        detail: matches
+          ? "matches the generated startup baseline for the selection"
+          : "differs from the generated startup baseline for the selection",
       });
       continue;
     }
@@ -283,7 +312,7 @@ export async function auditPlan(plan) {
     });
   }
 
-  const startup = await startupReadiness(plan, items);
+  const startup = await startupReadiness(plan, items, generatedBaseline);
   return {
     summary: summarize(items),
     items,
@@ -387,16 +416,17 @@ function completionAcceptsDrift(path, startupPresent) {
   return COMPLETION_DRIFT_EXCEPTIONS.has(path) && startupPresent.has(path);
 }
 
-async function startupReadiness(plan, items) {
-  const baseline = await readStartupBaseline();
-  const profile = startupReadinessProfile(plan);
-  const itemPaths = new Set(items.map((item) => item.path));
-  const required = profile === "full"
-    ? unique([".agent/startup-baseline.json", ...(Array.isArray(baseline.required) ? baseline.required : [])])
-    : MINIMAL_STARTUP_PATHS.filter((path) => itemPaths.has(path));
-  const expectedDirectories = profile === "full" && Array.isArray(baseline.expectedDirectories)
-    ? baseline.expectedDirectories
-    : [];
+async function startupReadiness(plan, items, baseline) {
+  // The floor is now the manifest-derived baseline for the plan's resolved
+  // selection (lane C2, #352) — no more full/minimal binary. `profile` is the
+  // tier name (or "custom") the selection earned. The baseline file itself is
+  // prepended to the checked set when foundation.agents installs it.
+  const profile = plan.baselineProfile || plan.profile || "custom";
+  const baselineFeatureIds = plan.baselineFeatureIds || plan.selectedFeatureIds || [];
+  const installsBaseline = baselineFeatureIds.includes("foundation.agents");
+  const floor = Array.isArray(baseline.required) ? baseline.required : [];
+  const required = installsBaseline ? unique([STARTUP_BASELINE_PATH, ...floor]) : floor;
+  const expectedDirectories = Array.isArray(baseline.expectedDirectories) ? baseline.expectedDirectories : [];
   const legacy = Array.isArray(baseline.legacy) ? baseline.legacy : [];
   const byPath = new Map(items.map((item) => [item.path, item]));
   const present = [];
@@ -446,15 +476,6 @@ async function startupReadiness(plan, items) {
   };
 }
 
-function startupReadinessProfile(plan) {
-  const selected = new Set(plan.selectedFeatureIds || []);
-  return [...FULL_STARTUP_FEATURE_IDS].some((id) => selected.has(id)) ? "full" : "minimal";
-}
-
-async function readStartupBaseline() {
-  return JSON.parse(await repoTemplateBody(join(".agent", "startup-baseline.json")));
-}
-
 async function startupRequiredPathStatus(root, relativePath, item, baseline) {
   if (item?.status === "present") return "present";
   if (!(await pathExists(root, relativePath))) return "missing";
@@ -479,12 +500,14 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
     case "docs/agent-process/doc-health.md":
       return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     default:
-      if (
-        relativePath.startsWith("scripts/agent/") ||
-        relativePath.startsWith("scripts/close/") ||
-        relativePath.startsWith("scripts/doc-sweep/") ||
-        relativePath.startsWith("scripts/doc-health/")
-      ) {
+      // Every required script under scripts/ is snapshot-backed (repo-template
+      // sources), so compare its content — not just the scripts/{agent,close,
+      // doc-sweep,doc-health}/ subdirs. Matching only those subdir prefixes let a
+      // tampered/stale root closeout script (scripts/pr-contract.mjs,
+      // scripts/agent-{close-preflight,pr-ready}.mjs — the three C2 flipped to
+      // contract:"required") fall through to "present" and report startup-ready,
+      // defeating the generated required contract (Codex review on #356).
+      if (relativePath.startsWith("scripts/")) {
         return (await fileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
       }
       return "present";
