@@ -17,6 +17,7 @@
   "group": "workflows.pr-contract",
   "default": false,
   "locked": false,
+  "docFloor": false,
   "requires": ["remote.github"],
   "capabilitiesNeeded": ["gh.repoCreateAllowed"],
   "creates": [".github/workflows/semantic-pr-title.yml"],
@@ -37,6 +38,10 @@
 - `group` — references `groups.json[].id`.
 - `tasks` — list of task module IDs to run (in order).
 
+`docFloor: true` marks the single feature that installs the documentation floor
+declared by repo-template's `doc-map.required.base`. Its required `installs[]`
+entries feed the same selection-derived startup baseline as every other feature.
+
 ## Dependency types
 
 - `requires` — feature IDs that must also be selected.
@@ -48,7 +53,11 @@
 Standard onboarding is intentionally minimal for solo-dev repos. `default: true`
 is reserved for local, low-ceremony files needed to create a usable repository:
 README, license, gitignore, agent pointers, neutral coordination docs,
-`.gitattributes`, and the initial git commit.
+the seed-only documentation floor, `.gitattributes`, and the initial git commit.
+
+`foundation.doc-system` is the floor exception to the usual opt-in doc tooling:
+it creates missing CANON/INDEX seeds but never overwrites their consumer-owned
+content; the managed doc-map and doc-system contract remain repairable snapshots.
 
 Features that add local hooks, changelog ceremony, PR templates, CODEOWNERS,
 Dependabot, GitHub labels, branch protection, runner-backed workflows, agent

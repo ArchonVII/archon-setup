@@ -194,7 +194,7 @@ test("a default onboard reports docs-min startup readiness complete", async () =
   const auditResult = await withFetchStub(() => runOnboard({ targetPath: root, audit: true }));
   assert.equal(auditResult.ok, true);
   assert.equal(auditResult.audit.startupReadiness.status, "complete");
-  // A default onboard = the nine docs-min foundations (lane C2, #352).
+  // A default onboard = the ten docs-min foundations after C5 (#353).
   assert.equal(auditResult.audit.startupReadiness.profile, "docs-min");
   assert.deepEqual(auditResult.audit.startupReadiness.missing, []);
   assert.deepEqual(auditResult.audit.startupReadiness.stale, []);

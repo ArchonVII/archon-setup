@@ -29,7 +29,7 @@ const loadJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 const { features, profiles, profilesSchema } = await loadRegistry();
 const AGENT_STANDARD = await loadProfileFeatures("agent-standard");
 
-// The nine locked/default foundations (docs-min), verified against the registry.
+// The ten locked/default foundations (docs-min), verified against the registry.
 const DOCS_MIN_FEATURES = features.filter((f) => f.default).map((f) => f.id);
 // The eight features agent-standard adds on top of docs-min (owner decision
 // 2026-07-11, design doc §2).
@@ -89,6 +89,12 @@ const NEWLY_REQUIRED_SCRIPTS = [
   "scripts/pr-contract.mjs",
   "scripts/agent-close-preflight.mjs",
   "scripts/agent-pr-ready.mjs",
+];
+const DOC_FLOOR_REQUIRED_4 = [
+  ".agent/doc-map.yml",
+  "docs/CANON.md",
+  "docs/INDEX.md",
+  "docs/agent-process/doc-system.md",
 ];
 // Source: pre-C2 startup-baseline.json expectedDirectories[6].
 const HISTORICAL_DIRECTORIES_6 = [
@@ -203,24 +209,28 @@ test("resolveProfileId names exact tiers and calls everything else custom", () =
 });
 
 // ---------------------------------------------------------------------------
-// CONTINUITY: agent-standard floor == 23 historical + 3 new scripts (26), 6 dirs
+// CONTINUITY: agent-standard floor == 23 historical + 3 scripts + 4 doc-floor paths (30), 6 dirs
 // ---------------------------------------------------------------------------
-test("agent-standard generated floor == historical 23-path baseline + 3 newly-required scripts (26+6)", () => {
+test("agent-standard generated floor == historical baseline + closeout scripts + doc floor (30+6)", () => {
   const baseline = generateStartupBaseline(AGENT_STANDARD, features);
-  const expectedRequired = [...HISTORICAL_REQUIRED_23, ...NEWLY_REQUIRED_SCRIPTS].sort();
+  const expectedRequired = [...HISTORICAL_REQUIRED_23, ...NEWLY_REQUIRED_SCRIPTS, ...DOC_FLOOR_REQUIRED_4].sort();
 
-  assert.equal(baseline.required.length, 26, "the agent-standard floor is 23 historical + 3 flipped scripts");
+  assert.equal(baseline.required.length, 30, "the agent-standard floor adds 3 closeout scripts and 4 doc-floor paths");
   assert.deepEqual(baseline.required, expectedRequired);
   assert.deepEqual(baseline.expectedDirectories, [...HISTORICAL_DIRECTORIES_6].sort());
   assert.deepEqual(baseline.legacy, ["docs/superpowers/plans/"]);
   assert.ok(baseline.version.startsWith(`${BASELINE_VERSION_BASE}+`), "version is base + content hash");
 });
 
-test("docs-min floor is the four foundation required installs, two grouping dirs", () => {
+test("docs-min floor includes the four installable doc-floor paths", () => {
   const baseline = generateStartupBaseline(DOCS_MIN_FEATURES, features);
   assert.deepEqual(baseline.required, [
     ".agent/coordination/README.md",
+    ".agent/doc-map.yml",
     "AGENTS.md",
+    "docs/CANON.md",
+    "docs/INDEX.md",
+    "docs/agent-process/doc-system.md",
     "docs/agent-process/document-policy.md",
     "docs/plans/README.md",
   ]);

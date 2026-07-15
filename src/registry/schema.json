@@ -17,6 +17,10 @@
       "description": "If true, user cannot uncheck (used for Foundations).",
       "default": false
     },
+    "docFloor": {
+      "type": "boolean",
+      "description": "Marks the feature that installs the doc-map required.base floor used by generated startup baselines."
+    },
     "disabled": {
       "type": "boolean",
       "description": "If true, feature is hidden from UI (used to stage future capabilities).",
