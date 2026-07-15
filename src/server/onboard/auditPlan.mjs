@@ -169,10 +169,11 @@ function summarize(items) {
 
 export async function auditPlan(plan) {
   const items = [];
+  const baselineFeatureIds = plan.baselineFeatureIds || plan.selectedFeatureIds || [];
   // The startup baseline this plan's resolved selection expects — generated once
   // from the capability manifest and shared by the per-file check and the
   // startup-readiness derivation so they never disagree (lane C2, #352).
-  const generatedBaseline = await loadStartupBaseline(plan.selectedFeatureIds || []);
+  const generatedBaseline = await loadStartupBaseline(baselineFeatureIds);
   for (const file of plan.files) {
     const unit = unitForFile(plan, file);
     const fullPath = safeJoin(plan.context.targetPath, file.path);
@@ -420,8 +421,9 @@ async function startupReadiness(plan, items, baseline) {
   // selection (lane C2, #352) — no more full/minimal binary. `profile` is the
   // tier name (or "custom") the selection earned. The baseline file itself is
   // prepended to the checked set when foundation.agents installs it.
-  const profile = plan.profile || "custom";
-  const installsBaseline = (plan.selectedFeatureIds || []).includes("foundation.agents");
+  const profile = plan.baselineProfile || plan.profile || "custom";
+  const baselineFeatureIds = plan.baselineFeatureIds || plan.selectedFeatureIds || [];
+  const installsBaseline = baselineFeatureIds.includes("foundation.agents");
   const floor = Array.isArray(baseline.required) ? baseline.required : [];
   const required = installsBaseline ? unique([STARTUP_BASELINE_PATH, ...floor]) : floor;
   const expectedDirectories = Array.isArray(baseline.expectedDirectories) ? baseline.expectedDirectories : [];

@@ -120,6 +120,8 @@ Usage:
   node bin/onboard.mjs verify-merged <targetPath> --record <path> [--json]
 
 Repair options:
+  --profile <id>     Named tier: docs-min | agent-standard | flagship
+                     (resolves to the tier's features; unions with --features)
   --features a,b,c   Selected onboarding profile to audit
   --owner <name>     GitHub owner for rendered baseline files and the draft PR
   --repo <name>      GitHub repository for rendered baseline files and the draft PR
@@ -184,6 +186,15 @@ function printAudit(audit) {
   }
 }
 
+async function resolvedFeatures(opts) {
+  let features = opts.features;
+  if (opts.profile) {
+    const profileFeatures = await loadProfileFeatures(opts.profile);
+    features = [...new Set([...profileFeatures, ...(opts.features || [])])];
+  }
+  return features;
+}
+
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help || !opts.targetPath) {
@@ -206,11 +217,7 @@ async function main() {
   // extras (lane C2, #352). The recorded profile is DERIVED from the resolved
   // selection (buildPlan.resolveProfileId), so --profile + extras records
   // "custom" while --profile alone records the tier id.
-  let features = opts.features;
-  if (opts.profile) {
-    const profileFeatures = await loadProfileFeatures(opts.profile);
-    features = [...new Set([...profileFeatures, ...(opts.features || [])])];
-  }
+  const features = await resolvedFeatures(opts);
 
   const res = await runOnboard({
     targetPath,
@@ -283,7 +290,7 @@ async function repairMain(argv) {
   if (!opts.intake) {
     const doc = await buildOnboardingDecision({
       targetPath,
-      features: opts.features,
+      features: await resolvedFeatures(opts),
       owner: opts.owner,
       repo: opts.repo,
     });

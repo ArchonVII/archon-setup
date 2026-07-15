@@ -1,6 +1,6 @@
 # Lane C design — baseline profiles + capability manifest (steps 3–4)
 
-> **Status:** APPROVED (owner, 2026-07-11) — decisions: 3 tiers (docs-min / agent-standard / flagship); manifest extends features.json; caveat-line narrative fix; new epic + C1–C6 children. Implementation not started.
+> **Status:** ACTIVE — C1 and C4 are complete; C2 is implemented in [archon-setup #356](https://github.com/ArchonVII/archon-setup/pull/356); C3, C5, and C6 remain. Consumer convergence is paused until the owner selects target repositories.
 > **Date:** 2026-07-11
 > **Scope:** closes promise-matrix phantom rows 3/4/5/6 (`C:\GitHub\repo-template\docs\research\2026-07-11-doc-system-promise-matrix.md`)
 > **Evidence:** read-only 8-agent sweep (782k tokens, 172 tool calls) over archon-setup, repo-template, 3 consumers, and the GitHub issue record; critic-verified; residual gaps closed by hand. All claims below carry file:line evidence in the sweep reports.
