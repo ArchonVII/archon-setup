@@ -32,12 +32,16 @@ Agents should not spend time rediscovering process files. Start here:
 - Doc health: `scripts/doc-health/`.
 - Legacy plans: `docs/superpowers/plans/` is history only; do not add new implementation plans there.
 - Friction ledger: for a non-bug workflow hiccup, append one row to `.claude/friction.md`, do not fix it mid-task, and keep working; bugs/security or off-task defects still go to `.archon/anomalies-thispr.md`.
+- Feature-gated bullets: the check map (`.agent/check-map.yml`), PR template (`.github/PULL_REQUEST_TEMPLATE.md`), `scripts/agent/` + `scripts/close/`, `scripts/doc-sweep/`, and `scripts/doc-health/` exist only where the repo installs the feature that provides each — the check-map, PR-template, agent-lifecycle, doc-sweep, and doc-health features respectively. Repos onboarded without a given feature skip its bullet.
 
 If these files are missing or unclear, stop searching and run:
 
 ```text
-node <path-to-archon-setup>/bin/onboard.mjs <repo> --audit
+# from a clone of ArchonVII/archon-setup (any location; target = this repo's path):
+node bin/onboard.mjs <path-to-this-repo> --audit
 ```
+
+No archon-setup checkout available? Stop and ask the owner — do not reconstruct process files by hand.
 
 <!-- END MANAGED AGENT START MAP -->
 
@@ -64,6 +68,15 @@ node <path-to-archon-setup>/bin/onboard.mjs <repo> --audit
 8. **Plan/status closeout required.** Any plan, progress file, handoff, audit, roadmap,
    status tracker, or coordination note created or used by the lane must be closed,
    narrowed, or marked superseded before review.
+9. **Atomic commits are not atomic PRs.** Amendments to work still under review —
+   reviewer findings, doc-line corrections, formatting fixes for the same issue/slice —
+   are follow-up commits pushed to the same open PR, never a new issue, branch, or PR.
+   Open a separate PR only for a separate issue/phase, unrelated housekeeping, or
+   material scope expansion.
+10. **Re-verify proportionally.** For a mechanical-only amendment (whitespace, a typo,
+    comment wording — no behavior change), confirm the diff is mechanical and rerun only
+    the check that flagged it; do not rerun full review, spec, or verification pipelines.
+    The PR gate rerun on push is the authoritative full check.
 
 ## Message protocol
 
@@ -78,6 +91,7 @@ pushed HEAD.
 ## Vision Drift Duties
 
 - At plan time, read `VISION.md` when present and treat Scope / explicitly-not as owner intent.
+- If `VISION.md` is absent or thin, install it by copying `repo-template/VISION.md` verbatim and **ask the owner to fill it** — never compose a skeleton or seed content. `Owner: human` means elicit, don't author; a blank section is a question for the owner.
 - If requested work conflicts with it, surface the conflict and cite the relevant `docs/decisions/decision-log.md` entry before proceeding.
 - At closeout, append owner scope decisions made during the lane to `docs/decisions/decision-log.md`; record none in the PR when none were made.
 - Keep detail in `docs/agent-process/document-policy.md`; do not turn `VISION.md` into implementation notes or status logs.
@@ -97,6 +111,8 @@ Prefer repo helpers:
 - `npm run agent:status` - branch, upstream, PR, issue, dirty state, claims, and next action.
 - `npm run agent:prune` - retire merged and clean agent worktrees using GitHub PR evidence.
 - `npm run agent:pr-body -- [issue]` - print the committed PR template with issue filled.
+
+These `agent:*` helpers exist only when the agent-lifecycle feature (its `package.json` scripts) is installed; a repo onboarded without it has no `npm run` targets, so use the raw `git worktree add` command shown above.
 
 Do not run `git switch -c` in the primary checkout. If unsure where you are, run
 `bash .githooks/scripts/checkout-doctor.sh`.
