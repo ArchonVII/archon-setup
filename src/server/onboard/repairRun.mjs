@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 
 import { DEFAULT_REQUIRED_GATE_CHECK, resolveRequiredChecks as defaultResolveRequiredChecks } from "../branchProtection/tightenRequiredGate.mjs";
@@ -64,10 +64,36 @@ function prBody({ intake, sourceIssueNumber, recordPath }) {
   ].join("\n");
 }
 
-function appliedAuditPassed(audit, features) {
+// Gate on apply-central item PATHS, not features (#362): a feature may mix
+// apply-central (missing) with keep-local/merge-manual (legitimately drifted)
+// items, and only the former are the repair's responsibility to make present.
+function appliedAuditPassed(audit, applyPaths) {
+  const wanted = new Set(applyPaths);
   return audit.items
-    .filter((item) => features.includes(item.feature))
+    .filter((item) => wanted.has(item.path))
     .every((item) => item.status === "present");
+}
+
+// The apply step runs whole features (runOnboard has no per-item filter), so
+// reconcile-capable tasks may write paths the decision resolved keep-local /
+// merge-manual / defer / blocked. Undo those writes: apply-central is the only
+// decision that enters automated apply (decisioned-repair design, 2026-07-10;
+// #362). Tracked paths are restored from HEAD; paths the feature run created
+// (e.g. a missing item resolved defer) are removed.
+async function restoreManualPaths({ worktreePath, manual, runCommand }) {
+  const manualPaths = (manual ?? [])
+    .map((item) => item.path ?? String(item.itemId ?? "").slice(String(item.itemId ?? "").indexOf(":") + 1))
+    .filter(Boolean);
+  if (!manualPaths.length) return;
+  const trackedRaw = await git({ targetPath: worktreePath, args: ["ls-files", "--", ...manualPaths], runCommand });
+  const tracked = trackedRaw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (tracked.length) {
+    await git({ targetPath: worktreePath, args: ["checkout", "--", ...tracked], runCommand });
+  }
+  const trackedSet = new Set(tracked);
+  for (const relPath of manualPaths) {
+    if (!trackedSet.has(relPath)) await rm(join(worktreePath, relPath), { force: true });
+  }
 }
 
 async function appendFailure({ recordPath, runId, failedStage, error, now }) {
@@ -165,6 +191,7 @@ export async function runOnboardingRepair({
       repo: resolvedRepo,
     });
     if (!applied.ok) throw new Error("onboarding apply failed");
+    await restoreManualPaths({ worktreePath, manual: intake.manual, runCommand });
     failedStage = "applied";
     await appendRunState({ recordPath, state: "applied", entry: { ...base, branch, worktreePath }, now: now() });
 
@@ -176,7 +203,7 @@ export async function runOnboardingRepair({
       repo: resolvedRepo,
       audit: true,
     });
-    if (!appliedAuditPassed(audit.audit, intake.applyFeatures)) throw new Error("local audit did not confirm every apply-central item");
+    if (!appliedAuditPassed(audit.audit, intake.applyPaths ?? [])) throw new Error("local audit did not confirm every apply-central item");
     failedStage = "verified_local";
     await appendRunState({ recordPath, state: "verified_local", entry: { ...base, branch, worktreePath }, now: now() });
 

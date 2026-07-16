@@ -82,6 +82,7 @@ test("onboarding repair intake accepts only fully resolved, current apply-centra
     repo: "consumer-repo",
     selectedFeatures: ["foundation.readme"],
     applyFeatures: ["foundation.readme"],
+    applyPaths: ["README.md"],
     manual: [],
   });
 });
