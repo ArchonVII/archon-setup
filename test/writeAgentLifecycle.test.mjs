@@ -212,6 +212,10 @@ test("installed closeout wrappers resolve and are wired as npm scripts (#282)", 
       "  if (err && err.code === 'ERR_MODULE_NOT_FOUND') { console.error(err.message); process.exit(2); }",
       "  // Any other error (e.g. main() failing with no git/gh) means the import graph resolved.",
       "}",
+      // The wrappers run main() at import and set a usage exitCode when invoked
+      // without --repo/--pr (rt#173); exit 0 explicitly so status 2 stays
+      // reserved for ERR_MODULE_NOT_FOUND above.
+      "process.exit(0);",
     ].join(String.fromCharCode(10));
     const result = spawnSync(process.execPath, ["--input-type=module", "--eval", probe], {
       cwd: target,

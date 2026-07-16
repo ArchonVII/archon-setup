@@ -41,7 +41,9 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
 
   assert.match(agents, /docs\/repo-update-log\.md/);
   assert.match(agents, /Agent Start Map/);
-  assert.match(agents, /Changelog is release-class/);
+  // rt#179/as#366: item 7 defers to the repo's mode-resolved ## CHANGELOG
+  // section instead of hardcoding rt's release-class mode.
+  assert.match(agents, /Changelog policy lives in this repo's `## CHANGELOG` section/);
   assert.doesNotMatch(agents, /pick one and delete the other/);
   assert.doesNotMatch(agents, /<Mode 1: direct edit \/ Mode 2/);
   // #306: the delivery contract ships as its own managed block, guaranteed for
@@ -192,4 +194,19 @@ test("writeAgentsMd repairs a startup baseline that drifts from the generated ex
 
   assert.deepEqual(JSON.parse(await readFile(baselinePath, "utf8")), generated);
   assert.equal(await writeAgentsMd.check(ctx), "already-done");
+});
+
+test("delivery-workflow block carries no changelog-mode specifics (as#366)", async () => {
+  // rt#179: Workflow item 7 defers to each repo's mode-resolved ## CHANGELOG
+  // section. The distributed block is consumer-invariant, so a Mode-2 fragment
+  // consumer (e.g. hudson-bend) must never receive release-class instructions
+  // ("PRs carry no changelog edits" / `npm run docs:changelog`) inside it.
+  const snapshot = await readFile(
+    new URL("../src/snapshots/repo-template/AGENTS.md", import.meta.url), "utf8");
+  const rendered = writeAgentsMd.renderAgentsBody(snapshot);
+  const block = writeAgentsMd.extractDeliveryWorkflowBody(rendered);
+  assert.match(block, /Changelog policy lives in this repo's `## CHANGELOG` section/);
+  assert.doesNotMatch(block, /release-class/);
+  assert.doesNotMatch(block, /docs:changelog/);
+  assert.doesNotMatch(block, /PRs carry no changelog edits/);
 });
