@@ -3,7 +3,7 @@ import { basename, dirname, join, resolve } from "node:path";
 
 import { DEFAULT_REQUIRED_GATE_CHECK, resolveRequiredChecks as defaultResolveRequiredChecks } from "../branchProtection/tightenRequiredGate.mjs";
 import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
-import { createDraftPr } from "../prlane/ghPr.mjs";
+import { createDraftPr, getPrMergeState } from "../prlane/ghPr.mjs";
 import { appendRunState, readRunRecord } from "../prlane/runRecord.mjs";
 import { runOnboard } from "./headlessOnboard.mjs";
 
@@ -247,12 +247,39 @@ function latest(entries, field) {
   return [...entries].reverse().find((entry) => entry[field] !== undefined)?.[field] ?? null;
 }
 
+// Squash merging — the ecosystem's standard merge method — rewrites the PR's
+// commits, so the PR head is never an ancestor of the merged default branch
+// (#367). The ancestor check stays as the offline fast path (it still covers
+// ff-only / merge-commit / rebase merges); when it fails, fall back to the
+// PR's recorded merge state: MERGED with the recorded merge commit reachable
+// from the fetched default branch confirms the squash landed.
+async function confirmRepairMerged({ absoluteTarget, originTip, pr, repair, runCommand, runGh }) {
+  const ancestor = await runCommand("git", ["-C", absoluteTarget, "merge-base", "--is-ancestor", pr.headSha, originTip]);
+  if (ancestor.code === 0) return { merged: true };
+  const prState = await getPrMergeState({ repoSlug: `${repair.owner}/${repair.repo}`, prNumber: pr.prNumber, runGh });
+  if (!prState.ok) {
+    return { merged: false, reason: "repair PR head is not present on the fetched default branch and the PR merge state could not be read" };
+  }
+  if (prState.state !== "MERGED") {
+    return { merged: false, reason: `repair PR head is not present on the fetched default branch and PR #${pr.prNumber} is not merged (state ${prState.state ?? "unknown"})` };
+  }
+  if (!prState.mergeSha) {
+    return { merged: false, reason: `PR #${pr.prNumber} is merged but records no merge commit to confirm on the fetched default branch` };
+  }
+  const reachable = await runCommand("git", ["-C", absoluteTarget, "merge-base", "--is-ancestor", prState.mergeSha, originTip]);
+  if (reachable.code !== 0) {
+    return { merged: false, reason: `PR #${pr.prNumber} is merged but its merge commit ${prState.mergeSha} is not reachable from the fetched default branch` };
+  }
+  return { merged: true };
+}
+
 export async function verifyMergedOnboardingRepair({
   targetPath,
   recordPath,
   workRoot = null,
   runCommand = defaultRunCommand,
   resolveRequiredChecks = defaultResolveRequiredChecks,
+  runGh,
   now = () => new Date().toISOString(),
 } = {}) {
   if (!recordPath) throw new Error("recordPath is required");
@@ -265,9 +292,9 @@ export async function verifyMergedOnboardingRepair({
   const defaultBranch = repair.defaultBranch;
   await git({ targetPath: absoluteTarget, args: ["fetch", "origin", defaultBranch], runCommand });
   const mergeSha = await git({ targetPath: absoluteTarget, args: ["rev-parse", `origin/${defaultBranch}`], runCommand });
-  const ancestor = await runCommand("git", ["-C", absoluteTarget, "merge-base", "--is-ancestor", pr.headSha, mergeSha]);
-  if (ancestor.code !== 0) {
-    return { status: "blocked", reason: "repair PR head is not present on the fetched default branch", mergeSha };
+  const merged = await confirmRepairMerged({ absoluteTarget, originTip: mergeSha, pr, repair, runCommand, runGh });
+  if (!merged.merged) {
+    return { status: "blocked", reason: merged.reason, mergeSha };
   }
   await appendRunState({ recordPath, state: "merged", entry: { runId: initial.runId, baseSha: initial.baseSha, prNumber: pr.prNumber, mergeSha }, now: now() });
   const root = workRoot ?? join(dirname(absoluteTarget), ".archon-onboarding-verify-worktrees");
