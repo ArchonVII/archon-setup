@@ -198,6 +198,40 @@ test("repair honors non-apply-central resolutions inside an applied feature (#36
   assert.match(ghCalls[0].options.stdin, /foundation\.agents:docs\/repo-update-log\.md`: defer/);
 });
 
+test("repair commit survives a tracked-modified file as the first status line (#364)", async () => {
+  const repo = await fixtureRepo();
+  // Pre-seed a committed manifest so the apply's manifest merge produces a
+  // tracked-modified ` M .github/archon-setup.json` that sorts FIRST in
+  // `git status --porcelain` — the stdout-trimmed first line used to lose its
+  // leading space and parse as `github/archon-setup.json` (#364).
+  const fsp = await import("node:fs/promises");
+  await fsp.mkdir(join(repo.targetPath, ".github"), { recursive: true });
+  await writeFile(join(repo.targetPath, ".github", "archon-setup.json"), JSON.stringify({ tool: "archon-setup", selectedFeatures: [] }, null, 2) + "\n", "utf8");
+  git(repo.targetPath, ["add", ".github/archon-setup.json"]);
+  git(repo.targetPath, ["commit", "-m", "chore: seed manifest"]);
+  git(repo.targetPath, ["push", "origin", "main"]);
+
+  const doc = await buildOnboardingDecision({ targetPath: repo.targetPath, features: ["foundation.readme"], runId: "repair-run-trim", owner: "ArchonVII", repo: "consumer-repo" });
+  const intake = await intakeOnboardingDecision({ input: resolved(doc), targetPath: repo.targetPath });
+
+  const result = await runOnboardingRepair({
+    intake,
+    targetPath: repo.targetPath,
+    sourceIssueNumber: 654,
+    recordPath: join(repo.root, "repair-trim.jsonl"),
+    workRoot: join(repo.root, "worktrees"),
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    runGh: async () => ({ code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/111\n", stderr: "" }),
+  });
+
+  assert.equal(result.state, "pr_created");
+  const committed = git(result.worktreePath, ["show", "--name-only", "--format=", "HEAD"])
+    .split(/\r?\n/)
+    .filter(Boolean);
+  assert.equal(committed.includes(".github/archon-setup.json"), true);
+});
+
 test("merged verification audits the fetched default branch rather than the source checkout", async () => {
   const repo = await fixtureRepo();
   const doc = await buildOnboardingDecision({ targetPath: repo.targetPath, features: ["foundation.readme"], runId: "repair-run-2", owner: "ArchonVII", repo: "consumer-repo" });
