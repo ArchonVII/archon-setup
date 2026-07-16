@@ -7,12 +7,14 @@ import { createDraftPr } from "../prlane/ghPr.mjs";
 import { appendRunState, readRunRecord } from "../prlane/runRecord.mjs";
 import { runOnboard } from "./headlessOnboard.mjs";
 
-async function git({ targetPath, args, runCommand }) {
+async function git({ targetPath, args, runCommand, trim = true }) {
   const result = await runCommand("git", ["-C", targetPath, ...args]);
   if (result.code !== 0) {
     throw new Error(`git ${args.join(" ")} failed: ${result.stderr.trim() || result.stdout.trim() || `exit ${result.code}`}`);
   }
-  return result.stdout.trim();
+  // trim: false for positional output like `status --porcelain`, where
+  // trimming eats the first line's leading status column (#364).
+  return trim ? result.stdout.trim() : result.stdout;
 }
 
 function uniqueSuffix() {
@@ -207,11 +209,11 @@ export async function runOnboardingRepair({
     failedStage = "verified_local";
     await appendRunState({ recordPath, state: "verified_local", entry: { ...base, branch, worktreePath }, now: now() });
 
-    const changed = await git({ targetPath: worktreePath, args: ["status", "--porcelain"], runCommand });
-    if (!changed) throw new Error("repair worktree has no changes to commit");
+    const changed = await git({ targetPath: worktreePath, args: ["status", "--porcelain"], runCommand, trim: false });
+    if (!changed.trim()) throw new Error("repair worktree has no changes to commit");
     const paths = changed
       .split(/\r?\n/)
-      .filter(Boolean)
+      .filter((line) => line.trim())
       .map((line) => line.slice(3).trim())
       .filter(Boolean);
     await git({ targetPath: worktreePath, args: ["add", "--", ...paths], runCommand });
