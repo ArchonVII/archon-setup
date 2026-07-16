@@ -264,3 +264,82 @@ test("merged verification audits the fetched default branch rather than the sour
   const record = await readRunRecord(recordPath);
   assert.deepEqual(record.entries.slice(-2).map((entry) => entry.state), ["merged", "verified_merged"]);
 });
+
+test("merged verification recognizes a squash merge of the repair PR (#367)", async () => {
+  const repo = await fixtureRepo();
+  const doc = await buildOnboardingDecision({ targetPath: repo.targetPath, features: ["foundation.readme"], runId: "repair-run-squash", owner: "ArchonVII", repo: "consumer-repo" });
+  const intake = await intakeOnboardingDecision({ input: resolved(doc), targetPath: repo.targetPath });
+  const recordPath = join(repo.root, "repair-squash.jsonl");
+  const result = await runOnboardingRepair({
+    intake,
+    targetPath: repo.targetPath,
+    sourceIssueNumber: 123,
+    recordPath,
+    workRoot: join(repo.root, "worktrees"),
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    runGh: async () => ({ code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/456\n", stderr: "" }),
+  });
+
+  // Simulate GitHub's squash merge — the ecosystem's standard merge method:
+  // commit the PR branch's tree as a single NEW commit on the bare origin's
+  // main. The rewritten commit means the PR head is not an ancestor of main.
+  const prHeadSha = git(repo.targetPath, ["rev-parse", result.branch]);
+  const baseSha = git(repo.targetPath, ["rev-parse", "origin/main"]);
+  const squashTree = git(repo.targetPath, ["rev-parse", `${result.branch}^{tree}`]);
+  const squashSha = git(repo.targetPath, ["commit-tree", squashTree, "-p", baseSha, "-m", "feat(onboarding): repair #123 (squash)"]);
+  git(repo.targetPath, ["push", "origin", `${squashSha}:refs/heads/main`]);
+  // Fixture sanity: the squash rewrote the commit, so the PR head must NOT be
+  // an ancestor of the squashed main (merge-base --is-ancestor exits non-zero).
+  assert.throws(() => git(repo.targetPath, ["merge-base", "--is-ancestor", prHeadSha, squashSha]));
+
+  const ghCalls = [];
+  const verified = await verifyMergedOnboardingRepair({
+    targetPath: repo.targetPath,
+    recordPath,
+    workRoot: join(repo.root, "verify-worktrees"),
+    resolveRequiredChecks: async () => ({ status: "ok", checks: [] }),
+    runGh: async (args) => {
+      ghCalls.push(args);
+      return { code: 0, stdout: JSON.stringify({ state: "MERGED", mergeCommit: { oid: squashSha } }), stderr: "" };
+    },
+  });
+
+  assert.equal(verified.status, "partial_onboarding");
+  assert.equal(verified.audit.onboardingCompletion.status, "incomplete");
+  assert.deepEqual(ghCalls, [["pr", "view", "456", "--repo", "ArchonVII/consumer-repo", "--json", "state,mergeCommit"]]);
+  const record = await readRunRecord(recordPath);
+  assert.deepEqual(record.entries.slice(-2).map((entry) => entry.state), ["merged", "verified_merged"]);
+});
+
+test("merged verification stays blocked when the PR is neither an ancestor nor recorded MERGED (#367)", async () => {
+  const repo = await fixtureRepo();
+  const doc = await buildOnboardingDecision({ targetPath: repo.targetPath, features: ["foundation.readme"], runId: "repair-run-open", owner: "ArchonVII", repo: "consumer-repo" });
+  const intake = await intakeOnboardingDecision({ input: resolved(doc), targetPath: repo.targetPath });
+  const recordPath = join(repo.root, "repair-open.jsonl");
+  await runOnboardingRepair({
+    intake,
+    targetPath: repo.targetPath,
+    sourceIssueNumber: 123,
+    recordPath,
+    workRoot: join(repo.root, "worktrees"),
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    runGh: async () => ({ code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/456\n", stderr: "" }),
+  });
+
+  // No merge of any kind happened; the PR metadata still reports OPEN, so the
+  // squash fallback must not report merged.
+  const verified = await verifyMergedOnboardingRepair({
+    targetPath: repo.targetPath,
+    recordPath,
+    workRoot: join(repo.root, "verify-worktrees"),
+    resolveRequiredChecks: async () => ({ status: "ok", checks: [] }),
+    runGh: async () => ({ code: 0, stdout: JSON.stringify({ state: "OPEN", mergeCommit: null }), stderr: "" }),
+  });
+
+  assert.equal(verified.status, "blocked");
+  assert.match(verified.reason, /not merged/);
+  const record = await readRunRecord(recordPath);
+  assert.equal(record.entries.some((entry) => entry.state === "merged"), false);
+});
