@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -120,6 +121,81 @@ test("onboarding repair generates the baseline from the full decision selection"
   const manifest = JSON.parse(await readFile(join(result.worktreePath, ".github", "archon-setup.json"), "utf8"));
   assert.deepEqual(manifest.selectedFeatures, intake.selectedFeatures);
   assert.equal(manifest.profile, "agent-standard");
+});
+
+test("repair honors non-apply-central resolutions inside an applied feature (#362)", async () => {
+  const repo = await fixtureRepo();
+  // Byte-exact comparison below: pin autocrlf so checkout-based restore does
+  // not translate line endings on Windows hosts.
+  git(repo.targetPath, ["config", "core.autocrlf", "false"]);
+  // Drifted item in the SAME feature as apply-central items: the first real
+  // patient (hudson-bend, decision issue #354) had local AGENTS.md content the
+  // decision resolved keep-local, and the feature-level apply clobbered it.
+  const localAgents = "# Local AGENTS\n\nRepo-specific rules that must survive the repair.\n";
+  await writeFile(join(repo.targetPath, "AGENTS.md"), localAgents, "utf8");
+  git(repo.targetPath, ["add", "AGENTS.md"]);
+  git(repo.targetPath, ["commit", "-m", "docs: local agents contract"]);
+  git(repo.targetPath, ["push", "origin", "main"]);
+
+  const doc = await buildOnboardingDecision({
+    targetPath: repo.targetPath,
+    features: ["foundation.agents"],
+    runId: "repair-run-mixed",
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+  });
+  const agentsItem = doc.items.find((item) => item.path === "AGENTS.md");
+  assert.equal(agentsItem?.status, "drifted");
+  const mixed = {
+    ...doc,
+    items: doc.items.map((item) => ({
+      ...item,
+      resolution: {
+        choice:
+          item.path === "AGENTS.md"
+            ? "keep-local"
+            : item.path === "docs/repo-update-log.md"
+              ? "defer"
+              : "apply-central",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+      },
+    })),
+  };
+  const intake = await intakeOnboardingDecision({ input: mixed, targetPath: repo.targetPath });
+  assert.equal(intake.ok, true);
+
+  const ghCalls = [];
+  const result = await runOnboardingRepair({
+    intake,
+    targetPath: repo.targetPath,
+    sourceIssueNumber: 321,
+    recordPath: join(repo.root, "repair-mixed.jsonl"),
+    workRoot: join(repo.root, "worktrees"),
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    runGh: async (args, options = {}) => {
+      ghCalls.push({ args, options });
+      return { code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/789\n", stderr: "" };
+    },
+  });
+
+  // The mixed-resolution feature must still pass the post-apply gate.
+  assert.equal(result.state, "pr_created");
+  // keep-local: byte-identical to the local content.
+  assert.equal(await readFile(join(result.worktreePath, "AGENTS.md"), "utf8"), localAgents);
+  // defer on a missing item: the feature run writes it, the repair must not ship it.
+  assert.equal(existsSync(join(result.worktreePath, "docs", "repo-update-log.md")), false);
+  // The repair commit carries apply-central items only — no decision-overridden paths.
+  const committed = git(result.worktreePath, ["show", "--name-only", "--format=", "HEAD"])
+    .split(/\r?\n/)
+    .filter(Boolean);
+  assert.equal(committed.includes("AGENTS.md"), false);
+  assert.equal(committed.includes("docs/repo-update-log.md"), false);
+  assert.equal(committed.includes("docs/agent-process/document-policy.md"), true);
+  // PR body reports the manual decisions instead of "none".
+  assert.match(ghCalls[0].options.stdin, /foundation\.agents:AGENTS\.md`: keep-local/);
+  assert.match(ghCalls[0].options.stdin, /foundation\.agents:docs\/repo-update-log\.md`: defer/);
 });
 
 test("merged verification audits the fetched default branch rather than the source checkout", async () => {

@@ -153,6 +153,7 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
   }
 
   const applyFeatures = new Set();
+  const applyPaths = [];
   const manual = [];
   for (const item of doc.items) {
     const fresh = expected.get(item.itemId);
@@ -162,8 +163,15 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
     const choice = item.resolution?.choice;
     if (!choice) return rejection("unresolved-decision", `${item.itemId}: choice is required`);
     if (!fresh.options.includes(choice)) return rejection("invalid-resolution", `${item.itemId}: ${choice} is not allowed`);
-    if (choice === "apply-central") applyFeatures.add(item.feature);
-    else manual.push({ itemId: item.itemId, choice });
+    if (choice === "apply-central") {
+      applyFeatures.add(item.feature);
+      applyPaths.push(fresh.path);
+    } else {
+      // Carry the path so the repair runner can restore decision-overridden
+      // files after the feature-level apply (#362): apply-central is the only
+      // decision that may ship tool-written content.
+      manual.push({ itemId: item.itemId, choice, path: fresh.path });
+    }
   }
 
   return {
@@ -175,6 +183,7 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
     repo: doc.target.repo,
     selectedFeatures: doc.selectedFeatures,
     applyFeatures: [...applyFeatures],
+    applyPaths,
     manual,
   };
 }
