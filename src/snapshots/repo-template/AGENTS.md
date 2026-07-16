@@ -1,17 +1,15 @@
 # AGENTS.md
 
-Cross-tool contract for AI agents (Claude, Codex, Copilot, Gemini, etc.) working in this
-repo. Per-tool addenda such as `CLAUDE.md` and `GEMINI.md` are adapters only; rules that
-apply to every tool live here.
+Cross-tool contract for AI agents (Claude, Codex, Copilot, Gemini, etc.) working in this repo.
+Per-tool addenda such as `CLAUDE.md` and `GEMINI.md` are adapters only; rules that apply to every tool live here.
 
 ## Read First
 
 - `README.md` - what this project is and how to run it.
 - `ARCHITECTURE.md` - subsystem ownership, when the repo has one.
-- When the repo runs the Librarian wiki (see "Librarian Wiki"): `docs/INDEX.md`
-  (map of durable docs), `docs/CANON.md` (current truth and locked decisions),
-  and `docs/LIBRARIAN.md` (wiki schema and operations). Repos onboarded without
-  the wiki feature skip these.
+- When the repo runs the Librarian wiki (see "Librarian Wiki"): `docs/INDEX.md` (map of durable docs),
+  `docs/CANON.md` (current truth and locked decisions), and `docs/LIBRARIAN.md` (wiki schema and
+  operations). Repos onboarded without the wiki feature skip these.
 
 <!-- BEGIN MANAGED AGENT START MAP -->
 
@@ -62,9 +60,9 @@ No archon-setup checkout available? Stop and ask the owner — do not reconstruc
 6. **PR bodies use the committed template.** If `.github/PULL_REQUEST_TEMPLATE.md` exists,
    fill it through `npm run agent:pr-body -- <issue>` or the committed file; do not
    freehand or leave scratch PR-body files in the worktree.
-7. **Changelog is release-class.** PRs carry no changelog edits — `CHANGELOG.md` is
-   folded from Conventional Commit history at release-cut by `npm run docs:changelog`.
-   Write a clear Conventional Commit subject; that is the changelog entry.
+7. **Changelog policy lives in this repo's `## CHANGELOG` section.** Follow it —
+   modes differ per repo — and never hand-edit changelog artifacts beyond what it
+   prescribes. Write clear Conventional Commit subjects either way.
 8. **Plan/status closeout required.** Any plan, progress file, handoff, audit, roadmap,
    status tracker, or coordination note created or used by the lane must be closed,
    narrowed, or marked superseded before review.
@@ -80,13 +78,11 @@ No archon-setup checkout available? Stop and ask the owner — do not reconstruc
 
 ## Message protocol
 
-Turn-terminal messages to the owner (the message that ends a turn or asks for input) open
-with one status tag, then a `For you` lane (the owner's action; omitted for state-only
-messages) and a `My work` lane. The tag vocabulary, the human/agent split, and the
-machine-backed `SAFE TO CLEAR` rule live in
-[`docs/agent-process/message-protocol.md`](docs/agent-process/message-protocol.md). Do not
-claim `SAFE TO CLEAR` with `marker=verified` unless the close-scan marker's HEAD matches the
-pushed HEAD.
+Turn-terminal messages to the owner (the message that ends a turn or asks for input) open with one
+status tag, then a `For you` lane (the owner's action; omitted for state-only messages) and a
+`My work` lane. The tag vocabulary, the human/agent split, and the machine-backed `SAFE TO CLEAR`
+rule live in [`docs/agent-process/message-protocol.md`](docs/agent-process/message-protocol.md).
+Do not claim `SAFE TO CLEAR` with `marker=verified` unless the close-scan marker's HEAD matches the pushed HEAD.
 
 ## Vision Drift Duties
 
@@ -274,20 +270,18 @@ placement priority, budgets, and doc-health duties. If a rule needs more than 10
 ## Doc Health
 
 Run `node scripts/doc-health/health.mjs --repo <repo> --report <path>` for report-only document-policy drift checks.
-The checker emits warning findings and issue payloads; it never edits docs, opens gates, or blocks.
+The checker emits findings and issue payloads and never edits docs; findings are warnings except a small blocking subset that fails the PR docs gate.
 Full contract: `docs/agent-process/doc-health.md`.
 
 ## CHANGELOG
 
-`CHANGELOG.md` is **release-class**: its `[Unreleased]` section is folded from
-Conventional Commit history by `npm run docs:changelog` at release-cut, never edited
-per PR (`feat`→Added, `fix`→Fixed, `perf`/`refactor`→Changed; breaking changes always
-surfaced). Write clear Conventional Commit subjects; that is the changelog.
+`CHANGELOG.md` is **release-class**: its `[Unreleased]` section is folded from Conventional
+Commit history by `npm run docs:changelog` at release-cut, never edited per PR (`feat`→Added,
+`fix`→Fixed, `perf`/`refactor`→Changed; breaking changes always surfaced). Write clear Conventional Commit subjects; that is the changelog.
 
 ## Commit Hygiene
 
-- Stage specific files: `git add <path> <path>`. Never use `git add -A`, `git add .`, or
-  `git add --all`.
+- Stage specific files: `git add <path> <path>`. Never use `git add -A`, `git add .`, or `git add --all`.
 - If a formatter or fixer changes a staged file, re-stage that path before committing.
   `.githooks/pre-commit` blocks same-file staged plus unstaged drift; use
   `ALLOW_PARTIAL_COMMIT=1` only for an intentional partial snapshot with audit logging.
@@ -296,11 +290,9 @@ surfaced). Write clear Conventional Commit subjects; that is the changelog.
 
 ## Reference Precision
 
-In durable artifacts such as decision logs, ADRs, PR bodies, update-log fragments, and
-verification notes, name refs unambiguously. Use `origin/main` when remote-vs-local matters,
-and write "the local default branch" when that is what you mean.
+In durable artifacts such as decision logs, ADRs, PR bodies, update-log fragments, and verification notes, name refs unambiguously.
+Use `origin/main` when remote-vs-local matters, and write "the local default branch" when that is what you mean.
 
 ## When Stuck
 
-If the same approach fails twice, stop. Switch tactics, ask the user, or document what you
-tried in the issue.
+If the same approach fails twice, stop. Switch tactics, ask the user, or document what you tried in the issue.
