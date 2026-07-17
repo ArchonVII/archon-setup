@@ -41,9 +41,9 @@ test("writeAgentsMd creates the agent contract and repo update log", async () =>
 
   assert.match(agents, /docs\/repo-update-log\.md/);
   assert.match(agents, /Agent Start Map/);
-  // rt#179/as#366: item 7 defers to the repo's mode-resolved ## CHANGELOG
-  // section instead of hardcoding rt's release-class mode.
-  assert.match(agents, /Changelog policy lives in this repo's `## CHANGELOG` section/);
+  // rt#179/as#366: item 7 defers to the repo's changelog policy instead of
+  // hardcoding rt's release-class mode; heading-agnostic since rt#182/#183.
+  assert.match(agents, /Changelog policy lives in this repo's changelog section/);
   assert.doesNotMatch(agents, /pick one and delete the other/);
   assert.doesNotMatch(agents, /<Mode 1: direct edit \/ Mode 2/);
   // #306: the delivery contract ships as its own managed block, guaranteed for
@@ -205,7 +205,7 @@ test("delivery-workflow block carries no changelog-mode specifics (as#366)", asy
     new URL("../src/snapshots/repo-template/AGENTS.md", import.meta.url), "utf8");
   const rendered = writeAgentsMd.renderAgentsBody(snapshot);
   const block = writeAgentsMd.extractDeliveryWorkflowBody(rendered);
-  assert.match(block, /Changelog policy lives in this repo's `## CHANGELOG` section/);
+  assert.match(block, /Changelog policy lives in this repo's changelog section/); // heading-agnostic since rt#182/#183
   assert.doesNotMatch(block, /release-class/);
   assert.doesNotMatch(block, /docs:changelog/);
   assert.doesNotMatch(block, /PRs carry no changelog edits/);
