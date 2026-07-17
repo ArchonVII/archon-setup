@@ -55,15 +55,17 @@ async function workflowBody(unit) {
   return readFile(join(GITHUB_WORKFLOWS_SNAPSHOT, `${name}.yml`), "utf8").then(normalizeSnapshotText);
 }
 
-async function expectedBodyFor({ path, unit, context, generatedBaseline }) {
+async function expectedBodyFor({ path, unit, context, generatedBaseline, selectedFeatureIds }) {
   switch (unit?.taskId) {
     case "writeReadme":
       return readmeTemplate({ repo: context.repo, owner: context.owner });
     case "writeAgentsMd":
       if (path === "AGENTS.md") {
-        // Reuse the emitter's renderer so the audit's expected body never
-        // drifts from the release-class template and managed delivery block.
-        return renderAgentsBody(await repoTemplateBody("AGENTS.md"));
+        // Reuse the emitter's renderer — with the SAME resolved selection the
+        // apply path threads (as#372) — so the audit's expected body never
+        // drifts from the release-class template, the per-selection Start Map,
+        // or the managed delivery block.
+        return renderAgentsBody(await repoTemplateBody("AGENTS.md"), { selectedFeatureIds });
       }
       if (path === "docs/repo-update-log.md") {
         return repoTemplateBody(join("docs", "repo-update-log.md"));
@@ -177,7 +179,17 @@ export async function auditPlan(plan) {
   for (const file of plan.files) {
     const unit = unitForFile(plan, file);
     const fullPath = safeJoin(plan.context.targetPath, file.path);
-    const expected = await expectedBodyFor({ path: file.path, unit, context: plan.context, generatedBaseline });
+    const expected = await expectedBodyFor({
+      path: file.path,
+      unit,
+      context: plan.context,
+      generatedBaseline,
+      // Same precedence executePlan threads to writers (executePlan.mjs:
+      // recordedFeatureIds = baselineFeatureIds || selectedFeatureIds), so a
+      // repair that applies a feature subset still audits AGENTS.md against
+      // the full recorded selection it was written with (as#372).
+      selectedFeatureIds: baselineFeatureIds,
+    });
     let exists = false;
     try {
       await access(fullPath, constants.F_OK);

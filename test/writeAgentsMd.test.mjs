@@ -210,3 +210,70 @@ test("delivery-workflow block carries no changelog-mode specifics (as#366)", asy
   assert.doesNotMatch(block, /docs:changelog/);
   assert.doesNotMatch(block, /PRs carry no changelog edits/);
 });
+
+// as#372: the Start Map managed block renders per resolved selection — bullets
+// whose providing feature is not selected are dropped at emit time, so docs-min
+// consumers never receive pointers to uninstalled tooling (pigafetta#1814).
+const DOCSMIN_LIKE = [
+  "foundation.readme", "foundation.gitignore", "foundation.agents",
+  "foundation.claude-md", "foundation.gemini-md", "foundation.coordination",
+  "foundation.gitattributes", "foundation.git-init",
+];
+const FULL_TOOLING = [
+  ...DOCSMIN_LIKE, "foundation.pr-template", "foundation.friction-ledger",
+  "agent-workflow.check-map", "agent-lifecycle.baseline",
+  "agent-workflow.doc-sweep", "agent-workflow.doc-health",
+];
+
+async function renderedStartMap(selectedFeatureIds) {
+  const snapshot = await readFile(
+    new URL("../src/snapshots/repo-template/AGENTS.md", import.meta.url), "utf8");
+  const rendered = writeAgentsMd.renderAgentsBody(snapshot, { selectedFeatureIds });
+  const start = rendered.indexOf("<!-- BEGIN MANAGED AGENT START MAP -->");
+  const end = rendered.indexOf("<!-- END MANAGED AGENT START MAP -->");
+  assert.ok(start !== -1 && end > start, "start map markers survive rendering");
+  return rendered.slice(start, end);
+}
+
+test("start map drops uninstalled-feature bullets for a docs-min selection (as#372)", async () => {
+  const map = await renderedStartMap(DOCSMIN_LIKE);
+  for (const dropped of [
+    "- Check map:", "- PR process:", "- Agent scripts:", "- Close guards:",
+    "- Doc sweep:", "- Doc health:", "- Friction ledger:", "- Feature-gated bullets:",
+  ]) {
+    assert.ok(!map.includes(dropped), `${dropped} must be dropped for docs-min`);
+  }
+  for (const kept of ["- Document policy:", "- Plans:", "- Changelog:", "- Coordination:"]) {
+    assert.ok(map.includes(kept), `${kept} must survive for docs-min`);
+  }
+});
+
+test("start map keeps gated bullets when their features are selected (as#372)", async () => {
+  const map = await renderedStartMap(FULL_TOOLING);
+  for (const kept of [
+    "- Check map:", "- PR process:", "- Agent scripts:", "- Close guards:",
+    "- Doc sweep:", "- Doc health:", "- Friction ledger:",
+  ]) {
+    assert.ok(map.includes(kept), `${kept} must survive when its feature is selected`);
+  }
+  // The prose caveat is superseded by emit-time filtering and never ships.
+  assert.ok(!map.includes("- Feature-gated bullets:"), "caveat bullet never ships");
+});
+
+test("renderAgentsBody without a selection stays byte-identical (backward compat, as#372)", async () => {
+  const snapshot = await readFile(
+    new URL("../src/snapshots/repo-template/AGENTS.md", import.meta.url), "utf8");
+  assert.equal(writeAgentsMd.renderAgentsBody(snapshot),
+    writeAgentsMd.renderAgentsBody(snapshot, {}),
+    "omitted and empty options agree");
+});
+
+test("start map gating table matches the vendored snapshot (as#372 checked-mirror guard)", async () => {
+  const snapshot = await readFile(
+    new URL("../src/snapshots/repo-template/AGENTS.md", import.meta.url), "utf8");
+  for (const prefix of Object.keys(writeAgentsMd.START_MAP_BULLET_FEATURES)) {
+    const hits = snapshot.split(/\r?\n/).filter((l) => l.startsWith(prefix)).length;
+    assert.equal(hits, 1,
+      `gated prefix "${prefix}" must match exactly one snapshot line (refresh renamed it?)`);
+  }
+});
