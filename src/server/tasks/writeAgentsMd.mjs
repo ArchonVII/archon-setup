@@ -93,11 +93,67 @@ function wrapDeliveryWorkflow(body) {
   return `${before}${eol}${eol}${block}${tail}`;
 }
 
+// Start Map bullets that point at feature-installed tooling, keyed by the exact
+// bullet prefix in the vendored snapshot and mapped to the registry feature id
+// that provides the tooling (as#372; feature ids from src/registry via
+// loadRegistry — see the checked-mirror test that pins each prefix to exactly
+// one snapshot line). `null` means the bullet never ships: the prose
+// feature-caveat is superseded by this emit-time filtering.
+export const START_MAP_BULLET_FEATURES = {
+  "- Check map:": "agent-workflow.check-map",
+  "- Coordination:": "foundation.coordination",
+  "- PR process:": "foundation.pr-template",
+  "- Agent scripts:": "agent-lifecycle.baseline",
+  "- Close guards:": "agent-lifecycle.baseline",
+  "- Doc sweep:": "agent-workflow.doc-sweep",
+  "- Doc health:": "agent-workflow.doc-health",
+  "- Friction ledger:": "foundation.friction-ledger",
+  "- Feature-gated bullets:": null,
+};
+
+// Drop Start Map bullets whose providing feature is not in the resolved
+// selection (as#372, pigafetta#1814: docs-min consumers received pointers to
+// scripts/agent, check-map, doc-sweep/doc-health etc. they don't have). Only
+// lines inside the managed Start Map markers are considered; a dropped bullet
+// also drops its indented continuation lines.
+function filterStartMapBySelection(body, selectedFeatureIds) {
+  const start = "<!-- BEGIN MANAGED AGENT START MAP -->";
+  const end = "<!-- END MANAGED AGENT START MAP -->";
+  const startIndex = body.indexOf(start);
+  const endIndex = body.indexOf(end);
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) return body;
+
+  const selected = new Set(selectedFeatureIds);
+  const section = body.slice(startIndex, endIndex);
+  const eol = section.includes("\r\n") ? "\r\n" : "\n";
+  const lines = section.split(/\r?\n/);
+  const kept = [];
+  let dropping = false;
+  for (const line of lines) {
+    const gate = Object.entries(START_MAP_BULLET_FEATURES).find(([prefix]) => line.startsWith(prefix));
+    if (gate) {
+      const [, feature] = gate;
+      dropping = feature === null || !selected.has(feature);
+      if (!dropping) kept.push(line);
+      continue;
+    }
+    if (dropping && /^\s+\S/.test(line)) continue; // continuation of a dropped bullet
+    dropping = false;
+    kept.push(line);
+  }
+  return body.slice(0, startIndex) + kept.join(eol) + body.slice(endIndex);
+}
+
 // Pure snapshot -> emitted-body transform. Exported and shared with the audit so
 // the audit's "expected" body never drifts from what onboarding actually writes:
-// resolve the changelog mode (#291) then wrap the delivery contract (#306).
-export function renderAgentsBody(rawBody) {
-  return wrapDeliveryWorkflow(rawBody);
+// filter the Start Map per resolved selection (as#372), resolve the changelog
+// mode (#291), then wrap the delivery contract (#306). Omitting
+// `selectedFeatureIds` keeps the unfiltered legacy rendering.
+export function renderAgentsBody(rawBody, { selectedFeatureIds } = {}) {
+  const filtered = Array.isArray(selectedFeatureIds)
+    ? filterStartMapBySelection(rawBody, selectedFeatureIds)
+    : rawBody;
+  return wrapDeliveryWorkflow(filtered);
 }
 
 export function extractDeliveryWorkflowBody(renderedBody) {
@@ -111,9 +167,9 @@ export function extractDeliveryWorkflowBody(renderedBody) {
   return renderedBody.slice(startIndex + start.length, endIndex).trim();
 }
 
-async function readAgentsSnapshot() {
+async function readAgentsSnapshot(selectedFeatureIds) {
   const body = await readFile(AGENTS_SNAPSHOT, "utf8");
-  return renderAgentsBody(body);
+  return renderAgentsBody(body, { selectedFeatureIds });
 }
 
 function managedAgentsBody(snapshotBody) {
@@ -188,7 +244,7 @@ function agentsContractCurrent(current, snapshotBody) {
 export async function check(ctx) {
   try {
     const current = await readFile(safeJoin(ctx.targetPath, "AGENTS.md"), "utf8");
-    const snapshotBody = await readAgentsSnapshot();
+    const snapshotBody = await readAgentsSnapshot(selectionFrom(ctx));
     const updateLogDone = await fileExists(ctx.targetPath, "docs/repo-update-log.md");
     const startupDone = await startupBaselineCurrent(ctx.targetPath, selectionFrom(ctx));
     const plansReadme = await readFile(PLANS_README_SNAPSHOT, "utf8");
@@ -214,7 +270,7 @@ export async function check(ctx) {
 }
 
 export async function apply(ctx) {
-  const body = await readAgentsSnapshot();
+  const body = await readAgentsSnapshot(selectionFrom(ctx));
   const updateLog = await readFile(UPDATE_LOG_SNAPSHOT, "utf8");
   // Generated per the recorded selection instead of copied from the snapshot
   // (lane C2, #352) — the shipped repo-local checker then demands exactly what
@@ -326,7 +382,7 @@ export async function apply(ctx) {
 export async function verify(ctx) {
   try {
     const current = await readFile(safeJoin(ctx.targetPath, "AGENTS.md"), "utf8");
-    const snapshotBody = await readAgentsSnapshot();
+    const snapshotBody = await readAgentsSnapshot(selectionFrom(ctx));
     if (!agentsContractCurrent(current, snapshotBody)) {
       return { ok: false, error: "AGENTS.md is missing the ArchonVII startup map" };
     }
