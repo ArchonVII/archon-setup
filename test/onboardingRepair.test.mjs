@@ -129,6 +129,34 @@ test("onboarding repair intake turns declined capabilities into an effective des
   assert.equal(intake.dispositions.find((item) => item.feature === "foundation.license")?.choice, "declined");
 });
 
+test("onboarding repair intake removes capabilities that depend on a declined capability", async () => {
+  const targetPath = await fixtureRepo();
+  const doc = await buildOnboardingDecision({
+    targetPath,
+    features: ["foundation.readme", "workflow.required-gate"],
+    runId: "onboard-repair-dependent-declined",
+  });
+  const resolved = {
+    ...doc,
+    items: doc.items.map((item) => ({
+      ...item,
+      resolution: {
+        choice: item.feature === "agent-workflow.check-map" ? "declined" : "apply-central",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+        review: null,
+      },
+    })),
+  };
+
+  const intake = await intakeOnboardingDecision({ input: resolved, targetPath });
+
+  assert.equal(intake.ok, true);
+  assert.deepEqual(intake.declinedFeatures, ["agent-workflow.check-map"]);
+  assert.deepEqual(intake.effectiveSelectedFeatures, ["foundation.readme"]);
+  assert.deepEqual(intake.applyFeatures, ["foundation.readme"]);
+});
+
 test("onboarding repair intake requires a machine-readable review condition for defer", async () => {
   const targetPath = await fixtureRepo();
   const doc = await buildOnboardingDecision({

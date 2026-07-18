@@ -4,6 +4,7 @@ import { basename, resolve } from "node:path";
 
 import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
 import { safeJoin } from "../lib/paths.mjs";
+import { loadRegistry } from "../planner/buildPlan.mjs";
 import { runOnboard } from "./headlessOnboard.mjs";
 
 const VERSION = 1;
@@ -104,6 +105,26 @@ function sameItem(actual, expected) {
   );
 }
 
+function excludedByDeclines(features, selectedFeatures, declinedFeatures) {
+  const byId = new Map(features.map((feature) => [feature.id, feature]));
+  const excluded = new Set(declinedFeatures);
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    for (const featureId of selectedFeatures) {
+      if (excluded.has(featureId)) continue;
+      const feature = byId.get(featureId);
+      if ((feature?.requires || []).some((dependency) => excluded.has(dependency))) {
+        excluded.add(featureId);
+        changed = true;
+      }
+    }
+  }
+
+  return excluded;
+}
+
 export async function buildOnboardingDecision({
   targetPath,
   features = null,
@@ -180,7 +201,6 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
 
   const applyFeatures = new Set();
   const declinedFeatures = new Set();
-  const applyPaths = [];
   const manual = [];
   const dispositions = [];
   for (const item of doc.items) {
@@ -222,7 +242,6 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
 
     if (choice === "apply-central") {
       applyFeatures.add(item.feature);
-      applyPaths.push(fresh.path);
     } else {
       if (choice === "declined") declinedFeatures.add(item.feature);
       // Carry the path so the repair runner can restore decision-overridden
@@ -240,7 +259,13 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
     applyFeatures.delete(feature);
   }
 
-  const effectiveSelectedFeatures = doc.selectedFeatures.filter((feature) => !declinedFeatures.has(feature));
+  const { features } = await loadRegistry();
+  const excludedFeatures = excludedByDeclines(features, doc.selectedFeatures, declinedFeatures);
+  for (const feature of excludedFeatures) applyFeatures.delete(feature);
+  const effectiveSelectedFeatures = doc.selectedFeatures.filter((feature) => !excludedFeatures.has(feature));
+  const effectiveApplyPaths = dispositions
+    .filter((item) => item.choice === "apply-central" && applyFeatures.has(item.feature))
+    .map((item) => item.path);
 
   return {
     ok: true,
@@ -253,7 +278,7 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
     effectiveSelectedFeatures,
     declinedFeatures: [...declinedFeatures],
     applyFeatures: [...applyFeatures],
-    applyPaths,
+    applyPaths: effectiveApplyPaths,
     manual,
     dispositions,
   };

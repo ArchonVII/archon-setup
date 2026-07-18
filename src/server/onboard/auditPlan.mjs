@@ -220,6 +220,10 @@ async function evaluateOnboardingDispositions(targetPath, manifest, items) {
   const evaluated = [];
 
   for (const disposition of recorded) {
+    // Manifest validation below reports malformed durable decisions as
+    // completion blockers. Ignore them here so audit can produce that result
+    // instead of dereferencing arbitrary JSON and crashing first.
+    if (!disposition || typeof disposition !== "object" || Array.isArray(disposition)) continue;
     const raw = rawById.get(disposition.itemId);
     let state = "unresolved";
     let actionable = true;
