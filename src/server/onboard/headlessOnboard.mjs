@@ -7,6 +7,10 @@ import { executePlan } from "../executor/executePlan.mjs";
 import { checkOriginRemote } from "../preflight/checkOriginRemote.mjs";
 import { auditPlan } from "./auditPlan.mjs";
 import { runCommand } from "../lib/commandRunner.mjs";
+import {
+  selectionValidationWarnings,
+  validateSelectedRepoTemplateSurface,
+} from "./selectionValidation.mjs";
 
 // Onboarding provenance written by tasks that run after initGitAndCommit's
 // bootstrap commit — the setup manifest always (executePlan writes it last),
@@ -59,10 +63,10 @@ export async function loadSourceSnapshots() {
 //   onEvent     forwarded to the executor for progress streaming
 //
 // returns:
-//   audit    -> { ok: true, mode: "audit", plan, audit, blockingWarnings }
-//   dry-run  -> { ok: true, dryRun: true, plan, blockingWarnings }
-//   blocked  -> { ok: false, plan, blockingWarnings }   (executor not run)
-//   executed -> { ok, plan, result, blockingWarnings }
+//   audit    -> { ok: true, mode: "audit", plan, audit, selectionValidation, blockingWarnings }
+//   dry-run  -> { ok: true, dryRun: true, plan, selectionValidation, blockingWarnings }
+//   blocked  -> { ok: false, plan, selectionValidation, blockingWarnings }   (executor not run)
+//   executed -> { ok, plan, result, selectionValidation, blockingWarnings }
 export async function runOnboard({
   targetPath,
   features = null,
@@ -110,16 +114,28 @@ export async function runOnboard({
     plan.baselineFeatureIds = resolveSelection(allFeatures, baselineSelection).map((feature) => feature.id);
     plan.baselineProfile = resolveProfileId(plan.baselineFeatureIds, allFeatures, profiles);
   }
-  const blockingWarnings = (plan.warnings || []).filter((w) => w.blocking);
+  const validationSelection = plan.baselineFeatureIds || plan.selectedFeatureIds;
+  const selectionValidation = await validateSelectedRepoTemplateSurface(validationSelection);
+  const blockingWarnings = [
+    ...(plan.warnings || []).filter((w) => w.blocking),
+    ...selectionValidationWarnings(selectionValidation),
+  ];
 
   if (audit) {
-    return { ok: true, mode: "audit", plan, audit: await auditPlan(plan), blockingWarnings };
+    return {
+      ok: selectionValidation.ok,
+      mode: "audit",
+      plan,
+      audit: await auditPlan(plan),
+      selectionValidation,
+      blockingWarnings,
+    };
   }
   if (dryRun) {
-    return { ok: true, dryRun: true, plan, blockingWarnings };
+    return { ok: selectionValidation.ok, dryRun: true, plan, selectionValidation, blockingWarnings };
   }
   if (blockingWarnings.length) {
-    return { ok: false, plan, blockingWarnings };
+    return { ok: false, plan, selectionValidation, blockingWarnings };
   }
 
   const result = await executePlan(plan, { onEvent });
@@ -131,7 +147,7 @@ export async function runOnboard({
     provenanceCommit = await commitProvenance(targetPath);
   }
 
-  return { ok: result.ok, plan, result, blockingWarnings, provenanceCommit };
+  return { ok: result.ok, plan, result, selectionValidation, blockingWarnings, provenanceCommit };
 }
 
 // Did initGitAndCommit create a fresh bootstrap commit in THIS run? It returns

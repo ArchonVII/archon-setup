@@ -341,12 +341,17 @@ export async function verifyMergedOnboardingRepair({
     const gateItem = audited.audit.items.find((item) => item.path === ".github/workflows/repo-required-gate.yml");
     const requiresGate = required.checks.includes(DEFAULT_REQUIRED_GATE_CHECK);
     const missingRequiredCaller = requiresGate && (!gateItem || gateItem.status !== "present");
-    const status = missingRequiredCaller
-      ? "blocked"
-      : audited.audit.onboardingCompletion.status === "complete"
-        ? "fully_onboarded"
-        : "partial_onboarding";
-    const result = { status, mergeSha, defaultBranch, audit: audited.audit, requiredChecks: required };
+    let status = "partial_onboarding";
+    if (!audited.selectionValidation.ok || missingRequiredCaller) status = "blocked";
+    else if (audited.audit.onboardingCompletion.status === "complete") status = "fully_onboarded";
+    const result = {
+      status,
+      mergeSha,
+      defaultBranch,
+      audit: audited.audit,
+      selectionValidation: audited.selectionValidation,
+      requiredChecks: required,
+    };
     await appendRunState({ recordPath, state: "verified_merged", entry: { runId: initial.runId, baseSha: initial.baseSha, prNumber: pr.prNumber, mergeSha, verification: result }, now: now() });
     return result;
   } finally {

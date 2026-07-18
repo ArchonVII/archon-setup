@@ -192,6 +192,15 @@ function printAudit(audit) {
   }
 }
 
+function printSelectionValidation(validation) {
+  const counts = validation.checked;
+  console.log(
+    `\nSelection contract: ${validation.ok ? "valid" : "invalid"} ` +
+      `(${counts.baselineRequiredPaths} startup paths, ${counts.repoTemplateMarkdownSources} Markdown sources)`
+  );
+  for (const finding of validation.findings) console.log(`  ! ${finding.code}: ${finding.message}`);
+}
+
 async function resolvedFeatures(opts) {
   let features = opts.features;
   if (opts.profile) {
@@ -244,12 +253,14 @@ async function main() {
   if (opts.dryRun) {
     console.log("DRY RUN — nothing written.\n");
     printPlan(res.plan);
-    process.exit(0);
+    printSelectionValidation(res.selectionValidation);
+    process.exit(res.ok ? 0 : 1);
   }
   if (opts.audit) {
     console.log("AUDIT — nothing written.\n");
     printAudit(res.audit);
-    process.exit(0);
+    printSelectionValidation(res.selectionValidation);
+    process.exit(res.ok ? 0 : 1);
   }
 
   if (!res.ok && res.blockingWarnings.length) {
