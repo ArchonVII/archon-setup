@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 
 import { runCommand as defaultRunCommand } from "../lib/commandRunner.mjs";
+import { safeJoin } from "../lib/paths.mjs";
 import { runOnboard } from "./headlessOnboard.mjs";
 
 const VERSION = 1;
@@ -20,14 +22,17 @@ async function git(targetPath, args, runCommand) {
 }
 
 function optionsFor(status) {
-  if (status === "missing") return ["apply-central", "defer", "blocked"];
-  if (status === "drifted") return ["keep-local", "merge-manual", "defer", "blocked"];
+  if (status === "missing") return ["apply-central", "declined", "defer", "blocked"];
+  if (status === "drifted") return ["keep-local", "declined", "merge-manual", "defer", "blocked"];
   return [];
 }
 
 function decisionItems(audit) {
   return audit.items
-    .filter((item) => item.status === "missing" || item.status === "drifted")
+    .filter((item) =>
+      (item.status === "missing" || item.status === "drifted") &&
+      item.disposition?.state !== "accepted"
+    )
     .map((item) => ({
       itemId: `${item.feature}:${item.path}`,
       feature: item.feature,
@@ -68,6 +73,27 @@ function rejection(code, detail) {
   return { ok: false, code, detail };
 }
 
+function validTimestamp(value) {
+  return typeof value === "string" && value.length > 0 && Number.isFinite(Date.parse(value));
+}
+
+function validReview(review) {
+  if (!review || typeof review !== "object" || Array.isArray(review)) return false;
+  if (review.expiresAt !== undefined && !validTimestamp(review.expiresAt)) return false;
+  if (review.triggeredAt !== undefined && !validTimestamp(review.triggeredAt)) return false;
+  const hasTrigger = typeof review.trigger === "string" && review.trigger.trim().length > 0;
+  const hasExpiry = validTimestamp(review.expiresAt);
+  return hasTrigger || hasExpiry;
+}
+
+async function contentFingerprint(targetPath, path) {
+  const body = await readFile(safeJoin(targetPath, path));
+  return {
+    algorithm: "sha256",
+    value: createHash("sha256").update(body).digest("hex"),
+  };
+}
+
 function sameItem(actual, expected) {
   return (
     actual.itemId === expected.itemId &&
@@ -102,7 +128,7 @@ export async function buildOnboardingDecision({
     basisFingerprint: sha256(basis),
     items: current.items.map((item) => ({
       ...item,
-      resolution: { choice: null, decidedBy: null, decidedAt: null },
+      resolution: { choice: null, decidedBy: null, decidedAt: null, review: null },
     })),
   };
 }
@@ -153,8 +179,10 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
   }
 
   const applyFeatures = new Set();
+  const declinedFeatures = new Set();
   const applyPaths = [];
   const manual = [];
+  const dispositions = [];
   for (const item of doc.items) {
     const fresh = expected.get(item.itemId);
     if (!fresh || !sameItem(item, fresh)) {
@@ -163,16 +191,56 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
     const choice = item.resolution?.choice;
     if (!choice) return rejection("unresolved-decision", `${item.itemId}: choice is required`);
     if (!fresh.options.includes(choice)) return rejection("invalid-resolution", `${item.itemId}: ${choice} is not allowed`);
+    if (typeof item.resolution?.decidedBy !== "string" || !item.resolution.decidedBy.trim()) {
+      return rejection("invalid-resolution", `${item.itemId}: decidedBy is required`);
+    }
+    if (!validTimestamp(item.resolution?.decidedAt)) {
+      return rejection("invalid-resolution", `${item.itemId}: decidedAt must be a valid timestamp`);
+    }
+    if (choice === "defer" && !validReview(item.resolution?.review)) {
+      return rejection("invalid-resolution", `${item.itemId}: defer requires review.trigger or review.expiresAt`);
+    }
+
+    const disposition = {
+      itemId: item.itemId,
+      feature: item.feature,
+      path: fresh.path,
+      status: fresh.status,
+      choice,
+      decidedBy: item.resolution.decidedBy,
+      decidedAt: item.resolution.decidedAt,
+    };
+    if (choice === "defer") disposition.review = item.resolution.review;
+    if (choice === "keep-local") {
+      try {
+        disposition.fingerprint = await contentFingerprint(current.targetPath, fresh.path);
+      } catch (error) {
+        return rejection("invalid-resolution", `${item.itemId}: keep-local fingerprint failed: ${error.message}`);
+      }
+    }
+    dispositions.push(disposition);
+
     if (choice === "apply-central") {
       applyFeatures.add(item.feature);
       applyPaths.push(fresh.path);
     } else {
+      if (choice === "declined") declinedFeatures.add(item.feature);
       // Carry the path so the repair runner can restore decision-overridden
       // files after the feature-level apply (#362): apply-central is the only
       // decision that may ship tool-written content.
       manual.push({ itemId: item.itemId, choice, path: fresh.path });
     }
   }
+
+  for (const feature of declinedFeatures) {
+    const featureChoices = dispositions.filter((item) => item.feature === feature).map((item) => item.choice);
+    if (featureChoices.some((choice) => choice !== "declined")) {
+      return rejection("invalid-resolution", `${feature}: declined cannot be combined with another resolution in the same feature`);
+    }
+    applyFeatures.delete(feature);
+  }
+
+  const effectiveSelectedFeatures = doc.selectedFeatures.filter((feature) => !declinedFeatures.has(feature));
 
   return {
     ok: true,
@@ -182,8 +250,11 @@ export async function intakeOnboardingDecision({ input, targetPath, runCommand =
     owner: doc.target.owner,
     repo: doc.target.repo,
     selectedFeatures: doc.selectedFeatures,
+    effectiveSelectedFeatures,
+    declinedFeatures: [...declinedFeatures],
     applyFeatures: [...applyFeatures],
     applyPaths,
     manual,
+    dispositions,
   };
 }

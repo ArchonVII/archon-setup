@@ -55,8 +55,8 @@ test("onboarding repair decision makes missing baseline items explicitly apply-c
     feature: "foundation.readme",
     path: "README.md",
     status: "missing",
-    options: ["apply-central", "defer", "blocked"],
-    resolution: { choice: null, decidedBy: null, decidedAt: null },
+    options: ["apply-central", "declined", "defer", "blocked"],
+    resolution: { choice: null, decidedBy: null, decidedAt: null, review: null },
   });
 });
 
@@ -81,10 +81,87 @@ test("onboarding repair intake accepts only fully resolved, current apply-centra
     owner: "ArchonVII",
     repo: "consumer-repo",
     selectedFeatures: ["foundation.readme"],
+    effectiveSelectedFeatures: ["foundation.readme"],
+    declinedFeatures: [],
     applyFeatures: ["foundation.readme"],
     applyPaths: ["README.md"],
     manual: [],
+    dispositions: [
+      {
+        itemId: "foundation.readme:README.md",
+        feature: "foundation.readme",
+        path: "README.md",
+        status: "missing",
+        choice: "apply-central",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+      },
+    ],
   });
+});
+
+test("onboarding repair intake turns declined capabilities into an effective deselection", async () => {
+  const targetPath = await fixtureRepo();
+  const doc = await buildOnboardingDecision({
+    targetPath,
+    features: ["foundation.readme", "foundation.license"],
+    runId: "onboard-repair-declined",
+  });
+  const resolved = {
+    ...doc,
+    items: doc.items.map((item) => ({
+      ...item,
+      resolution: {
+        choice: item.feature === "foundation.license" ? "declined" : "apply-central",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+        review: null,
+      },
+    })),
+  };
+
+  const intake = await intakeOnboardingDecision({ input: resolved, targetPath });
+
+  assert.equal(intake.ok, true);
+  assert.deepEqual(intake.declinedFeatures, ["foundation.license"]);
+  assert.deepEqual(intake.effectiveSelectedFeatures, ["foundation.readme"]);
+  assert.deepEqual(intake.applyFeatures, ["foundation.readme"]);
+  assert.equal(intake.dispositions.find((item) => item.feature === "foundation.license")?.choice, "declined");
+});
+
+test("onboarding repair intake requires a machine-readable review condition for defer", async () => {
+  const targetPath = await fixtureRepo();
+  const doc = await buildOnboardingDecision({
+    targetPath,
+    features: ["foundation.readme"],
+    runId: "onboard-repair-defer",
+  });
+  const deferred = {
+    ...doc,
+    items: doc.items.map((item) => ({
+      ...item,
+      resolution: {
+        choice: "defer",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+        review: null,
+      },
+    })),
+  };
+
+  assert.deepEqual(await intakeOnboardingDecision({ input: deferred, targetPath }), {
+    ok: false,
+    code: "invalid-resolution",
+    detail: "foundation.readme:README.md: defer requires review.trigger or review.expiresAt",
+  });
+
+  deferred.items[0].resolution.review = {
+    trigger: "review when the documentation charter is installed",
+    expiresAt: "2026-08-01T00:00:00.000Z",
+  };
+  const intake = await intakeOnboardingDecision({ input: deferred, targetPath });
+  assert.equal(intake.ok, true);
+  assert.deepEqual(intake.dispositions[0].review, deferred.items[0].resolution.review);
 });
 
 test("onboarding repair intake rejects an unresolved decision before any write-capable flow", async () => {

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -43,6 +44,15 @@ const ONBOARDING_COMPLETION_ANCHORS = [
 const COMPLETION_DRIFT_EXCEPTIONS = new Set([
   "AGENTS.md",
   "docs/repo-update-log.md",
+]);
+
+const ONBOARDING_DISPOSITION_CHOICES = new Set([
+  "apply-central",
+  "keep-local",
+  "declined",
+  "merge-manual",
+  "defer",
+  "blocked",
 ]);
 
 async function repoTemplateBody(snapshotPath, transform = (body) => body) {
@@ -183,6 +193,65 @@ function summarize(items) {
   const summary = { present: 0, missing: 0, drifted: 0, total: items.length };
   for (const item of items) summary[item.status] += 1;
   return summary;
+}
+
+async function readOnboardingManifest(targetPath) {
+  try {
+    return JSON.parse(await readFile(safeJoin(targetPath, ".github/archon-setup.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+async function actualFingerprint(targetPath, path) {
+  try {
+    const body = await readFile(safeJoin(targetPath, path));
+    return createHash("sha256").update(body).digest("hex");
+  } catch {
+    return null;
+  }
+}
+
+async function evaluateOnboardingDispositions(targetPath, manifest, items) {
+  const recorded = manifest?.onboardingDispositions?.items;
+  if (!Array.isArray(recorded)) return [];
+  const rawById = new Map(items.map((item) => [`${item.feature}:${item.path}`, item]));
+  const now = Date.now();
+  const evaluated = [];
+
+  for (const disposition of recorded) {
+    const raw = rawById.get(disposition.itemId);
+    let state = "unresolved";
+    let actionable = true;
+
+    if (disposition.choice === "keep-local") {
+      const expected = disposition.fingerprint?.algorithm === "sha256"
+        ? disposition.fingerprint.value
+        : null;
+      const actual = await actualFingerprint(targetPath, disposition.path);
+      state = expected && actual === expected ? "accepted" : "stale";
+      actionable = state !== "accepted";
+    } else if (disposition.choice === "declined") {
+      state = "declined";
+      actionable = false;
+    } else if (disposition.choice === "defer") {
+      const expiresAt = Date.parse(disposition.review?.expiresAt || "");
+      const triggeredAt = Date.parse(disposition.review?.triggeredAt || "");
+      if (Number.isFinite(triggeredAt) && triggeredAt <= now) state = "triggered";
+      else if (Number.isFinite(expiresAt) && expiresAt <= now) state = "expired";
+      else state = "deferred";
+    } else if (disposition.choice === "blocked") {
+      state = "blocked";
+    } else if (disposition.choice === "merge-manual") {
+      state = "merge-manual";
+    } else if (disposition.choice === "apply-central") {
+      state = raw?.status === "present" ? "applied" : "actionable";
+      actionable = state !== "applied";
+    }
+
+    evaluated.push({ ...disposition, state, actionable });
+  }
+  return evaluated;
 }
 
 export async function auditPlan(plan) {
@@ -340,16 +409,31 @@ export async function auditPlan(plan) {
     });
   }
 
+  const manifest = await readOnboardingManifest(plan.context.targetPath);
+  const dispositions = await evaluateOnboardingDispositions(plan.context.targetPath, manifest, items);
+  const dispositionsByItem = new Map(dispositions.map((item) => [item.itemId, item]));
+  for (const item of items) {
+    const disposition = dispositionsByItem.get(`${item.feature}:${item.path}`);
+    if (disposition) {
+      item.disposition = {
+        choice: disposition.choice,
+        state: disposition.state,
+        actionable: disposition.actionable,
+      };
+    }
+  }
+
   const startup = await startupReadiness(plan, items, generatedBaseline);
   return {
     summary: summarize(items),
     items,
+    dispositions,
     startupReadiness: startup,
-    onboardingCompletion: await onboardingCompletion(plan, items, startup),
+    onboardingCompletion: await onboardingCompletion(plan, items, dispositions, startup),
   };
 }
 
-async function onboardingCompletion(plan, items, startup) {
+async function onboardingCompletion(plan, items, dispositions, startup) {
   const present = [];
   const missing = [];
 
@@ -366,6 +450,9 @@ async function onboardingCompletion(plan, items, startup) {
     ...manifest.missingFeatures.map((feature) => `manifest missing selected feature: ${feature}`),
     ...missingBaselineItems.map((path) => `missing selected baseline item: ${path}`),
     ...driftedBaselineItems.map((path) => `drifted selected baseline item: ${path}`),
+    ...dispositions
+      .filter((item) => item.actionable && item.choice !== "apply-central")
+      .map((item) => `onboarding disposition ${item.state}: ${item.itemId}`),
   ];
   if (startup?.status !== "complete") {
     blockers.push(`startup readiness is ${startup?.status || "unknown"}`);
@@ -409,8 +496,66 @@ async function onboardingManifestStatus(plan) {
   if (!Array.isArray(parsed?.selectedFeatures)) {
     problems.push("manifest selectedFeatures is missing or invalid");
   }
-
   const selected = new Set(Array.isArray(parsed?.selectedFeatures) ? parsed.selectedFeatures : []);
+  if (parsed?.onboardingDispositions !== undefined) {
+    const dispositions = parsed.onboardingDispositions;
+    if (
+      !dispositions ||
+      typeof dispositions !== "object" ||
+      Array.isArray(dispositions) ||
+      dispositions.schemaVersion !== 1 ||
+      !Array.isArray(dispositions.items)
+    ) {
+      problems.push("manifest onboardingDispositions is missing or invalid");
+    } else {
+      const seen = new Set();
+      for (const item of dispositions.items) {
+        const itemValid =
+          !item ||
+          typeof item.itemId !== "string" ||
+          typeof item.feature !== "string" ||
+          typeof item.path !== "string" ||
+          item.itemId !== `${item.feature}:${item.path}` ||
+          !ONBOARDING_DISPOSITION_CHOICES.has(item.choice) ||
+          typeof item.decidedBy !== "string" || !item.decidedBy.trim() ||
+          !Number.isFinite(Date.parse(item.decidedAt || "")) ||
+          typeof item.runId !== "string" || !item.runId ||
+          typeof item.baseSha !== "string" || !item.baseSha ||
+          item.decisionSource?.type !== "github-issue" ||
+          typeof item.decisionSource?.owner !== "string" || !item.decisionSource.owner ||
+          typeof item.decisionSource?.repo !== "string" || !item.decisionSource.repo ||
+          !Number.isInteger(item.decisionSource?.number) ||
+          item.decisionSource.number <= 0 ||
+          typeof item.decisionSource?.url !== "string";
+        if (itemValid) {
+          problems.push(`manifest onboarding disposition is invalid: ${item?.itemId || "unknown"}`);
+          continue;
+        }
+        if (seen.has(item.itemId)) problems.push(`manifest onboarding disposition is duplicated: ${item.itemId}`);
+        seen.add(item.itemId);
+        if (
+          item.choice === "keep-local" &&
+          (item.fingerprint?.algorithm !== "sha256" || !/^[a-f0-9]{64}$/i.test(item.fingerprint?.value || ""))
+        ) {
+          problems.push(`manifest keep-local fingerprint is invalid: ${item.itemId}`);
+        }
+        if (item.choice === "defer") {
+          const hasTrigger = typeof item.review?.trigger === "string" && item.review.trigger.trim().length > 0;
+          const hasExpiry = Number.isFinite(Date.parse(item.review?.expiresAt || ""));
+          const expiryInvalid = item.review?.expiresAt !== undefined && !hasExpiry;
+          const triggeredInvalid = item.review?.triggeredAt !== undefined &&
+            !Number.isFinite(Date.parse(item.review.triggeredAt));
+          if ((!hasTrigger && !hasExpiry) || expiryInvalid || triggeredInvalid) {
+            problems.push(`manifest defer review is invalid: ${item.itemId}`);
+          }
+        }
+        if (item.choice === "declined" && selected.has(item.feature)) {
+          problems.push(`manifest declined feature remains selected: ${item.feature}`);
+        }
+      }
+    }
+  }
+
   const missingFeatures = (plan.selectedFeatureIds || []).filter((feature) => !selected.has(feature));
   return {
     status: problems.length || missingFeatures.length ? "incomplete" : "complete",
@@ -425,6 +570,9 @@ function completionItemFailures(items, startup) {
   const driftedBaselineItems = [];
 
   for (const item of items) {
+    if (item.disposition?.choice === "keep-local" && item.disposition.state === "accepted") {
+      continue;
+    }
     if (item.status === "missing") {
       missingBaselineItems.push(item.path);
       continue;
@@ -505,6 +653,7 @@ async function startupReadiness(plan, items, baseline) {
 }
 
 async function startupRequiredPathStatus(root, relativePath, item, baseline) {
+  if (item?.disposition?.choice === "keep-local" && item.disposition.state === "accepted") return "present";
   if (item?.status === "present") return "present";
   if (!(await pathExists(root, relativePath))) return "missing";
 

@@ -66,6 +66,24 @@ function prBody({ intake, sourceIssueNumber, recordPath }) {
   ].join("\n");
 }
 
+function durableDispositions({ intake, sourceIssueNumber, owner, repo }) {
+  return {
+    schemaVersion: 1,
+    items: (intake.dispositions || []).map((item) => ({
+      ...item,
+      runId: intake.runId,
+      baseSha: intake.baseSha,
+      decisionSource: {
+        type: "github-issue",
+        owner,
+        repo,
+        number: sourceIssueNumber,
+        url: `https://github.com/${owner}/${repo}/issues/${sourceIssueNumber}`,
+      },
+    })),
+  };
+}
+
 // Gate on apply-central item PATHS, not features (#362): a feature may mix
 // apply-central (missing) with keep-local/merge-manual (legitimately drifted)
 // items, and only the former are the repair's responsibility to make present.
@@ -139,14 +157,23 @@ export async function runOnboardingRepair({
   if (!intake.applyFeatures.length) throw new Error("the resolved decision contains no apply-central items");
 
   const absoluteTarget = resolve(targetPath);
+  const effectiveSelectedFeatures = intake.effectiveSelectedFeatures || intake.selectedFeatures;
+  const onboardingDispositions = durableDispositions({
+    intake,
+    sourceIssueNumber,
+    owner: resolvedOwner,
+    repo: resolvedRepo,
+  });
   const base = {
     runId: intake.runId,
     baseSha: intake.baseSha,
     targetPath: absoluteTarget,
     onboardingRepair: {
       selectedFeatures: intake.selectedFeatures,
+      effectiveSelectedFeatures,
       applyFeatures: intake.applyFeatures,
       manual: intake.manual,
+      onboardingDispositions,
       defaultBranch: intake.defaultBranch ?? "main",
       owner: resolvedOwner,
       repo: resolvedRepo,
@@ -188,7 +215,8 @@ export async function runOnboardingRepair({
     const applied = await runOnboard({
       targetPath: worktreePath,
       features: intake.applyFeatures,
-      baselineFeatures: intake.selectedFeatures,
+      baselineFeatures: effectiveSelectedFeatures,
+      onboardingDispositions,
       owner: resolvedOwner,
       repo: resolvedRepo,
     });
@@ -200,7 +228,7 @@ export async function runOnboardingRepair({
     const audit = await runOnboard({
       targetPath: worktreePath,
       features: intake.applyFeatures,
-      baselineFeatures: intake.selectedFeatures,
+      baselineFeatures: effectiveSelectedFeatures,
       owner: resolvedOwner,
       repo: resolvedRepo,
       audit: true,
@@ -302,7 +330,11 @@ export async function verifyMergedOnboardingRepair({
   const worktreePath = join(root, `${repair.repo}-verify-${initial.runId}`);
   await git({ targetPath: absoluteTarget, args: ["worktree", "add", "--detach", worktreePath, `origin/${defaultBranch}`], runCommand });
   try {
-    const audited = await runOnboard({ targetPath: worktreePath, features: repair.selectedFeatures, audit: true });
+    const audited = await runOnboard({
+      targetPath: worktreePath,
+      features: repair.effectiveSelectedFeatures || repair.selectedFeatures,
+      audit: true,
+    });
     const required = await resolveRequiredChecks({ targetPath: worktreePath, owner: repair.owner, repo: repair.repo, branch: defaultBranch, runCommand });
     const gateItem = audited.audit.items.find((item) => item.path === ".github/workflows/repo-required-gate.yml");
     const requiresGate = required.checks.includes(DEFAULT_REQUIRED_GATE_CHECK);
