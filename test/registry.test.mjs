@@ -682,6 +682,25 @@ test("api-target + will-create with empty identity -> blocking error", async () 
 
 // --- #103: doc-sweep feature ---
 
+test("doc-system is the locked default capability behind foundation.agents", async () => {
+  const { features } = await loadRegistry();
+  const docSystem = features.find((feature) => feature.id === "foundation.doc-system");
+  const agents = features.find((feature) => feature.id === "foundation.agents");
+  assert.ok(docSystem, "foundation.doc-system feature missing");
+  assert.equal(docSystem.group, "foundations");
+  assert.equal(docSystem.default, true);
+  assert.equal(docSystem.locked, true);
+  assert.equal(docSystem.docFloor, true);
+  assert.equal(docSystem.tasks[0], "writeDocSystem");
+  assert.ok((agents.requires || []).includes("foundation.doc-system"));
+  assert.deepEqual(docSystem.creates, [
+    ".agent/doc-map.yml",
+    "docs/CANON.md",
+    "docs/INDEX.md",
+    "docs/agent-process/doc-system.md",
+  ]);
+});
+
 test("doc-sweep is an opt-in agent-workflow feature installing the runner + spec", async () => {
   const { features } = await loadRegistry();
   const ds = features.find((f) => f.id === "agent-workflow.doc-sweep");

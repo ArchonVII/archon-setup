@@ -29,6 +29,7 @@ import * as enableCopilot from "../tasks/enableCopilot.mjs";
 import * as writeAgentLifecycle from "../tasks/writeAgentLifecycle.mjs";
 import * as writeDocSweep from "../tasks/writeDocSweep.mjs";
 import * as writeDocHealth from "../tasks/writeDocHealth.mjs";
+import * as writeDocSystem from "../tasks/writeDocSystem.mjs";
 import * as writeTemplateLibrary from "../tasks/writeTemplateLibrary.mjs";
 
 const TASKS = {
@@ -60,6 +61,7 @@ const TASKS = {
   writeAgentLifecycle,
   writeDocSweep,
   writeDocHealth,
+  writeDocSystem,
   writeTemplateLibrary,
 };
 

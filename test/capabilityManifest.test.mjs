@@ -16,6 +16,7 @@ import { HOOK_FILES } from "../src/server/tasks/writeGithooks.mjs";
 import { TEMPLATE_LIBRARY_FILES } from "../src/server/tasks/writeTemplateLibrary.mjs";
 import { AGENTS_MANAGED_FILES } from "../src/server/tasks/writeAgentsMd.mjs";
 import { REQUIRED_GITIGNORE_LINES } from "../src/server/tasks/writeFrictionLedger.mjs";
+import { DOC_SYSTEM_FILES } from "../src/server/tasks/writeDocSystem.mjs";
 
 // Lane C1 (#351): the capability manifest (`installs[]` in features.json) is the
 // single home for "which feature installs which files". This test proves the
@@ -63,22 +64,13 @@ const SNAPSHOT_EXTRAS = [
   // no onboarding feature installs them.
   "docs/template-library-inventory.md",
   "docs/agent-process/project-capsules.md",
-  // Docs-system contract doc: vendored so the refreshed llms.txt nav link
-  // resolves. The doc floor is not yet installable — lane C5 adds a
-  // foundation.doc-system feature that will make this an installs[].source.
-  "docs/agent-process/doc-system.md",
   // Librarian wiki front-door + scaffold pages (repo-template#94): wiki:doctor
   // presence targets, not onboarding installs.
   "projects/README.md",
   "docs/LIBRARIAN.md",
-  "docs/CANON.md",
-  "docs/INDEX.md",
   "docs/project-status.md",
   "docs/raw/README.md",
   "docs/audits/README.md",
-  // Diff->doc ownership spine read by the vendored scripts/docs generators; not
-  // installed into onboarded repos.
-  ".agent/doc-map.yml",
   // repo-template's own package.json. agent-lifecycle.baseline MERGES managed
   // npm scripts into the target (kind:"merge"); it never copies this file, so it
   // is not an install source.
@@ -243,6 +235,12 @@ test("writeTemplateLibrary TEMPLATE_LIBRARY_FILES === template-library file inst
 test("writeAgentsMd AGENTS_MANAGED_FILES === foundation.agents file installs", () => {
   const agents = featureById("foundation.agents");
   assert.deepEqual(sorted(fileDirPaths(agents)), sorted(AGENTS_MANAGED_FILES));
+});
+
+test("writeDocSystem DOC_SYSTEM_FILES === foundation.doc-system file installs", () => {
+  const docSystem = featureById("foundation.doc-system");
+  assert.deepEqual(sorted(fileDirPaths(docSystem)), sorted(DOC_SYSTEM_FILES));
+  assert.equal(docSystem.docFloor, true);
 });
 
 test("writeFrictionLedger REQUIRED_GITIGNORE_LINES === friction-ledger .gitignore merge append", () => {

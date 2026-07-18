@@ -314,6 +314,10 @@ Existing agent-facing capabilities:
 - **Required gate plus check map** - optional `.agent/check-map.yml` and
   `repo-required-gate.yml` give agents and branch protection one shared map from
   changed paths to required verification when a repo wants enforced closeout.
+- **Installable documentation floor** - the locked `foundation.doc-system`
+  capability seeds `.agent/doc-map.yml`, `docs/CANON.md`, `docs/INDEX.md`, and
+  the doc-system contract. Existing CANON/INDEX content is never overwritten;
+  generated startup baselines require the floor because onboarding now installs it.
 - **Versioned startup baseline** - `.agent/startup-baseline.json`,
   `docs/plans/README.md`, `AGENTS.md`, and `agent:status` give agents one
   canonical first-stop map for plans, process files, coordination, PR flow, and

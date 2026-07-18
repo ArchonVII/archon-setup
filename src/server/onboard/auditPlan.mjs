@@ -17,7 +17,10 @@ import {
   extractDeliveryWorkflowBody,
   renderAgentsBody,
 } from "../tasks/writeAgentsMd.mjs";
-import { markdownMatchesSnapshotAllowingFrontmatter } from "../tasks/markdownFrontmatter.mjs";
+import {
+  markdownMatchesSnapshotAllowingFrontmatter,
+  stripYamlFrontmatter,
+} from "../tasks/markdownFrontmatter.mjs";
 import { startupBaselineMatchesExpected } from "../tasks/startupBaselineContract.mjs";
 import { loadStartupBaseline } from "../tasks/startupBaseline.mjs";
 import { loadCheckMapBody } from "../tasks/writeCheckMap.mjs";
@@ -148,6 +151,15 @@ async function expectedBodyFor({ path, unit, context, generatedBaseline, selecte
         return {
           comparison: "markdown-frontmatter",
           body: await repoTemplateBody(path),
+        };
+      }
+      return repoTemplateBody(path);
+    case "writeDocSystem":
+      if (path === "docs/CANON.md" || path === "docs/INDEX.md") return null;
+      if (path.endsWith(".md")) {
+        return {
+          comparison: "markdown-frontmatter",
+          body: await repoTemplateBody(path, stripYamlFrontmatter),
         };
       }
       return repoTemplateBody(path);
@@ -510,7 +522,10 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
       return (await packageHasAgentScripts(root)) ? "present" : "stale";
     case "docs/agent-process/doc-sweep.md":
     case "docs/agent-process/doc-health.md":
+    case "docs/agent-process/doc-system.md":
       return (await markdownFileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
+    case ".agent/doc-map.yml":
+      return (await fileMatchesSnapshot(root, relativePath)) ? "present" : "stale";
     default:
       // Every required script under scripts/ is snapshot-backed (repo-template
       // sources), so compare its content — not just the scripts/{agent,close,

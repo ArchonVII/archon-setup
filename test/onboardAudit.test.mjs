@@ -13,8 +13,9 @@ import { checkTargetPath } from "../src/server/preflight/checkTargetPath.mjs";
 import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
 import { extractDeliveryWorkflowBody, renderAgentsBody } from "../src/server/tasks/writeAgentsMd.mjs";
 import { loadCheckMapBody } from "../src/server/tasks/writeCheckMap.mjs";
+import { DOC_SYSTEM_FILES } from "../src/server/tasks/writeDocSystem.mjs";
 import { formatManagedBlock } from "../src/server/tasks/managedMarkdownBlock.mjs";
-import { loadRegistry } from "../src/server/planner/buildPlan.mjs";
+import { loadRegistry, resolveSelection } from "../src/server/planner/buildPlan.mjs";
 import {
   generateStartupBaseline,
   serializeStartupBaseline,
@@ -92,7 +93,7 @@ async function writeCurrentSetupManifest(root, selectedFeatures = []) {
       {
         tool: "archon-setup",
         version: "test",
-        selectedFeatures,
+        selectedFeatures: resolveSelection(REGISTRY_FEATURES, selectedFeatures).map((feature) => feature.id),
         sourceSnapshots: snapshotManifest.snapshots,
         createdFiles: [".github/archon-setup.json"],
         skippedFiles: [],
@@ -120,6 +121,7 @@ async function seedCurrentMinimalAgentBaseline(root, selectedFeatures = ["founda
     "docs/plans/README.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/message-protocol.md",
+    ...DOC_SYSTEM_FILES,
   ]) {
     await copySnapshot(root, relativePath);
   }
@@ -223,6 +225,25 @@ test("onboard --audit reports completion after applying the selected baseline", 
   assert.deepEqual(result.audit.onboardingCompletion.missing, []);
   assert.deepEqual(result.audit.onboardingCompletion.missingBaselineItems, []);
   assert.deepEqual(result.audit.onboardingCompletion.driftedBaselineItems, []);
+});
+
+test("onboard --audit accepts a repaired doc-system body with repo-local frontmatter", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const features = ["foundation.agents"];
+
+  await runOnboard({ targetPath: root, features });
+  const docSystemPath = join(root, "docs", "agent-process", "doc-system.md");
+  await writeFile(docSystemPath, "---\ntitle: Local Doc System\n---\n\nstale body\n", "utf8");
+
+  const repaired = await runOnboard({ targetPath: root, features });
+  assert.equal(repaired.ok, true);
+  const repairedBody = await readFile(docSystemPath, "utf8");
+  assert.match(repairedBody, /^---\ntitle: Local Doc System\n---/);
+
+  const result = await runOnboard({ targetPath: root, features, audit: true });
+  assert.equal(byPath(result.audit, "docs/agent-process/doc-system.md").status, "present");
+  assert.equal(result.audit.onboardingCompletion.status, "complete");
 });
 
 test("onboard --audit refuses completion when a selected baseline item is missing", async () => {
@@ -422,6 +443,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
     "docs/agent-process/doc-sweep.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
+    ...DOC_SYSTEM_FILES,
     // Lane C2 (#352): the closeout scripts flipped to required must be present
     // for an agent-standard repo to audit complete.
     ...NEWLY_REQUIRED_SCRIPTS,
@@ -530,6 +552,7 @@ test("startup readiness reports stale concrete startup tooling", async () => {
     "docs/agent-process/doc-sweep.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
+    ...DOC_SYSTEM_FILES,
     // The closeout scripts flipped to required this lane — present so only the
     // deliberately tampered status.mjs / ci-guard.mjs are stale.
     ...NEWLY_REQUIRED_SCRIPTS,
@@ -544,6 +567,7 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   // read stale too. The readiness check formerly compared only those subdir
   // prefixes and reported a drifted root required script present (Codex on #356).
   await writeFile(join(root, "scripts", "pr-contract.mjs"), "console.log('old pr contract');\n", "utf8");
+  await writeFile(join(root, ".agent", "doc-map.yml"), "version: 1\n# stale doc floor\n", "utf8");
 
   const { stdout } = await execFileP(
     process.execPath,
@@ -565,6 +589,7 @@ test("startup readiness reports stale concrete startup tooling", async () => {
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/agent/status.mjs"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/close/ci-guard.mjs"));
   assert.ok(parsed.audit.startupReadiness.stale.includes("scripts/pr-contract.mjs"));
+  assert.ok(parsed.audit.startupReadiness.stale.includes(".agent/doc-map.yml"));
 });
 
 test("startup readiness reports stale same-version startup baseline contract", async () => {
@@ -615,6 +640,7 @@ test("startup readiness reports stale same-version startup baseline contract", a
     "docs/agent-process/doc-sweep.md",
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
+    ...DOC_SYSTEM_FILES,
     // The closeout scripts flipped to required this lane — present so only the
     // baseline itself reads stale.
     ...NEWLY_REQUIRED_SCRIPTS,
