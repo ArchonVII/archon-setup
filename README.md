@@ -124,6 +124,13 @@ baseline body is current. The startup baseline file itself is checked when it is
 part of the selected profile, and same-version contract drift is treated as
 stale.
 
+Headless dry-run, apply, and audit results also include
+`selectionValidation`. It verifies that the generated startup floor and
+relative links in selected repo-template Markdown close over the resolved
+feature install set. Findings are machine-readable blocking errors; apply is
+refused, audit cannot complete successfully, and post-merge verification reports
+`blocked` until the provider contract is repaired.
+
 **Existing repos.** In the browser wizard, choose **Existing repo** on Location.
 The wizard accepts a populated git repo, detects its GitHub `origin`, runs a
 read-only audit on the shared plan, and disables GitHub repo creation while

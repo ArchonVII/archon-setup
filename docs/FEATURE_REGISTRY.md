@@ -91,6 +91,12 @@ the headless CLI) — the gate is in the UI.
 4. If it references a new workflow snapshot, run `npm run refresh-snapshots`.
 5. Add a golden-file test under `test/golden/`.
 
+For an install whose `source` is repo-template Markdown, every relative link in
+that source must target another path installed by the resolved feature closure.
+Required startup-baseline paths obey the same rule. Headless onboarding exposes
+the check as `selectionValidation` and treats its deterministic findings as
+blocking provider defects before apply and during audit.
+
 Optional foundation features may compose existing baseline tasks through
 `requires`. For example, `foundation.friction-ledger` owns only
 `.claude/friction.md`; it requires `foundation.agents`, `foundation.gitignore`,
