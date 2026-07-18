@@ -227,6 +227,25 @@ test("onboard --audit reports completion after applying the selected baseline", 
   assert.deepEqual(result.audit.onboardingCompletion.driftedBaselineItems, []);
 });
 
+test("onboard --audit accepts a repaired doc-system body with repo-local frontmatter", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const features = ["foundation.agents"];
+
+  await runOnboard({ targetPath: root, features });
+  const docSystemPath = join(root, "docs", "agent-process", "doc-system.md");
+  await writeFile(docSystemPath, "---\ntitle: Local Doc System\n---\n\nstale body\n", "utf8");
+
+  const repaired = await runOnboard({ targetPath: root, features });
+  assert.equal(repaired.ok, true);
+  const repairedBody = await readFile(docSystemPath, "utf8");
+  assert.match(repairedBody, /^---\ntitle: Local Doc System\n---/);
+
+  const result = await runOnboard({ targetPath: root, features, audit: true });
+  assert.equal(byPath(result.audit, "docs/agent-process/doc-system.md").status, "present");
+  assert.equal(result.audit.onboardingCompletion.status, "complete");
+});
+
 test("onboard --audit refuses completion when a selected baseline item is missing", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);

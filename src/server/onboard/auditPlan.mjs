@@ -17,7 +17,10 @@ import {
   extractDeliveryWorkflowBody,
   renderAgentsBody,
 } from "../tasks/writeAgentsMd.mjs";
-import { markdownMatchesSnapshotAllowingFrontmatter } from "../tasks/markdownFrontmatter.mjs";
+import {
+  markdownMatchesSnapshotAllowingFrontmatter,
+  stripYamlFrontmatter,
+} from "../tasks/markdownFrontmatter.mjs";
 import { startupBaselineMatchesExpected } from "../tasks/startupBaselineContract.mjs";
 import { loadStartupBaseline } from "../tasks/startupBaseline.mjs";
 import { loadCheckMapBody } from "../tasks/writeCheckMap.mjs";
@@ -154,7 +157,7 @@ async function expectedBodyFor({ path, unit, context, generatedBaseline }) {
       if (path.endsWith(".md")) {
         return {
           comparison: "markdown-frontmatter",
-          body: await repoTemplateBody(path),
+          body: await repoTemplateBody(path, stripYamlFrontmatter),
         };
       }
       return repoTemplateBody(path);
