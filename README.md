@@ -91,7 +91,7 @@ npm run onboard -- <targetPath> [options]
 | Option             | Effect                                                                                                   |
 | ------------------ | -------------------------------------------------------------------------------------------------------- |
 | `--profile <id>`   | Select `docs-min`, `agent-standard`, or `flagship`; additional `--features` are unioned into a custom selection |
-| `--features a,b,c` | Override the selection (default: minimal local baseline; remote mutations and runner-backed workflows are opt-in) |
+| `--features a,b,c` | Use this explicit selection plus true `requires` dependencies (default only when omitted; `foundation.git-init` does not force a license) |
 | `--owner <name>`   | GitHub owner/account; enables `CODEOWNERS` and the manifest owner                                        |
 | `--repo <name>`    | Repo name recorded in `.github/archon-setup.json`                                                        |
 | `--visibility <v>` | `private` (default) or `public`                                                                          |
