@@ -31,6 +31,8 @@ test("globalUpdatesCatalogEntries maps every agents-managed-block record to a ru
   assert.deepEqual(browser.anchor, { kind: "eof-append" });
   assert.deepEqual(browser.protectedBranches, ["main", "master"]);
   assert.deepEqual(browser.capabilityIds, record.distribution.capabilityIds);
+  const startup = entries.find((entry) => entry.id === "2026-06-09-agent-startup-baseline");
+  assert.equal(startup.requireSelectedCapabilities, true);
 });
 
 test("global update catalog entries fail closed without valid capability manifest ids", () => {

@@ -332,6 +332,7 @@ async function makeGitRepo(files) {
   const path = await mkdtemp(join(tmpdir(), "archon-refresh-cli-"));
   git(path, "init", "-b", "main");
   for (const [relpath, body] of Object.entries(files)) {
+    await mkdir(dirname(join(path, relpath)), { recursive: true });
     await writeFile(join(path, relpath), body, "utf8");
   }
   git(path, "add", "-A");
@@ -381,7 +382,11 @@ test("CLI: every real block current except one stale exits 10 with the merge ite
       ].join("\n"),
     )
     .join("\n");
-  const path = await makeGitRepo({ "AGENTS.md": `# Agents\n\n${blocks}` });
+  const selectedFeatures = [...new Set(records.flatMap((record) => record.distribution.capabilityIds))];
+  const path = await makeGitRepo({
+    "AGENTS.md": `# Agents\n\n${blocks}`,
+    ".github/archon-setup.json": `${JSON.stringify({ tool: "archon-setup", selectedFeatures }, null, 2)}\n`,
+  });
 
   const result = runRefreshCli("--target", path, "--json");
 

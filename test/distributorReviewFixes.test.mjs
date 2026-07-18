@@ -298,6 +298,46 @@ test("--group all means every group (same result as no filter), not a silent no-
   assert.ok(run.counts.adoptionNeeded >= 1);
 });
 
+test("CLI apply skips startup guidance when the consumer did not select lifecycle", async () => {
+  const updateId = "2026-06-09-agent-startup-baseline";
+  const staleBody = [
+    "# Agents",
+    "",
+    `<!-- BEGIN ARCHONVII GLOBAL UPDATE: ${updateId} -->`,
+    "## Stale startup guidance",
+    "",
+    "Run lifecycle scripts that this repo did not select.",
+    `<!-- END ARCHONVII GLOBAL UPDATE: ${updateId} -->`,
+    "",
+  ].join("\n");
+  const path = await makeGitRepo(staleBody);
+  await mkdir(join(path, ".github"), { recursive: true });
+  await writeFile(
+    join(path, ".github", "archon-setup.json"),
+    `${JSON.stringify({ tool: "archon-setup", selectedFeatures: ["foundation.agents"] }, null, 2)}\n`,
+    "utf8",
+  );
+  git(path, "add", ".github/archon-setup.json");
+  git(path, "commit", "-m", "chore: add docs-min manifest");
+  const logPath = join(await mkdtemp(join(tmpdir(), "archon-cli-log-")), "log.jsonl");
+
+  const result = spawnSync(
+    process.execPath,
+    [BIN, "distribute", "--target", path, "--id", updateId, "--apply", "--log", logPath, "--json"],
+    { env: GIT_ENV, encoding: "utf8" },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  const run = JSON.parse(result.stdout);
+  assert.equal(run.results[0].status, "skipped");
+  assert.equal(run.results[0].reason, "capability-not-selected");
+  assert.deepEqual(run.results[0].missingCapabilities, ["agent-lifecycle.baseline"]);
+  assert.equal(await readFile(join(path, "AGENTS.md"), "utf8"), staleBody);
+  const logged = JSON.parse((await readFile(logPath, "utf8")).trim());
+  assert.equal(logged.results[0].reason, "capability-not-selected");
+  assert.deepEqual(logged.results[0].missingCapabilities, ["agent-lifecycle.baseline"]);
+});
+
 test("unknown --group or --id tokens are rejected with exit 1", async () => {
   const path = await makeGitRepo("# Agents\n");
 

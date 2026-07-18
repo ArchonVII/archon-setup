@@ -32,6 +32,7 @@ export function globalUpdatesCatalogEntries(updates) {
         record.distribution.capabilityIds,
         `global update ${record.id}`,
       ),
+      requireSelectedCapabilities: record.distribution.requireSelectedCapabilities === true,
     }));
 }
 

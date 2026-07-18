@@ -75,6 +75,25 @@ async function readTarget(fullPath) {
   }
 }
 
+async function readSelectedCapabilities(repoPath) {
+  try {
+    const manifest = JSON.parse(
+      await readFile(safeJoin(repoPath, ".github/archon-setup.json"), "utf8"),
+    );
+    return new Set(Array.isArray(manifest?.selectedFeatures) ? manifest.selectedFeatures : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function capabilityDecision(entry, selectedCapabilities) {
+  if (!entry.requireSelectedCapabilities) return { applies: true, missingCapabilities: [] };
+  const missingCapabilities = entry.capabilityIds.filter(
+    (capabilityId) => !selectedCapabilities?.has(capabilityId),
+  );
+  return { applies: missingCapabilities.length === 0, missingCapabilities };
+}
+
 // tmp-in-same-dir + rename so a crash mid-write never leaves a truncated
 // target (NFR "Atomic writes"). On POSIX the original mode is restored after
 // the rename; on Windows chmod is a no-op. The tmp file is removed on any
@@ -136,7 +155,16 @@ function appendBlock(body, entry, style, eol) {
   return `${ensureTrailingNewline(body, eol)}${eol}${block}`;
 }
 
-async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePreview, adoptAnchored }) {
+async function reconcileFile({
+  repo,
+  relpath,
+  entries,
+  knownIds,
+  mode,
+  writePreview,
+  adoptAnchored,
+  selectedCapabilities,
+}) {
   const base = { relpath, regions: [], diagnostics: [], changed: false, written: false };
 
   let fullPath;
@@ -168,9 +196,27 @@ async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePrev
     // A5: the distributor owns the absent-file decision via the applicability
     // profile; the engine never creates files. Creation requires a single
     // whole-file entry whose snapshot body is fully and validly marked.
-    const creatable = entries.filter((e) => appliesTo(e, { targetExists: false }).applies);
+    const capabilitySkips = [];
+    const capabilityEligible = entries.filter((entry) => {
+      const decision = capabilityDecision(entry, selectedCapabilities);
+      if (decision.applies) return true;
+      capabilitySkips.push({
+        id: entry.id,
+        status: "skip",
+        reason: "capability-not-selected",
+        missingCapabilities: decision.missingCapabilities,
+        changed: false,
+      });
+      return false;
+    });
+    const creatable = capabilityEligible.filter((e) => appliesTo(e, { targetExists: false }).applies);
     if (creatable.length === 0) {
-      return { ...base, status: "skip", reason: "not-applicable" };
+      return {
+        ...base,
+        status: "skip",
+        reason: capabilitySkips[0]?.reason || "not-applicable",
+        regions: capabilitySkips,
+      };
     }
     const entry = creatable[0];
     if (creatable.length > 1 || !entry.wholeFile || !entry.snapshotBody) {
@@ -180,7 +226,7 @@ async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePrev
     if (parsed.diagnostics.length || !parsed.regions.some((r) => r.id === entry.id)) {
       return { ...base, status: "conflict", reason: "invalid-snapshot-markup", diagnostics: parsed.diagnostics };
     }
-    const regions = [{ id: entry.id, status: "clean_apply", changed: true }];
+    const regions = [...capabilitySkips, { id: entry.id, status: "clean_apply", changed: true }];
     if (mode !== "apply") {
       return { ...base, status: "clean_apply", changed: true, regions };
     }
@@ -211,6 +257,17 @@ async function reconcileFile({ repo, relpath, entries, knownIds, mode, writePrev
 
   const applicableEntries = [];
   for (const entry of entries) {
+    const capability = capabilityDecision(entry, selectedCapabilities);
+    if (!capability.applies) {
+      regions.push({
+        id: entry.id,
+        status: "skip",
+        reason: "capability-not-selected",
+        missingCapabilities: capability.missingCapabilities,
+        changed: false,
+      });
+      continue;
+    }
     const decision = appliesTo(entry, { targetExists: true });
     if (decision.applies) {
       applicableEntries.push(entry);
@@ -372,6 +429,21 @@ export async function distributeRepo({
   const selected = catalog.entries.filter(
     (entry) => (!groups || groups.includes(entry.group)) && (!ids || ids.includes(entry.id)),
   );
+  const hasCapabilityGates = selected.some((entry) => entry.requireSelectedCapabilities);
+  const selectedCapabilities = hasCapabilityGates
+    ? await readSelectedCapabilities(repo.path)
+    : null;
+  const capabilityDecisions = selected.map((entry) => capabilityDecision(entry, selectedCapabilities));
+  if (selected.length > 0 && capabilityDecisions.every((decision) => !decision.applies)) {
+    return {
+      ...base,
+      status: "skipped",
+      reason: "capability-not-selected",
+      missingCapabilities: [
+        ...new Set(capabilityDecisions.flatMap((decision) => decision.missingCapabilities)),
+      ],
+    };
+  }
 
   const byFile = new Map();
   for (const entry of selected) {
@@ -391,6 +463,7 @@ export async function distributeRepo({
           mode,
           writePreview,
           adoptAnchored,
+          selectedCapabilities,
         }),
       );
     } catch (err) {
@@ -440,6 +513,7 @@ function logView(results) {
     branch: result.branch,
     status: result.status,
     reason: result.reason,
+    missingCapabilities: result.missingCapabilities,
     files: (result.files ?? []).map((file) => ({
       relpath: file.relpath,
       status: file.status,
