@@ -143,6 +143,7 @@ item gets one of:
 
 - `apply-central`
 - `keep-local`
+- `declined`
 - `merge-manual`
 - `defer`
 - `blocked`
@@ -154,7 +155,14 @@ states stay out of the automated apply set and appear in the PR body. The
 decision may start from `--profile docs-min|agent-standard|flagship`, optionally
 unioned with explicit `--features`. Selective application does not narrow the
 recorded contract: the generated startup baseline, setup manifest, and
-post-merge verification retain the decision's full resolved selection.
+post-merge verification retain the decision's effective resolved selection.
+
+The setup manifest is the durable decision source after repair. `keep-local`
+is accepted only while its recorded content fingerprint matches. `declined`
+removes the capability from the effective selected set. `merge-manual`,
+`blocked`, and `defer` remain incomplete; defer requires a review trigger or
+expiry and becomes explicitly actionable when that condition is recorded or
+elapsed. A later decision replaces the earlier entry by item ID.
 
 ### P4: Make Existing-Repo Repair A Tool Path — Implemented
 

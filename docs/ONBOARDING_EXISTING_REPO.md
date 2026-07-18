@@ -32,7 +32,10 @@ For the binding completion rules, read
 - **Isolate from concurrent work.** If other agents/humans have uncommitted work on the
   default branch, do the setup in a **worktree** so you never touch their tree.
 - **Decide before writing.** Run `node bin/onboard.mjs repair <repo>` first. Only
-  `apply-central` decisions can write; all other resolutions remain explicit PR follow-ups.
+  `apply-central` decisions can write. `keep-local` is fingerprinted,
+  `declined` removes the capability from the effective selection, and
+  `merge-manual`/`defer`/`blocked` remain explicit incomplete work. Every defer
+  needs a machine-readable review trigger or expiry.
 
 ## Steps
 
@@ -159,6 +162,11 @@ clone activate (do not flip shared `core.hooksPath` out from under them).
 3. After merge, run `node bin/onboard.mjs verify-merged <repo> --record <path>`.
    It creates a detached worktree at fetched `origin/<default>` and reports
    `fully_onboarded`, `partial_onboarding`, or `blocked`.
+
+The repair PR writes the validated choices and their issue provenance to
+`.github/archon-setup.json`. Post-merge audit rehydrates that record: a matching
+`keep-local` fingerprint is accepted, changed content is stale, declined
+capabilities stay deselected, and manual/deferred/blocked work remains visible.
 
 The browser remains a useful review surface; the repair CLI is the authoritative
 write and completion path.
