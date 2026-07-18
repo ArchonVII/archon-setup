@@ -195,10 +195,21 @@ test("an explicit feature list can omit license while retaining git initializati
   assert.equal(result.plan.selectedFeatureIds.includes("foundation.license"), false);
   assert.equal(result.plan.files.some((file) => file.path === "LICENSE"), false);
   assert.equal(await exists(root, "LICENSE"), false);
+  const readme = await readFile(join(root, "README.md"), "utf8");
+  assert.doesNotMatch(readme, /\[LICENSE\]\(\.\/LICENSE\)/);
 
   const manifest = JSON.parse(await readFile(join(root, ".github", "archon-setup.json"), "utf8"));
   assert.equal(manifest.selectedFeatures.includes("foundation.license"), false);
   assert.equal(manifest.createdFiles.some((file) => file.path === "LICENSE"), false);
+
+  const auditResult = await withFetchStub(() => runOnboard({
+    targetPath: root,
+    features: selection,
+    owner: "ArchonVII",
+    repo: "no-license-example",
+    audit: true,
+  }));
+  assert.equal(auditResult.audit.items.find((item) => item.path === "README.md")?.status, "present");
 });
 
 test("an explicitly empty feature list does not fall back to defaults", async () => {
