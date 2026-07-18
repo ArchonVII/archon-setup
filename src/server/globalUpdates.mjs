@@ -1,5 +1,5 @@
-import { appendFile, mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
+import { appendFile, mkdir, readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { globalUpdatesCatalogEntries, ONBOARDING_MANAGED_IDS } from "../distributor/catalogSource.mjs";
 import { distributeRepo } from "../distributor/distribute.mjs";
 import { collectRepos } from "./ecosystem/collectRepos.mjs";
@@ -136,6 +136,7 @@ const GLOBAL_UPDATES = [
     distribution: {
       kind: "agents-managed-block",
       capabilityIds: ["foundation.agents", "agent-lifecycle.baseline"],
+      requireSelectedCapabilities: true,
       targetPath: "AGENTS.md",
       protectedBranches: ["main", "master"],
       heading: "Selection-Derived Agent Startup Baseline",
@@ -275,6 +276,17 @@ async function writeRunLog(logPath, entry) {
   await appendFile(logPath, `${JSON.stringify(entry)}\n`, "utf8");
 }
 
+async function missingSelectedCapabilities(repoPath, capabilityIds) {
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(join(repoPath, ".github", "archon-setup.json"), "utf8"));
+  } catch {
+    return [...capabilityIds];
+  }
+  const selected = new Set(Array.isArray(manifest?.selectedFeatures) ? manifest.selectedFeatures : []);
+  return capabilityIds.filter((capabilityId) => !selected.has(capabilityId));
+}
+
 export async function distributeGlobalUpdate({
   updateId,
   confirmation,
@@ -340,6 +352,21 @@ export async function distributeGlobalUpdate({
     if (protectedBranches.has(repo.branch)) {
       results.push({ ...base, status: "skipped", reason: "protected-main" });
       continue;
+    }
+    if (record.distribution.requireSelectedCapabilities) {
+      const missingCapabilities = await missingSelectedCapabilities(
+        repo.path,
+        record.distribution.capabilityIds,
+      );
+      if (missingCapabilities.length) {
+        results.push({
+          ...base,
+          status: "skipped",
+          reason: "capability-not-selected",
+          missingCapabilities,
+        });
+        continue;
+      }
     }
 
     const delegated = await distributeRepo({

@@ -56,11 +56,43 @@ test("global update catalog records the agent startup baseline", () => {
   assert.equal(record.status, "ready");
   assert.equal(record.distribution.kind, "agents-managed-block");
   assert.deepEqual(record.distribution.capabilityIds, ["foundation.agents", "agent-lifecycle.baseline"]);
+  assert.equal(record.distribution.requireSelectedCapabilities, true);
   assert.match(record.distribution.body, /`foundation\.agents`/);
   assert.match(record.distribution.body, /`agent-lifecycle\.baseline`/);
   assert.doesNotMatch(record.distribution.body, /Canonical startup files and directories/);
   assert.doesNotMatch(record.distribution.body, /  - `(?:AGENTS\.md|docs\/|scripts\/|\.agent\/)/);
   assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-06-09-agent-startup-baseline/);
+});
+
+test("startup baseline distribution skips repos without the lifecycle capability", async () => {
+  const root = await mkdtemp(join(tmpdir(), "archon-global-update-docs-min-"));
+  const repo = join(root, "repo-docs-min");
+  await mkdir(join(repo, ".github"), { recursive: true });
+  await writeFile(join(repo, "AGENTS.md"), "# Docs-min agents\n", "utf8");
+  await writeFile(
+    join(repo, ".github", "archon-setup.json"),
+    `${JSON.stringify({ tool: "archon-setup", selectedFeatures: ["foundation.agents"] }, null, 2)}\n`,
+    "utf8",
+  );
+
+  const record = getGlobalUpdate("2026-06-09-agent-startup-baseline");
+  const result = await distributeGlobalUpdate({
+    updateId: record.id,
+    confirmation: record.confirmationPhrase,
+    dryRun: false,
+    repos: [{ name: "repo-docs-min", path: repo, branch: "agent/codex/354-test", dirty: false }],
+  });
+
+  assert.deepEqual(result.results[0], {
+    repo: "repo-docs-min",
+    path: repo,
+    branch: "agent/codex/354-test",
+    updateId: record.id,
+    status: "skipped",
+    reason: "capability-not-selected",
+    missingCapabilities: ["agent-lifecycle.baseline"],
+  });
+  assert.equal(await readFile(join(repo, "AGENTS.md"), "utf8"), "# Docs-min agents\n");
 });
 
 test("global update catalog records plan/status artifact closeout", () => {
