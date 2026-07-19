@@ -29,12 +29,18 @@ test("doc-system task owns exactly the four declared floor files", () => {
   assert.deepEqual(DOC_SYSTEM_FILES, EXPECTED_FILES);
 });
 
-test("apply installs the doc floor from the repo-template snapshot", async () => {
+test("apply installs managed docs exactly and renders consumer seeds for the selection", async () => {
   const target = await makeTarget();
   await writeDocSystem.apply(makeCtx(target));
   for (const file of EXPECTED_FILES) {
     assert.ok((await stat(join(target, file))).isFile(), `${file} should be installed`);
-    assert.equal(await readFile(join(target, file), "utf8"), await snapshotBody(file));
+    const body = await readFile(join(target, file), "utf8");
+    if (file === "docs/CANON.md" || file === "docs/INDEX.md") {
+      assert.doesNotMatch(body, /LIBRARIAN\.md|project-status\.md/);
+      if (file === "docs/INDEX.md") assert.doesNotMatch(body, /### adr\//);
+    } else {
+      assert.equal(body, await snapshotBody(file));
+    }
   }
 });
 

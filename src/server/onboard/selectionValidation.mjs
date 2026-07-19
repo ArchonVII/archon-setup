@@ -1,47 +1,14 @@
 import { readFile } from "node:fs/promises";
-import { join, posix } from "node:path";
+import { join } from "node:path";
 
 import { loadRegistry, resolveSelection } from "../planner/buildPlan.mjs";
 import { REPO_TEMPLATE_SNAPSHOT } from "../tasks/repoTemplateSnapshot.mjs";
+import {
+  normalizeRepoPath,
+  relativeMarkdownTargets,
+  renderSelectionAwareSeed,
+} from "../tasks/selectionAwareMarkdown.mjs";
 import { generateStartupBaseline } from "../tasks/startupBaseline.mjs";
-
-const MARKDOWN_LINK = /(?<!!)\[[^\]]+\]\(([^)]+)\)/g;
-const EXTERNAL_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
-
-function normalizeRepoPath(path) {
-  return posix.normalize(path.replaceAll("\\", "/")).replace(/^\.\//, "");
-}
-
-function markdownTarget(rawTarget, sourcePath) {
-  let target = rawTarget.trim();
-  if (target.startsWith("<")) {
-    const close = target.indexOf(">");
-    if (close < 0) return null;
-    target = target.slice(1, close);
-  } else {
-    target = target.split(/\s+/, 1)[0];
-  }
-  target = target.split("#", 1)[0].split("?", 1)[0];
-  if (!target || target.startsWith("#") || target.startsWith("/") || EXTERNAL_SCHEME.test(target)) return null;
-  try {
-    target = decodeURIComponent(target);
-  } catch {
-    return null;
-  }
-  return normalizeRepoPath(posix.join(posix.dirname(sourcePath), target));
-}
-
-function relativeMarkdownTargets(body, sourcePath) {
-  const withoutCodeExamples = body
-    .replace(/(?:```|~~~)[\s\S]*?(?:```|~~~)/g, (block) => block.replace(/[^\n]/g, " "))
-    .replace(/`+[^`\n]*`+/g, (span) => span.replace(/[^\n]/g, " "));
-  const targets = new Set();
-  for (const match of withoutCodeExamples.matchAll(MARKDOWN_LINK)) {
-    const target = markdownTarget(match[1], sourcePath);
-    if (target) targets.add(target);
-  }
-  return [...targets].sort();
-}
 
 function findingKey(finding) {
   return [finding.code, finding.path || "", finding.sourcePath || "", finding.targetPath || ""].join("\0");
@@ -94,7 +61,8 @@ export async function validateSelectionSurface({
       });
       continue;
     }
-    for (const targetPath of relativeMarkdownTargets(body, source.outputPath)) {
+    const selectedBody = renderSelectionAwareSeed(body, source.outputPath, installedPaths);
+    for (const targetPath of relativeMarkdownTargets(selectedBody, source.outputPath)) {
       if (!installedPaths.has(targetPath)) {
         findings.push({
           code: "dangling-selected-markdown-link",

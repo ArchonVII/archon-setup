@@ -12,6 +12,7 @@ import {
   validateSelectionSurface,
   validateSelectedRepoTemplateSurface,
 } from "../src/server/onboard/selectionValidation.mjs";
+import { renderSelectionAwareSeed } from "../src/server/tasks/selectionAwareMarkdown.mjs";
 
 test("selection validation reports a baseline path outside the selected install closure", async () => {
   const validation = await validateSelectionSurface({
@@ -79,6 +80,37 @@ test("selection validation reports relative Markdown links outside the selected 
       message: "docs/start.md links to docs/missing.md, but the selected feature closure does not install that target.",
     },
   ]);
+});
+
+test("consumer-owned documentation seeds omit links to unselected provider pages", () => {
+  const installed = new Set(["docs/CANON.md", "docs/INDEX.md"]);
+  const canon = renderSelectionAwareSeed(
+    [
+      "---",
+      "relates:",
+      '  - "[[INDEX]]"',
+      '  - "[[LIBRARIAN]]"',
+      "---",
+      "",
+      "Read [INDEX](INDEX.md).",
+      "",
+      "Read [LIBRARIAN](LIBRARIAN.md).",
+      "",
+    ].join("\n"),
+    "docs/CANON.md",
+    installed
+  );
+  assert.match(canon, /\[\[INDEX\]\]/);
+  assert.match(canon, /\[INDEX\]\(INDEX\.md\)/);
+  assert.doesNotMatch(canon, /LIBRARIAN/);
+
+  const index = renderSelectionAwareSeed(
+    "# Index\n\n- [CANON](CANON.md)\n- [LIBRARIAN](LIBRARIAN.md)\n",
+    "docs/INDEX.md",
+    installed
+  );
+  assert.match(index, /\[CANON\]\(CANON\.md\)/);
+  assert.doesNotMatch(index, /LIBRARIAN/);
 });
 
 test("every named profile has a closed startup and repo-template link surface", async () => {

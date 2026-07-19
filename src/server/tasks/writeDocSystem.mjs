@@ -4,11 +4,13 @@ import { normalizeSnapshotText, REPO_TEMPLATE_SNAPSHOT } from "./repoTemplateSna
 import { safeWriteFile } from "../lib/safeWriteFile.mjs";
 import { safeJoin } from "../lib/paths.mjs";
 import { recordCreatedFile } from "../lib/manifest.mjs";
+import { loadRegistry, resolveSelection } from "../planner/buildPlan.mjs";
 import {
   applySnapshotPreservingFrontmatter,
   markdownMatchesSnapshotAllowingFrontmatter,
   stripYamlFrontmatter,
 } from "./markdownFrontmatter.mjs";
+import { renderSelectionAwareSeed } from "./selectionAwareMarkdown.mjs";
 
 export const DOC_SYSTEM_FILES = [
   ".agent/doc-map.yml",
@@ -19,6 +21,22 @@ export const DOC_SYSTEM_FILES = [
 
 const FRONTMATTER_AWARE_FILES = new Set(DOC_SYSTEM_FILES.filter((file) => file.endsWith(".md")));
 const SEED_ONLY_FILES = new Set(["docs/CANON.md", "docs/INDEX.md"]);
+
+async function selectedInstallPaths(ctx) {
+  const { features } = await loadRegistry();
+  const selection = ctx.selectedFeatureIds || ctx.manifest?.selectedFeatures || ["foundation.doc-system"];
+  const installedPaths = new Set(
+    resolveSelection(features, selection)
+      .flatMap((feature) => feature.installs || [])
+      .map((install) => install.path)
+  );
+  for (const disposition of ctx.onboardingDispositions?.items || []) {
+    if (disposition.choice !== "apply-central" && disposition.status === "missing" && disposition.path) {
+      installedPaths.delete(disposition.path);
+    }
+  }
+  return installedPaths;
+}
 
 async function matchesSnapshot(ctx, file) {
   let actual;
@@ -47,9 +65,12 @@ export async function check(ctx) {
 
 export async function apply(ctx) {
   const results = [];
+  const installedPaths = await selectedInstallPaths(ctx);
   for (const file of DOC_SYSTEM_FILES) {
     const snapshotBody = normalizeSnapshotText(await readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8"));
-    let body = snapshotBody;
+    let body = SEED_ONLY_FILES.has(file)
+      ? renderSelectionAwareSeed(snapshotBody, file, installedPaths)
+      : snapshotBody;
     if (FRONTMATTER_AWARE_FILES.has(file) && !SEED_ONLY_FILES.has(file)) {
       try {
         const current = await readFile(safeJoin(ctx.targetPath, file), "utf8");

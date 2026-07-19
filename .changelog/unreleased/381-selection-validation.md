@@ -7,3 +7,8 @@
   contract is internally dangling.
 - Close existing standalone doc-health and template-library selections over the
   foundation documents their Markdown contracts link to.
+- Render new consumer-owned CANON/INDEX seeds against the selected and
+  decisioned path surface, so minimal or deferred repairs do not create dead
+  provider-only navigation.
+- Refresh the repo-template snapshot to `feacb20` and self-apply its
+  message-protocol startup requirement to this repository.

@@ -60,7 +60,9 @@ the seed-only documentation floor, `.gitattributes`, and the initial git commit.
 
 `foundation.doc-system` is the floor exception to the usual opt-in doc tooling:
 it creates missing CANON/INDEX seeds but never overwrites their consumer-owned
-content; the managed doc-map and doc-system contract remain repairable snapshots.
+content. New seeds are rendered against the resolved selection, so provider-only
+navigation does not point at uninstalled or explicitly deferred capability paths;
+the managed doc-map and doc-system contract remain repairable snapshots.
 
 Features that add local hooks, changelog ceremony, PR templates, CODEOWNERS,
 Dependabot, GitHub labels, branch protection, runner-backed workflows, agent

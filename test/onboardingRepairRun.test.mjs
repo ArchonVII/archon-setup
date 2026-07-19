@@ -238,6 +238,11 @@ test("repair honors non-apply-central resolutions inside an applied feature (#36
   assert.equal(await readFile(join(result.worktreePath, "AGENTS.md"), "utf8"), localAgents);
   // defer on a missing item: the feature run writes it, the repair must not ship it.
   assert.equal(existsSync(join(result.worktreePath, "docs", "repo-update-log.md")), false);
+  assert.doesNotMatch(
+    await readFile(join(result.worktreePath, "docs", "INDEX.md"), "utf8"),
+    /repo-update-log\.md/,
+    "selection-aware seeds must not link a missing deferred path"
+  );
   // The repair commit carries apply-central items only — no decision-overridden paths.
   const committed = git(result.worktreePath, ["show", "--name-only", "--format=", "HEAD"])
     .split(/\r?\n/)
