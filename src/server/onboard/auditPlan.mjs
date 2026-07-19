@@ -61,7 +61,11 @@ async function workflowBody(unit) {
 async function expectedBodyFor({ path, unit, context, generatedBaseline, selectedFeatureIds }) {
   switch (unit?.taskId) {
     case "writeReadme":
-      return readmeTemplate({ repo: context.repo, owner: context.owner });
+      return readmeTemplate({
+        repo: context.repo,
+        owner: context.owner,
+        includeLicense: selectedFeatureIds.includes("foundation.license"),
+      });
     case "writeAgentsMd":
       if (path === "AGENTS.md") {
         // Reuse the emitter's renderer — with the SAME resolved selection the

@@ -4,7 +4,10 @@ import { recordCreatedFile } from "../lib/manifest.mjs";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 
-export function template({ repo, owner }) {
+export function template({ repo, owner, includeLicense = true }) {
+  const licenseSection = includeLicense
+    ? `\n## License\n\nSee [LICENSE](./LICENSE).`
+    : "";
   return `# ${repo}
 
 One-sentence description: what this is and who it's for.
@@ -25,10 +28,7 @@ shape of the system?
 ## Status
 
 Experimental — created ${new Date().toISOString().slice(0, 10)}.
-
-## License
-
-See [LICENSE](./LICENSE).
+${licenseSection}
 `;
 }
 
@@ -43,7 +43,11 @@ export async function check(ctx) {
 }
 
 export async function apply(ctx) {
-  const content = template({ repo: ctx.repo, owner: ctx.owner });
+  const content = template({
+    repo: ctx.repo,
+    owner: ctx.owner,
+    includeLicense: ctx.selectedFeatureIds?.includes("foundation.license") ?? true,
+  });
   const res = await safeWriteFile(ctx.targetPath, "README.md", content);
   recordCreatedFile(ctx, res, { path: "README.md", source: "template:readme" });
   return res;

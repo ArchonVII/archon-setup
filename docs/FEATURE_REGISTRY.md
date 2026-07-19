@@ -44,7 +44,10 @@ entries feed the same selection-derived startup baseline as every other feature.
 
 ## Dependency types
 
-- `requires` — feature IDs that must also be selected.
+- `requires` — feature IDs that are operationally required when this feature is
+  selected. Do not use it only to bundle defaults: explicit headless selections
+  must be able to omit independent policy choices such as `foundation.license`
+  while retaining `foundation.git-init`.
 - `capabilitiesNeeded` — preflight capability bits (e.g. `gh.repoCreateAllowed`).
 - `conflictsWith` — feature IDs that cannot be co-enabled.
 

@@ -77,8 +77,8 @@ export async function runOnboard({
   if (!targetPath) throw new Error("targetPath is required");
 
   const { features: allFeatures, profiles } = await loadRegistry();
-  const selection = features && features.length ? features : defaultLocalSelection(allFeatures);
-  const baselineSelection = baselineFeatures && baselineFeatures.length ? baselineFeatures : selection;
+  const selection = features === null ? defaultLocalSelection(allFeatures) : features;
+  const baselineSelection = baselineFeatures === null ? selection : baselineFeatures;
 
   const known = new Set(allFeatures.map((f) => f.id));
   const unknown = [...new Set([...selection, ...baselineSelection])].filter((id) => !known.has(id));
@@ -102,7 +102,7 @@ export async function runOnboard({
   };
 
   const plan = await buildPlan({ selection, options, context });
-  if (baselineFeatures && baselineFeatures.length) {
+  if (baselineFeatures !== null) {
     plan.baselineFeatureIds = resolveSelection(allFeatures, baselineSelection).map((feature) => feature.id);
     plan.baselineProfile = resolveProfileId(plan.baselineFeatureIds, allFeatures, profiles);
   }
