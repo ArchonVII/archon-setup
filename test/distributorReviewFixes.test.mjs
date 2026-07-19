@@ -186,6 +186,40 @@ test("existing-file applicability failures are skipped before replacing present 
   assert.equal(await readFile(join(repo.path, "AGENTS.md"), "utf8"), `# Agents\n\n${guBlock("old content")}`);
 });
 
+test("capability gating does not bypass unknown-region conflict auditing", async () => {
+  const repo = await makeRepo({
+    "AGENTS.md": `# Agents\n\n${guBlock("stale gated content")}${guBlock("orphaned content", "unknown.region")}`,
+    ".github/archon-setup.json": `${JSON.stringify({
+      tool: "archon-setup",
+      selectedFeatures: ["foundation.agents"],
+    }, null, 2)}\n`,
+  });
+  const entry = guEntry({
+    capabilityIds: ["foundation.agents", "agent-lifecycle.baseline"],
+    requireSelectedCapabilities: true,
+  });
+
+  const result = await distributeRepo({
+    repo,
+    catalog: catalogOf(entry),
+    ids: [ENTRY_ID],
+    mode: "dry-run",
+  });
+
+  assert.equal(result.status, "ok");
+  assert.equal(result.files[0].status, "conflict");
+  assert.ok(
+    result.files[0].regions.some(
+      (region) => region.id === "unknown.region" && region.status === "conflict" && region.reason === "unknown-id",
+    ),
+  );
+  assert.ok(
+    result.files[0].regions.some(
+      (region) => region.id === ENTRY_ID && region.status === "skip" && region.reason === "capability-not-selected",
+    ),
+  );
+});
+
 test("write-preview refuses a symlinked .archon path before writing outside the repo", { skip: process.platform === "win32" }, async () => {
   const outside = await mkdtemp(join(tmpdir(), "archon-preview-outside-"));
   const repo = await makeRepo({ "AGENTS.md": "# Local\n" });
@@ -329,13 +363,14 @@ test("CLI apply skips startup guidance when the consumer did not select lifecycl
 
   assert.equal(result.status, 0, result.stderr);
   const run = JSON.parse(result.stdout);
-  assert.equal(run.results[0].status, "skipped");
-  assert.equal(run.results[0].reason, "capability-not-selected");
-  assert.deepEqual(run.results[0].missingCapabilities, ["agent-lifecycle.baseline"]);
+  assert.equal(run.results[0].status, "ok");
+  assert.equal(run.results[0].files[0].status, "skip");
+  assert.equal(run.results[0].files[0].reason, "capability-not-selected");
+  assert.deepEqual(run.results[0].files[0].regions[0].missingCapabilities, ["agent-lifecycle.baseline"]);
   assert.equal(await readFile(join(path, "AGENTS.md"), "utf8"), staleBody);
   const logged = JSON.parse((await readFile(logPath, "utf8")).trim());
-  assert.equal(logged.results[0].reason, "capability-not-selected");
-  assert.deepEqual(logged.results[0].missingCapabilities, ["agent-lifecycle.baseline"]);
+  assert.equal(logged.results[0].files[0].reason, "capability-not-selected");
+  assert.deepEqual(logged.results[0].files[0].regions[0].missingCapabilities, ["agent-lifecycle.baseline"]);
 });
 
 test("unknown --group or --id tokens are rejected with exit 1", async () => {

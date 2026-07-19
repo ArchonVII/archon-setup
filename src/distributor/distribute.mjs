@@ -433,17 +433,6 @@ export async function distributeRepo({
   const selectedCapabilities = hasCapabilityGates
     ? await readSelectedCapabilities(repo.path)
     : null;
-  const capabilityDecisions = selected.map((entry) => capabilityDecision(entry, selectedCapabilities));
-  if (selected.length > 0 && capabilityDecisions.every((decision) => !decision.applies)) {
-    return {
-      ...base,
-      status: "skipped",
-      reason: "capability-not-selected",
-      missingCapabilities: [
-        ...new Set(capabilityDecisions.flatMap((decision) => decision.missingCapabilities)),
-      ],
-    };
-  }
 
   const byFile = new Map();
   for (const entry of selected) {
@@ -520,7 +509,13 @@ function logView(results) {
       reason: file.reason,
       changed: file.changed,
       written: file.written,
-      regions: file.regions?.map((r) => ({ id: r.id, status: r.status, changed: r.changed, reason: r.reason })),
+      regions: file.regions?.map((r) => ({
+        id: r.id,
+        status: r.status,
+        changed: r.changed,
+        reason: r.reason,
+        missingCapabilities: r.missingCapabilities,
+      })),
     })),
   }));
 }

@@ -246,6 +246,15 @@ function mapDelegatedFile(file, record, dryRun) {
   if (!file || (file.status === "skip" && file.reason === "not-applicable")) {
     return { status: "skipped", reason: "missing-agents" };
   }
+  if (file.status === "skip" && file.reason === "capability-not-selected") {
+    return {
+      status: "skipped",
+      reason: "capability-not-selected",
+      missingCapabilities: [
+        ...new Set((file.regions || []).flatMap((region) => region.missingCapabilities || [])),
+      ],
+    };
+  }
   if (file.status === "failed") {
     const mapped = { status: "failed", reason: file.reason, path };
     if (file.error) mapped.error = file.error;
