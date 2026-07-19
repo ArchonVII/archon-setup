@@ -62,10 +62,16 @@ export function mergeSetupManifest(previous, next) {
       .filter((item) => item?.choice === "declined")
       .map((item) => item.feature)
   );
+  // A repair records the complete effective selection after owner decisions,
+  // including transitive removal of capabilities that depend on a decline.
+  // Treat that selection as authoritative; unioning the previous manifest
+  // here would silently reintroduce those removed dependents.
+  const selectedFeatures = next.onboardingDispositions
+    ? uniqueStrings(next.selectedFeatures || [])
+    : uniqueStrings([...(previous.selectedFeatures || []), ...(next.selectedFeatures || [])]);
   return {
     ...next,
-    selectedFeatures: uniqueStrings([...(previous.selectedFeatures || []), ...(next.selectedFeatures || [])])
-      .filter((feature) => !declinedFeatures.has(feature)),
+    selectedFeatures: selectedFeatures.filter((feature) => !declinedFeatures.has(feature)),
     createdFiles: mergeByPath(previous.createdFiles, next.createdFiles),
     skippedFiles: mergeByPath(previous.skippedFiles, next.skippedFiles),
     remoteActions: uniqueObjects(previous.remoteActions, next.remoteActions),

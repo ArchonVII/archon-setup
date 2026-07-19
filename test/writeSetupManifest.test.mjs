@@ -135,3 +135,33 @@ test("manifest merge replaces dispositions by item and removes declined capabili
     ],
   });
 });
+
+test("repair manifest selection is authoritative after transitive dependent removal", () => {
+  const previous = {
+    tool: "archon-setup",
+    selectedFeatures: ["foundation.readme", "agent-workflow.check-map", "workflow.required-gate"],
+    createdFiles: [],
+    skippedFiles: [],
+    remoteActions: [],
+    postChecks: [],
+  };
+  const next = {
+    ...previous,
+    selectedFeatures: ["foundation.readme"],
+    onboardingDispositions: {
+      schemaVersion: 1,
+      items: [
+        {
+          itemId: "agent-workflow.check-map:.agent/check-map.yml",
+          feature: "agent-workflow.check-map",
+          path: ".agent/check-map.yml",
+          choice: "declined",
+        },
+      ],
+    },
+  };
+
+  const merged = writeSetupManifest.mergeSetupManifest(previous, next);
+
+  assert.deepEqual(merged.selectedFeatures, ["foundation.readme"]);
+});
