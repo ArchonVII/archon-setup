@@ -1,6 +1,10 @@
 import { runTask } from "./taskRunner.mjs";
 import { appendEvent, TYPE_PLAN_START, TYPE_TASK_APPLIED, TYPE_PLAN_END } from "../lib/events.mjs";
 import { sanitizeSerializedPlan } from "../planner/secretOptions.mjs";
+import {
+  selectionValidationWarnings,
+  validatePlanSelection,
+} from "../onboard/selectionValidation.mjs";
 import * as writeReadme from "../tasks/writeReadme.mjs";
 import * as writeLicense from "../tasks/writeLicense.mjs";
 import * as writeGitignore from "../tasks/writeGitignore.mjs";
@@ -67,8 +71,21 @@ const TASKS = {
 
 // Executes a plan from the planner. Streams events via onEvent.
 // On any task failure, halts and returns the partial result.
-export async function executePlan(plan, { onEvent, secretProvider } = {}) {
+export async function executePlan(
+  plan,
+  { onEvent, secretProvider, validateSelection = validatePlanSelection } = {}
+) {
   plan = sanitizeSerializedPlan(plan);
+  const selectionValidation = await validateSelection(plan);
+  if (!selectionValidation.ok) {
+    return {
+      ok: false,
+      status: "blocked",
+      results: [],
+      selectionValidation,
+      blockingWarnings: selectionValidationWarnings(selectionValidation),
+    };
+  }
   const results = [];
   const recordedFeatureIds = plan.baselineFeatureIds || plan.selectedFeatureIds;
   const recordedProfile = plan.baselineProfile || plan.profile;

@@ -8,8 +8,7 @@ import { checkOriginRemote } from "../preflight/checkOriginRemote.mjs";
 import { auditPlan } from "./auditPlan.mjs";
 import { runCommand } from "../lib/commandRunner.mjs";
 import {
-  selectionValidationWarnings,
-  validateSelectedRepoTemplateSurface,
+  attachSelectionValidation,
 } from "./selectionValidation.mjs";
 
 // Onboarding provenance written by tasks that run after initGitAndCommit's
@@ -109,17 +108,14 @@ export async function runOnboard({
     ...(onboardingDispositions ? { onboardingDispositions } : {}),
   };
 
-  const plan = await buildPlan({ selection, options, context });
+  let plan = await buildPlan({ selection, options, context });
   if (baselineFeatures !== null) {
     plan.baselineFeatureIds = resolveSelection(allFeatures, baselineSelection).map((feature) => feature.id);
     plan.baselineProfile = resolveProfileId(plan.baselineFeatureIds, allFeatures, profiles);
   }
-  const validationSelection = plan.baselineFeatureIds || plan.selectedFeatureIds;
-  const selectionValidation = await validateSelectedRepoTemplateSurface(validationSelection);
-  const blockingWarnings = [
-    ...(plan.warnings || []).filter((w) => w.blocking),
-    ...selectionValidationWarnings(selectionValidation),
-  ];
+  plan = await attachSelectionValidation(plan);
+  const selectionValidation = plan.selectionValidation;
+  const blockingWarnings = (plan.warnings || []).filter((warning) => warning.blocking);
 
   if (audit) {
     return {

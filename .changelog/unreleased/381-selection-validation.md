@@ -10,5 +10,8 @@
 - Render new consumer-owned CANON/INDEX seeds against the selected and
   decisioned path surface, so minimal or deferred repairs do not create dead
   provider-only navigation.
+- Attach the selection audit to browser-wizard plans and recompute it in the
+  shared executor before any task can write, so every execution path fails
+  closed on a stale or invalid selected surface.
 - Refresh the repo-template snapshot to `feacb20` and self-apply its
   message-protocol startup requirement to this repository.

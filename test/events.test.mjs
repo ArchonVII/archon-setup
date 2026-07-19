@@ -77,8 +77,8 @@ test("executePlan emits plan-start and plan-end to the target repo's events log"
 test("executePlan emits a task-applied event for an applied task", async () => {
   const targetPath = await mkdtemp(join(tmpdir(), "archon-events-"));
   const plan = {
-    ordered: [{ taskId: "writeReadme", options: {}, featureId: "docs.readme" }],
-    selectedFeatureIds: ["docs.readme"],
+    ordered: [{ taskId: "writeReadme", options: {}, featureId: "foundation.readme" }],
+    selectedFeatureIds: ["foundation.readme"],
     postChecks: [],
     context: { targetPath, owner: "ArchonVII", repo: "demo", visibility: "private" },
   };

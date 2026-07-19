@@ -70,6 +70,9 @@ test("wizard RPC audits the shared existing-repo plan without writing", async ()
   });
   const audit = await RPC["plan.audit"]({ plan });
 
+  assert.equal(plan.selectionValidation.ok, true);
+  assert.deepEqual(plan.selectionValidation.findings, []);
+  assert.equal(plan.warnings.some((warning) => warning.feature === "onboarding.selection-contract"), false);
   assert.equal(byPath(audit, ".github/workflows/pr-policy.yml").status, "present");
   assert.equal(byPath(audit, ".github/PULL_REQUEST_TEMPLATE.md").status, "drifted");
   assert.equal(byPath(audit, ".github/workflows/actionlint.yml").status, "missing");

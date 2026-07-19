@@ -98,6 +98,22 @@ export async function validateSelectedRepoTemplateSurface(selectedFeatureIds) {
   });
 }
 
+export async function validatePlanSelection(plan) {
+  return validateSelectedRepoTemplateSurface(plan.baselineFeatureIds || plan.selectedFeatureIds || []);
+}
+
+export async function attachSelectionValidation(plan, { validateSelection = validatePlanSelection } = {}) {
+  const selectionValidation = await validateSelection(plan);
+  const retainedWarnings = (plan.warnings || []).filter(
+    (warning) => warning.feature !== "onboarding.selection-contract"
+  );
+  return {
+    ...plan,
+    selectionValidation,
+    warnings: [...retainedWarnings, ...selectionValidationWarnings(selectionValidation)],
+  };
+}
+
 export function selectionValidationWarnings(validation) {
   return validation.findings.map((finding) => ({
     feature: "onboarding.selection-contract",
