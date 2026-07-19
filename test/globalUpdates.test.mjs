@@ -32,6 +32,9 @@ test("global update catalog records the strict PR-ready contract", () => {
   assert.equal(record.status, "ready");
   assert.equal(record.distribution.kind, "agents-managed-block");
   assert.match(record.distribution.body, /Do not run `gh pr ready` directly/);
+  assert.match(record.distribution.body, /npm run pr:contract -- --body-file "\$bodyFile"/);
+  assert.doesNotMatch(record.distribution.body, /npm run pr:contract -- --body-file -/);
+  assert.ok(record.source.includes("ArchonVII/repo-template PR #197"));
   assert.match(record.distribution.body, /## Summary.*## Verification.*### Verification Notes.*## Docs \/ Changelog/s);
   assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-05-31-strict-pr-ready-contract/);
 });
@@ -59,6 +62,9 @@ test("global update catalog records the agent startup baseline", () => {
   assert.equal(record.distribution.requireSelectedCapabilities, true);
   assert.match(record.distribution.body, /`foundation\.agents`/);
   assert.match(record.distribution.body, /`agent-lifecycle\.baseline`/);
+  assert.match(record.distribution.body, /--carry <path\.\.\.>/);
+  assert.match(record.distribution.body, /every dirty path must be explicitly covered/i);
+  assert.ok(record.source.includes("ArchonVII/repo-template PR #193"));
   assert.doesNotMatch(record.distribution.body, /Canonical startup files and directories/);
   assert.doesNotMatch(record.distribution.body, /  - `(?:AGENTS\.md|docs\/|scripts\/|\.agent\/)/);
   assert.match(record.confirmationPhrase, /DISTRIBUTE 2026-06-09-agent-startup-baseline/);

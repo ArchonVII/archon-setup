@@ -103,7 +103,7 @@ git worktree add -b agent/<tool>/<issue>-<slug> ../<repo>-<issue>-<slug>
 
 Prefer repo helpers:
 
-- `npm run agent:start-task -- <issue> [--agent <name>] [--slug <slug>]` - fetch default,
+- `npm run agent:start-task -- <issue> [--agent <name>] [--slug <slug>] [--carry <path...>]` - fetch default,
   create the worktree, and record current task state.
 - `npm run agent:status` - branch, upstream, PR, issue, dirty state, claims, and next action.
 - `npm run agent:prune` - retire merged and clean agent worktrees using GitHub PR evidence.
@@ -111,8 +111,8 @@ Prefer repo helpers:
 
 These `agent:*` helpers exist only when the agent-lifecycle feature (its `package.json` scripts) is installed; a repo onboarded without it has no `npm run` targets, so use the raw `git worktree add` command shown above.
 
-Do not run `git switch -c` in the primary checkout. If unsure where you are, run
-`bash .githooks/scripts/checkout-doctor.sh`.
+Do not run `git switch -c` in the primary checkout; if unsure, run `bash .githooks/scripts/checkout-doctor.sh`.
+Use `--carry` only for explicit in-repo task inputs: every dirty path must be covered, each destination is verified before only the named sources are cleaned, and unrelated dirt still blocks startup.
 
 ## Verification And Delivery
 
@@ -129,8 +129,9 @@ Do not run `git switch -c` in the primary checkout. If unsure where you are, run
   their absence is advisory. If you do tick a checkbox, tick it only after the backing
   command or manual check actually passed.
 - Validate a drafted body BEFORE creating the PR — same validator CI runs, zero paid
-  re-runs on formatting: `npm run pr:contract -- --body-file - --title "<title>" --branch
-  <branch>` (body on stdin).
+  re-runs on formatting. Save the filled body to a temporary file outside the worktree,
+  set `$bodyFile`, `$title`, and `$branch`, then run:
+  `npm run pr:contract -- --body-file "$bodyFile" --title "$title" --branch "$branch"`.
 - If user-visible behavior changed, smoke-test it and record what was exercised.
 - Do not run `gh pr ready` directly. Use:
 

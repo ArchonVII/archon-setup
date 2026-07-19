@@ -11,6 +11,7 @@ import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
 import { normalizeSnapshotText, REPO_TEMPLATE_SNAPSHOT } from "../src/server/tasks/repoTemplateSnapshot.mjs";
 
 const SCRIPT_FILES = [
+  "scripts/agent/carry.mjs",
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",

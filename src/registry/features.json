@@ -601,6 +601,7 @@
     "default": false,
     "requires": ["foundation.gitignore"],
     "creates": [
+      "scripts/agent/carry.mjs",
       "scripts/agent/lib.mjs",
       "scripts/agent/start-task.mjs",
       "scripts/agent/status.mjs",
@@ -615,6 +616,7 @@
       "package.json"
     ],
     "installs": [
+      { "path": "scripts/agent/carry.mjs", "source": "repo-template:scripts/agent/carry.mjs", "kind": "file", "contract": "required" },
       { "path": "scripts/agent/lib.mjs", "source": "repo-template:scripts/agent/lib.mjs", "kind": "file", "contract": "required" },
       { "path": "scripts/agent/start-task.mjs", "source": "repo-template:scripts/agent/start-task.mjs", "kind": "file", "contract": "required" },
       { "path": "scripts/agent/status.mjs", "source": "repo-template:scripts/agent/status.mjs", "kind": "file", "contract": "required" },
@@ -640,7 +642,7 @@
     ],
     "tasks": ["writeAgentLifecycle"],
     "beginnerDescription": "Installs the agent worktree-lifecycle and close-guard scripts, then wires their npm script entries.",
-    "advancedDescription": "Copies scripts/agent/{lib,start-task,status,prune,pr-body}.mjs, scripts/pr-contract.mjs (the dependency the close scripts import), scripts/close/{lib,scan-complete,ci-guard}.mjs, and the strict closeout wrappers scripts/agent-{close-preflight,pr-ready}.mjs from the repo-template snapshot, then idempotently MERGES the managed agent:* and close:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison. The task also appends the ephemeral close-scan ignore rule to .gitignore, so it `requires` foundation.gitignore (the foundation that owns that file) to keep the file declared in the plan — same pattern as foundation.friction-ledger (#304)."
+    "advancedDescription": "Copies scripts/agent/{carry,lib,start-task,status,prune,pr-body}.mjs, scripts/pr-contract.mjs (the dependency the close scripts import), scripts/close/{lib,scan-complete,ci-guard}.mjs, and the strict closeout wrappers scripts/agent-{close-preflight,pr-ready}.mjs from the repo-template snapshot, then idempotently MERGES the managed agent:* and close:* entries into package.json (a minimal one is created if absent; all other keys are preserved). package.json is merged, not created — auditPlan reports it via the `entries` comparison. The task also appends the ephemeral close-scan ignore rule to .gitignore, so it `requires` foundation.gitignore (the foundation that owns that file) to keep the file declared in the plan — same pattern as foundation.friction-ledger (#304)."
   },
   {
     "id": "agent-workflow.doc-sweep",
