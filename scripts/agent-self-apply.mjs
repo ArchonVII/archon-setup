@@ -28,6 +28,7 @@ const STARTUP_BASELINE = ".agent/startup-baseline.json";
 const ANOMALY_TRIAGE_WORKFLOW = ".github/workflows/anomaly-triage.yml";
 const ROOT_SUPPORT_DOCS = [
   "docs/agent-process/document-policy.md",
+  "docs/agent-process/message-protocol.md",
 ];
 
 // The startup baseline rides the same installer primitives the feature tasks
