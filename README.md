@@ -334,11 +334,14 @@ Existing agent-facing capabilities:
   opt-in. The opt-in changelog capability owns both `CHANGELOG.md` and
   `docs:changelog`, so no profile advertises a command without its input. Audit
   validates the same files and package-script ownership, and generated-consumer
-  tests execute the installed commands end to end.
+  tests execute the installed commands end to end. Charter line budgets remain
+  visible maintenance warnings, not absolute merge caps.
 - **Versioned startup baseline** - `.agent/startup-baseline.json`,
   `docs/plans/README.md`, `AGENTS.md`, and `agent:status` give agents one
   canonical first-stop map for plans, process files, coordination, PR flow, and
-  repair actions.
+  repair actions. `agent:start-task -- --carry <path...>` verifies explicit task
+  inputs in the new lane before cleaning only those named sources from main;
+  unrelated dirt still blocks startup.
 - **Repo update log archive** - generated repos receive the frozen
   `docs/repo-update-log.md` archive for compatibility; the former per-PR fragment
   workflow is retired and its feature identifier resolves as a disabled no-op.
@@ -369,7 +372,9 @@ Existing agent-facing capabilities:
   receive ArchonVII managed blocks while preserving repo-specific content.
 - **Strict PR-ready contract** - generated policy forbids direct `gh pr ready`
   and points agents at the shared `agent:close-preflight` /
-  `agent:pr-ready` wrapper path.
+  `agent:pr-ready` wrapper path. Draft validation through `npm run pr:contract`
+  uses an explicit temporary body file on PowerShell, not stdin piped into npm;
+  the lifecycle installer merges that wrapper into consumer `package.json`.
 - **Required-gate tighten command** - `tighten-required-gate` performs the
   delayed `repo-required-gate / decision` required-check step once GitHub has
   seen the check run.
@@ -518,13 +523,15 @@ Current recorded global fixes include:
 - `2026-05-31-browser-backend-preflight` - separates Browser plugin availability
   from live browser backend availability and requires browser preflight.
 - `2026-05-31-strict-pr-ready-contract` - forbids direct `gh pr ready` and
-  requires the shared PR contract wrapper before ready-for-review.
+  requires the shared PR contract wrapper before ready-for-review; local draft
+  validation uses a real body-file path through npm.
 - `2026-06-05-owner-docs-safe-paths` - records that add-only `docs/**` files are
   owner-maintenance safe by default while explicit unsafe paths still require
   normal PR lanes.
 - `2026-06-09-agent-startup-baseline` - records the selection-derived startup
   baseline contract. Its managed body cites `foundation.agents` and
-  `agent-lifecycle.baseline` instead of copying a fixed path inventory.
+  `agent-lifecycle.baseline` instead of copying a fixed path inventory, and
+  defines verified `--carry` behavior for explicit dirty task inputs.
 - `2026-06-10-plan-status-closeout` - records that agents must close, narrow,
   or supersede lane-created or lane-used plan/status artifacts before PR
   ready/merge.

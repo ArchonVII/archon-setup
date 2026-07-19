@@ -28,7 +28,8 @@
     "close:ci:guard": "node scripts/close/ci-guard.mjs",
     "docs:render": "node scripts/docs/render.mjs",
     "docs:status": "node scripts/docs/status.mjs",
-    "docs:changelog": "node scripts/docs/changelog.mjs"
+    "docs:changelog": "node scripts/docs/changelog.mjs",
+    "pr:contract": "node scripts/pr-contract.mjs"
   },
   "engines": {
     "node": ">=20"

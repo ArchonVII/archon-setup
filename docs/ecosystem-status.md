@@ -112,6 +112,24 @@ Owned by [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md) (active lanes + decision ga
 
 ## Recently completed
 
+- **2026-07-19** — The repo-template provider chain landed verified explicit
+  task-input carry ([#193](https://github.com/ArchonVII/repo-template/pull/193)),
+  advisory rather than hard-blocking charter budgets
+  ([#196](https://github.com/ArchonVII/repo-template/pull/196)), and a real
+  PowerShell body-file path for npm PR-contract validation
+  ([#197](https://github.com/ArchonVII/repo-template/pull/197)), explicit
+  documentation command ownership
+  ([#199](https://github.com/ArchonVII/repo-template/pull/199)), and the required
+  provider-owned documentation runtime in startup readiness
+  ([#201](https://github.com/ArchonVII/repo-template/pull/201)). Archon-setup
+  [#386](https://github.com/ArchonVII/archon-setup/pull/386) first landed the
+  integrator execution-closure behavior. Issue
+  [#385](https://github.com/ArchonVII/archon-setup/issues/385) then refreshes the
+  single repo-template snapshot through exact SHA
+  `318fb1c6612a1bc89c33e1f0661d31e4c6eef74f`, self-applies the managed root
+  baseline, and records the five-fix boundary without initiating a
+  full-ecosystem distribution.
+
 - **2026-06-30 / 2026-07-01** — Onboarding-hardening arc [#307](https://github.com/ArchonVII/archon-setup/issues/307) Phases A/B/C/E landed: `archon-setup` PRs [#308](https://github.com/ArchonVII/archon-setup/pull/308)–[#312](https://github.com/ArchonVII/archon-setup/pull/312) (managed Delivery-Workflow block, Mode-2 changelog default, coordination path, planner/parity fixes) + snapshot re-vendor [#316](https://github.com/ArchonVII/archon-setup/pull/316) (`repoTemplate @ 4ddf930`, exec-bit `100755`, root self-apply); `repo-template` PRs [#133](https://github.com/ArchonVII/repo-template/pull/133)–[#137](https://github.com/ArchonVII/repo-template/pull/137). Delivered issues closed with evidence 2026-07-01; remaining: Phase D, [#317](https://github.com/ArchonVII/archon-setup/issues/317), Phase F. The 2026-07-01 **ecosystem friction arc** (verification contract, CI fan-out, docs truth — see CURRENT_WORK) started the same day.
 
 - **2026-06-20** — Repo-update-log fragment enforcement shipped through the

@@ -28,6 +28,9 @@ const CLOSE_SCAN_IGNORE_LINE = /^\/?\.agent\/close-scan\/?$/;
 // Exported for the capability-manifest cross-check: test/capabilityManifest.test.mjs
 // asserts this equals the agent-lifecycle.baseline file-kind installs[] projection.
 export const SCRIPT_FILES = [
+  // start-task imports this verified copy/cleanup helper; install it before the
+  // command shim so a partially applied baseline never leaves a broken import.
+  "scripts/agent/carry.mjs",
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",
@@ -57,6 +60,7 @@ export const AGENT_SCRIPTS = {
   "agent:prune": "node scripts/agent/prune.mjs",
   "agent:start-task": "node scripts/agent/start-task.mjs",
   "agent:pr-body": "node scripts/agent/pr-body.mjs",
+  "pr:contract": "node scripts/pr-contract.mjs",
   "close:scan:complete": "node scripts/close/scan-complete.mjs",
   "close:ci:guard": "node scripts/close/ci-guard.mjs",
   "agent:close-preflight": "node scripts/agent-close-preflight.mjs",

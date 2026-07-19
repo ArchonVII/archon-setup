@@ -11,6 +11,7 @@ import { AGENT_SCRIPTS } from "../src/server/tasks/writeAgentLifecycle.mjs";
 import { normalizeSnapshotText, REPO_TEMPLATE_SNAPSHOT } from "../src/server/tasks/repoTemplateSnapshot.mjs";
 
 const SCRIPT_FILES = [
+  "scripts/agent/carry.mjs",
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",
@@ -139,11 +140,19 @@ test("AGENT_SCRIPTS exports the current lifecycle entries", () => {
     "agent:prune": "node scripts/agent/prune.mjs",
     "agent:start-task": "node scripts/agent/start-task.mjs",
     "agent:pr-body": "node scripts/agent/pr-body.mjs",
+    "pr:contract": "node scripts/pr-contract.mjs",
     "close:scan:complete": "node scripts/close/scan-complete.mjs",
     "close:ci:guard": "node scripts/close/ci-guard.mjs",
     "agent:close-preflight": "node scripts/agent-close-preflight.mjs",
     "agent:pr-ready": "node scripts/agent-pr-ready.mjs",
   });
+});
+
+test("the installed PR-contract wrapper matches the provider command", async () => {
+  const providerPackage = JSON.parse(
+    await readFile(join(REPO_TEMPLATE_SNAPSHOT, "package.json"), "utf8")
+  );
+  assert.equal(AGENT_SCRIPTS["pr:contract"], providerPackage.scripts["pr:contract"]);
 });
 
 // Regression for #252: the close scripts `import ../pr-contract.mjs`, so the task

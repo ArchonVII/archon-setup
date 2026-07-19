@@ -42,6 +42,7 @@ async function makeRepo() {
 test("root lifecycle scripts stay byte-identical to their repo-template snapshot twins", async () => {
   const pairs = [
     ".agent/startup-baseline.json",
+    "scripts/agent/carry.mjs",
     "scripts/agent/lib.mjs",
     "scripts/agent/status.mjs",
     "scripts/agent/prune.mjs",
@@ -74,8 +75,9 @@ test("root lifecycle scripts stay byte-identical to their repo-template snapshot
   }
 });
 
-test("startup baseline requires the pr-body lifecycle script", async () => {
+test("startup baseline requires every direct start-task dependency", async () => {
   const baseline = JSON.parse(await readFile(join(ROOT, ".agent", "startup-baseline.json"), "utf8"));
+  assert.ok(baseline.required.includes("scripts/agent/carry.mjs"));
   assert.ok(baseline.required.includes("scripts/agent/pr-body.mjs"));
 });
 
