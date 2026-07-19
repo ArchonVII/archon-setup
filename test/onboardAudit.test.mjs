@@ -39,9 +39,11 @@ const REPO_ROOT = dirname(fileURLToPath(new URL("../package.json", import.meta.u
 const { features: REGISTRY_FEATURES } = await loadRegistry();
 const AGENT_STANDARD = await loadProfileFeatures("agent-standard");
 
-// The three closeout scripts flipped to contract:"required" this lane. Seeded
-// alongside the historical floor so an agent-standard repo audits complete.
+// The three closeout scripts from Lane C2 plus the provider's new carry helper
+// are required runtime dependencies. Seed all four alongside the historical
+// floor so an agent-standard repo audits complete.
 const NEWLY_REQUIRED_SCRIPTS = [
+  "scripts/agent/carry.mjs",
   "scripts/pr-contract.mjs",
   "scripts/agent-close-preflight.mjs",
   "scripts/agent-pr-ready.mjs",
@@ -484,8 +486,8 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
     ...DOC_SYSTEM_FILES,
-    // Lane C2 (#352): the closeout scripts flipped to required must be present
-    // for an agent-standard repo to audit complete.
+    // The required closeout and carry runtime files must be present for an
+    // agent-standard repo to audit complete.
     ...NEWLY_REQUIRED_SCRIPTS,
   ]) {
     await copySnapshot(root, relativePath, { flipEol: relativePath.startsWith("scripts/") });
@@ -593,7 +595,7 @@ test("startup readiness reports stale concrete startup tooling", async () => {
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
     ...DOC_SYSTEM_FILES,
-    // The closeout scripts flipped to required this lane — present so only the
+    // The required closeout and carry runtime files are present so only the
     // deliberately tampered status.mjs / ci-guard.mjs are stale.
     ...NEWLY_REQUIRED_SCRIPTS,
   ]) {
@@ -681,7 +683,7 @@ test("startup readiness reports stale same-version startup baseline contract", a
     "docs/agent-process/document-policy.md",
     "docs/agent-process/doc-health.md",
     ...DOC_SYSTEM_FILES,
-    // The closeout scripts flipped to required this lane — present so only the
+    // The required closeout and carry runtime files are present so only the
     // baseline itself reads stale.
     ...NEWLY_REQUIRED_SCRIPTS,
   ]) {

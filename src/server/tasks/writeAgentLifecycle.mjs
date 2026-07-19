@@ -60,6 +60,7 @@ export const AGENT_SCRIPTS = {
   "agent:prune": "node scripts/agent/prune.mjs",
   "agent:start-task": "node scripts/agent/start-task.mjs",
   "agent:pr-body": "node scripts/agent/pr-body.mjs",
+  "pr:contract": "node scripts/pr-contract.mjs",
   "close:scan:complete": "node scripts/close/scan-complete.mjs",
   "close:ci:guard": "node scripts/close/ci-guard.mjs",
   "agent:close-preflight": "node scripts/agent-close-preflight.mjs",

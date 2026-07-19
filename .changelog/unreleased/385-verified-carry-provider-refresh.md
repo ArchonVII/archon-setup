@@ -7,7 +7,8 @@
   only the named sources are cleaned, and unrelated dirt still blocks startup.
 - Distributed PR-contract guidance now validates a real temporary body file
   through the npm wrapper on PowerShell instead of documenting stdin piped into
-  bare npm.
+  bare npm, and the lifecycle package merge now installs that `pr:contract`
+  wrapper in consumers.
 - Charter line budgets remain reported by doc-health but are advisory rather
   than absolute merge blockers.
 - Documentation command ownership and the required startup baseline now include

@@ -18,8 +18,8 @@ import {
 // generation. These tests pin (a) profiles.json is machine-validated fail-closed,
 // (b) every tier resolves through buildPlan, (c) the tier nesting matches the
 // owner decision, and (d) the CONTINUITY invariant: the agent-standard floor
-// equals the historical 23-path baseline plus the 3 newly-required closeout
-// scripts (26 paths + 6 directories).
+// equals the historical 23-path baseline plus the required closeout and carry
+// runtime files.
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REGISTRY_DIR = join(ROOT, "src", "registry");
@@ -83,9 +83,10 @@ const HISTORICAL_REQUIRED_23 = [
   "scripts/doc-health/health.mjs",
   "docs/agent-process/doc-sweep.md",
 ];
-// Flipped to contract:"required" this lane (owner decision 2026-07-11): the
-// closeout commands AGENTS.md mandates.
+// The closeout commands AGENTS.md mandates plus the carry helper that
+// start-task imports directly.
 const NEWLY_REQUIRED_SCRIPTS = [
+  "scripts/agent/carry.mjs",
   "scripts/pr-contract.mjs",
   "scripts/agent-close-preflight.mjs",
   "scripts/agent-pr-ready.mjs",
@@ -217,14 +218,14 @@ test("resolveProfileId names exact tiers and calls everything else custom", () =
 });
 
 // ---------------------------------------------------------------------------
-// CONTINUITY: agent-standard floor == 23 historical + 3 closeout scripts +
-// 4 doc-floor paths + 6 executable doc generators (36), 7 dirs
+// CONTINUITY: agent-standard floor == 23 historical + 4 closeout/carry runtime
+// files + 4 doc-floor paths + 6 executable doc generators (37), 7 dirs
 // ---------------------------------------------------------------------------
-test("agent-standard generated floor includes the execution-closed documentation contract (36+7)", () => {
+test("agent-standard generated floor includes the execution-closed documentation contract (37+7)", () => {
   const baseline = generateStartupBaseline(AGENT_STANDARD, features);
   const expectedRequired = [...HISTORICAL_REQUIRED_23, ...NEWLY_REQUIRED_SCRIPTS, ...DOC_FLOOR_REQUIRED_4, ...DOC_GENERATOR_REQUIRED_6].sort();
 
-  assert.equal(baseline.required.length, 36, "the agent-standard floor adds 3 closeout scripts, 4 doc-floor paths, and 6 doc generators");
+  assert.equal(baseline.required.length, 37, "the agent-standard floor adds 4 closeout/carry files, 4 doc-floor paths, and 6 doc generators");
   assert.deepEqual(baseline.required, expectedRequired);
   assert.deepEqual(baseline.expectedDirectories, [...HISTORICAL_DIRECTORIES_6, "scripts/docs/"].sort());
   assert.deepEqual(baseline.legacy, ["docs/superpowers/plans/"]);

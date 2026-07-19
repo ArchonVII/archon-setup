@@ -373,7 +373,8 @@ Existing agent-facing capabilities:
 - **Strict PR-ready contract** - generated policy forbids direct `gh pr ready`
   and points agents at the shared `agent:close-preflight` /
   `agent:pr-ready` wrapper path. Draft validation through `npm run pr:contract`
-  uses an explicit temporary body file on PowerShell, not stdin piped into npm.
+  uses an explicit temporary body file on PowerShell, not stdin piped into npm;
+  the lifecycle installer merges that wrapper into consumer `package.json`.
 - **Required-gate tighten command** - `tighten-required-gate` performs the
   delayed `repo-required-gate / decision` required-check step once GitHub has
   seen the check run.
