@@ -96,6 +96,14 @@ const DOC_FLOOR_REQUIRED_4 = [
   "docs/INDEX.md",
   "docs/agent-process/doc-system.md",
 ];
+const DOC_GENERATOR_REQUIRED_6 = [
+  "scripts/docs/lib.mjs",
+  "scripts/docs/index.mjs",
+  "scripts/docs/nav.mjs",
+  "scripts/docs/render.mjs",
+  "scripts/docs/status.mjs",
+  "scripts/docs/changelog.mjs",
+];
 // Source: pre-C2 startup-baseline.json expectedDirectories[6].
 const HISTORICAL_DIRECTORIES_6 = [
   "docs/plans/",
@@ -209,20 +217,21 @@ test("resolveProfileId names exact tiers and calls everything else custom", () =
 });
 
 // ---------------------------------------------------------------------------
-// CONTINUITY: agent-standard floor == 23 historical + 3 scripts + 4 doc-floor paths (30), 6 dirs
+// CONTINUITY: agent-standard floor == 23 historical + 3 closeout scripts +
+// 4 doc-floor paths + 6 executable doc generators (36), 7 dirs
 // ---------------------------------------------------------------------------
-test("agent-standard generated floor == historical baseline + closeout scripts + doc floor (30+6)", () => {
+test("agent-standard generated floor includes the execution-closed documentation contract (36+7)", () => {
   const baseline = generateStartupBaseline(AGENT_STANDARD, features);
-  const expectedRequired = [...HISTORICAL_REQUIRED_23, ...NEWLY_REQUIRED_SCRIPTS, ...DOC_FLOOR_REQUIRED_4].sort();
+  const expectedRequired = [...HISTORICAL_REQUIRED_23, ...NEWLY_REQUIRED_SCRIPTS, ...DOC_FLOOR_REQUIRED_4, ...DOC_GENERATOR_REQUIRED_6].sort();
 
-  assert.equal(baseline.required.length, 30, "the agent-standard floor adds 3 closeout scripts and 4 doc-floor paths");
+  assert.equal(baseline.required.length, 36, "the agent-standard floor adds 3 closeout scripts, 4 doc-floor paths, and 6 doc generators");
   assert.deepEqual(baseline.required, expectedRequired);
-  assert.deepEqual(baseline.expectedDirectories, [...HISTORICAL_DIRECTORIES_6].sort());
+  assert.deepEqual(baseline.expectedDirectories, [...HISTORICAL_DIRECTORIES_6, "scripts/docs/"].sort());
   assert.deepEqual(baseline.legacy, ["docs/superpowers/plans/"]);
   assert.ok(baseline.version.startsWith(`${BASELINE_VERSION_BASE}+`), "version is base + content hash");
 });
 
-test("docs-min floor includes the four installable doc-floor paths", () => {
+test("docs-min floor includes the executable documentation contract", () => {
   const baseline = generateStartupBaseline(DOCS_MIN_FEATURES, features);
   assert.deepEqual(baseline.required, [
     ".agent/coordination/README.md",
@@ -230,11 +239,21 @@ test("docs-min floor includes the four installable doc-floor paths", () => {
     "AGENTS.md",
     "docs/CANON.md",
     "docs/INDEX.md",
+    "docs/agent-process/doc-health.md",
     "docs/agent-process/doc-system.md",
     "docs/agent-process/document-policy.md",
     "docs/plans/README.md",
+    "package.json",
+    "scripts/doc-health/health.mjs",
+    "scripts/doc-health/lib.mjs",
+    "scripts/docs/changelog.mjs",
+    "scripts/docs/index.mjs",
+    "scripts/docs/lib.mjs",
+    "scripts/docs/nav.mjs",
+    "scripts/docs/render.mjs",
+    "scripts/docs/status.mjs",
   ]);
-  assert.deepEqual(baseline.expectedDirectories, ["docs/agent-process/", "docs/plans/"]);
+  assert.deepEqual(baseline.expectedDirectories, ["docs/agent-process/", "docs/plans/", "scripts/doc-health/", "scripts/docs/"]);
 });
 
 // ---------------------------------------------------------------------------

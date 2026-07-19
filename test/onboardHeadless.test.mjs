@@ -29,6 +29,20 @@ const MINIMAL_BASELINE_FILES = [
   "docs/plans/README.md",
   "docs/agent-process/document-policy.md",
   "docs/agent-process/message-protocol.md",
+  ".agent/doc-map.yml",
+  "docs/CANON.md",
+  "docs/INDEX.md",
+  "docs/agent-process/doc-system.md",
+  "scripts/docs/lib.mjs",
+  "scripts/docs/index.mjs",
+  "scripts/docs/nav.mjs",
+  "scripts/docs/render.mjs",
+  "scripts/docs/status.mjs",
+  "scripts/docs/changelog.mjs",
+  "scripts/doc-health/lib.mjs",
+  "scripts/doc-health/health.mjs",
+  "docs/agent-process/doc-health.md",
+  "package.json",
 ];
 
 const OPT_IN_FILES = [
@@ -44,9 +58,6 @@ const OPT_IN_FILES = [
   "scripts/close/lib.mjs",
   "scripts/close/scan-complete.mjs",
   "scripts/close/ci-guard.mjs",
-  "scripts/doc-health/lib.mjs",
-  "scripts/doc-health/health.mjs",
-  "docs/agent-process/doc-health.md",
   "templates/README.md",
   "templates/MANIFEST.md",
   "templates/github/github.issue.standard.md",
@@ -113,7 +124,7 @@ test("defaultLocalSelection keeps standard onboarding local and minimal", async 
   assert.ok(!expected.includes("workflow.required-gate"), "runner-backed gate caller is opt-in");
   assert.ok(!expected.includes("agent-workflow.repo-update-log-fragment"), "retired repo-update-log workflow is disabled");
   assert.ok(!expected.includes("agent-lifecycle.baseline"), "agent lifecycle scripts are opt-in");
-  assert.ok(!expected.includes("agent-workflow.doc-health"), "doc-health runner is opt-in");
+  assert.ok(!expected.includes("agent-workflow.doc-health"), "doc-health is pulled transitively by doc-system, not marked default itself");
   assert.ok(!expected.includes("agent-workflow.template-library"), "template library is opt-in");
 });
 
@@ -250,9 +261,9 @@ test("a default onboard reports docs-min startup readiness complete", async () =
   assert.ok(auditResult.audit.startupReadiness.present.includes("AGENTS.md"));
   assert.ok(auditResult.audit.startupReadiness.present.includes(".agent/coordination/README.md"));
   // repo-update-log.md is installed but contract:"optional" — not in the docs-min
-  // floor — and no agent-standard scripts are demanded by a docs-min repo.
+  // floor. The doc-system's own runner is part of the docs-min execution closure.
   assert.ok(!auditResult.audit.startupReadiness.present.includes("docs/repo-update-log.md"));
-  assert.ok(!auditResult.audit.startupReadiness.present.includes("scripts/doc-health/health.mjs"));
+  assert.ok(auditResult.audit.startupReadiness.present.includes("scripts/doc-health/health.mjs"));
 });
 
 test("unknown feature ids are rejected before any write", async () => {

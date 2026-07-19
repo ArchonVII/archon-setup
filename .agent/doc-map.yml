@@ -1,0 +1,47 @@
+version: 1
+
+generated:
+  - path: "docs/INDEX.md"
+    class: "committed"
+    generator: "docs:render"
+    block: "index-pages"
+    inputs: ["docs/**/*.md"]
+  - path: "docs/STATUS.md"
+    class: "rendered"
+    generator: "docs:status"
+    inputs: ["gh:prs", "gh:issues", "doc-health"]
+  - path: "CHANGELOG.md"
+    class: "release"
+    generator: "docs:changelog"
+    inputs: ["git:log"]
+
+checked:
+  - path: "docs/CANON.md"
+    owns: ["scripts/**", "schemas/**", "docs/adr/**", "bin/**", "config/**", "src/**"]
+    checks: ["links", "path-refs", "last-reviewed", "placeholders"]
+  - path: "docs/agent-process/doc-system.md"
+    owns: ["scripts/docs/**", "scripts/doc-health/**", "scripts/close/**", ".agent/doc-map.yml"]
+    checks: ["links", "path-refs"]
+  - path: "docs/agent-process/doc-sweep.md"
+    owns: ["scripts/doc-sweep/**"]
+    checks: ["links", "path-refs"]
+
+human:
+
+required:
+  base:
+    - "AGENTS.md"
+    - ".agent/doc-map.yml"
+    - "docs/CANON.md"
+    - "docs/INDEX.md"
+    - "docs/agent-process/doc-system.md"
+
+code_roots:
+  scripts: "docs/CANON.md"
+  schemas: "docs/CANON.md"
+  docs: "self"
+  test: "unmapped_ok"
+  projects: "unmapped_ok"
+  bin: "docs/CANON.md"
+  config: "docs/CANON.md"
+  src: "docs/CANON.md"

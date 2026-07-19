@@ -12,6 +12,7 @@ import {
 } from "../src/server/onboard/repairDecision.mjs";
 import { parseOnboardingDecisionIssue, serializeOnboardingDecisionIssue } from "../src/server/onboard/repairIssue.mjs";
 import { loadProfileFeatures } from "../src/server/tasks/startupBaseline.mjs";
+import { loadRegistry, resolveSelection } from "../src/server/planner/buildPlan.mjs";
 
 const execFileP = promisify(execFile);
 
@@ -58,6 +59,28 @@ test("onboarding repair decision makes missing baseline items explicitly apply-c
     options: ["apply-central", "declined", "defer", "blocked"],
     resolution: { choice: null, decidedBy: null, decidedAt: null, review: null },
   });
+});
+
+test("documentation repair decisions include generator files and package-script merges", async () => {
+  const targetPath = await fixtureRepo();
+  const doc = await buildOnboardingDecision({
+    targetPath,
+    features: ["foundation.doc-system", "foundation.changelog"],
+    runId: "onboard-doc-system-repair",
+  });
+
+  const byId = new Map(doc.items.map((item) => [item.itemId, item]));
+  assert.equal(byId.get("foundation.doc-system:scripts/docs/render.mjs")?.status, "missing");
+  assert.deepEqual(byId.get("foundation.doc-system:package.json"), {
+    itemId: "foundation.doc-system:package.json",
+    feature: "foundation.doc-system",
+    path: "package.json",
+    status: "missing",
+    options: ["apply-central", "declined", "defer", "blocked"],
+    resolution: { choice: null, decidedBy: null, decidedAt: null, review: null },
+  });
+  assert.equal(byId.get("foundation.changelog:CHANGELOG.md")?.status, "missing");
+  assert.equal(byId.get("foundation.changelog:package.json")?.status, "missing");
 });
 
 test("onboarding repair intake accepts only fully resolved, current apply-central decisions", async () => {
@@ -246,7 +269,9 @@ test("onboard repair CLI resolves --profile before building the decision documen
   ]);
 
   const doc = JSON.parse(stdout);
-  assert.deepEqual(doc.selectedFeatures, await loadProfileFeatures("agent-standard"));
+  const { features } = await loadRegistry();
+  const profile = await loadProfileFeatures("agent-standard");
+  assert.deepEqual(doc.selectedFeatures, resolveSelection(features, profile).map((feature) => feature.id));
 });
 
 test("onboarding repair decision issues round-trip only the canonical decision document", async () => {

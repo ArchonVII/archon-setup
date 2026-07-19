@@ -693,11 +693,19 @@ test("doc-system is the locked default capability behind foundation.agents", asy
   assert.equal(docSystem.docFloor, true);
   assert.equal(docSystem.tasks[0], "writeDocSystem");
   assert.ok((agents.requires || []).includes("foundation.doc-system"));
+  assert.ok((docSystem.requires || []).includes("agent-workflow.doc-health"));
   assert.deepEqual(docSystem.creates, [
     ".agent/doc-map.yml",
     "docs/CANON.md",
     "docs/INDEX.md",
     "docs/agent-process/doc-system.md",
+    "scripts/docs/lib.mjs",
+    "scripts/docs/index.mjs",
+    "scripts/docs/nav.mjs",
+    "scripts/docs/render.mjs",
+    "scripts/docs/status.mjs",
+    "scripts/docs/changelog.mjs",
+    "package.json",
   ]);
 });
 
@@ -760,6 +768,7 @@ test("doc-health is an opt-in agent-workflow feature installing the runner + spe
     "scripts/doc-health/lib.mjs",
     "scripts/doc-health/health.mjs",
     "docs/agent-process/doc-health.md",
+    "docs/agent-process/document-policy.md",
   ]) {
     assert.ok(dh.creates.includes(f), `doc-health creates ${f}`);
   }
@@ -772,7 +781,7 @@ test("doc-health points at existing snapshot files and lands in the initial comm
   const { dirname, join } = await import("node:path");
   const here = dirname(fileURLToPath(import.meta.url));
   const snapDir = join(here, "..", "src", "snapshots", "repo-template");
-  for (const f of ["scripts/doc-health/lib.mjs", "scripts/doc-health/health.mjs", "docs/agent-process/doc-health.md"]) {
+  for (const f of ["scripts/doc-health/lib.mjs", "scripts/doc-health/health.mjs", "docs/agent-process/doc-health.md", "docs/agent-process/document-policy.md"]) {
     const body = await readFile(join(snapDir, f), "utf8");
     assert.ok(body.length > 0, `${f} snapshot present`);
   }

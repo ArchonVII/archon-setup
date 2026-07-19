@@ -25,7 +25,10 @@
     "agent:start-task": "node scripts/agent/start-task.mjs",
     "agent:pr-body": "node scripts/agent/pr-body.mjs",
     "close:scan:complete": "node scripts/close/scan-complete.mjs",
-    "close:ci:guard": "node scripts/close/ci-guard.mjs"
+    "close:ci:guard": "node scripts/close/ci-guard.mjs",
+    "docs:render": "node scripts/docs/render.mjs",
+    "docs:status": "node scripts/docs/status.mjs",
+    "docs:changelog": "node scripts/docs/changelog.mjs"
   },
   "engines": {
     "node": ">=20"

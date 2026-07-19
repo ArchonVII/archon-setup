@@ -11,10 +11,13 @@
 //   npm run agent:self-apply -- --check  # read-only report; exits 1 on drift
 
 import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import * as agentLifecycle from "../src/server/tasks/writeAgentLifecycle.mjs";
 import * as docSweep from "../src/server/tasks/writeDocSweep.mjs";
 import * as docHealth from "../src/server/tasks/writeDocHealth.mjs";
+import * as docSystem from "../src/server/tasks/writeDocSystem.mjs";
+import * as docChangelog from "../src/server/tasks/writeChangelog.mjs";
 import {
   checkAllMatch,
   verifyAllMatch,
@@ -26,8 +29,13 @@ export const ROOT = join(dirname(MODULE_PATH), "..");
 
 const STARTUP_BASELINE = ".agent/startup-baseline.json";
 const ANOMALY_TRIAGE_WORKFLOW = ".github/workflows/anomaly-triage.yml";
+const SELF_APPLY_FALLBACK_FEATURES = [
+  "agent-lifecycle.baseline",
+  "agent-workflow.anomaly-triage",
+  "agent-workflow.doc-sweep",
+  "foundation.changelog",
+];
 const ROOT_SUPPORT_DOCS = [
-  "docs/agent-process/document-policy.md",
   "docs/agent-process/message-protocol.md",
 ];
 
@@ -70,15 +78,39 @@ const rootSupportDocsTask = {
 // check/apply/verify.
 export const TASKS = [
   { name: "agent-lifecycle", check: agentLifecycle.check, apply: agentLifecycle.apply, verify: agentLifecycle.verify },
+  { name: "doc-health", check: docHealth.check, apply: docHealth.apply, verify: docHealth.verify },
+  { name: "doc-system", check: docSystem.check, apply: docSystem.apply, verify: docSystem.verify },
+  { name: "doc-changelog", check: docChangelog.check, apply: docChangelog.apply, verify: docChangelog.verify },
   { name: "doc-sweep", check: docSweep.check, apply: docSweep.apply, verify: docSweep.verify },
   rootSupportDocsTask,
-  { name: "doc-health", check: docHealth.check, apply: docHealth.apply, verify: docHealth.verify },
   anomalyTriageWorkflowTask,
   startupBaselineTask,
 ];
 
+async function selectedFeaturesFor(targetPath) {
+  try {
+    const manifest = JSON.parse(
+      await readFile(join(targetPath, ".github", "archon-setup.json"), "utf8")
+    );
+    if (Array.isArray(manifest.selectedFeatures) && manifest.selectedFeatures.length > 0) {
+      return manifest.selectedFeatures;
+    }
+  } catch {
+    // Empty targets and legacy roots have no usable manifest. Use the exact
+    // feature surfaces this root-baseline command applies so the rendered
+    // doc-map still describes the files and package commands it installs.
+  }
+  return SELF_APPLY_FALLBACK_FEATURES;
+}
+
 export async function selfApply({ targetPath = ROOT, checkOnly = false } = {}) {
-  const ctx = { targetPath, repo: "archon-setup", manifest: { createdFiles: [] } };
+  const selectedFeatureIds = await selectedFeaturesFor(targetPath);
+  const ctx = {
+    targetPath,
+    repo: "archon-setup",
+    manifest: { createdFiles: [] },
+    selectedFeatureIds,
+  };
   const report = [];
   for (const task of TASKS) {
     const status = await task.check(ctx);

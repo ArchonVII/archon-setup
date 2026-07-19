@@ -4,7 +4,7 @@
     {
       "id": "docs-min",
       "label": "Docs-only minimum",
-      "description": "AGENTS.md bundle + documentation floor + coordination contract + git init; no npm, no scripts, no CI. The ten locked/default foundations.",
+      "description": "AGENTS.md bundle + executable documentation floor + coordination contract + git init; zero-dependency Node documentation scripts, no CI. The locked/default foundations plus the report-only doc-health dependency.",
       "features": [
         "foundation.readme",
         "foundation.license",

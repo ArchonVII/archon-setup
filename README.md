@@ -114,11 +114,12 @@ it matches, `missing` when absent, and `drifted` when the existing content
 differs from the managed baseline. The JSON result also includes
 `audit.startupReadiness`, a selected-profile startup summary with the baseline
 version, missing files, stale content, misplaced managed blocks, legacy plan
-paths, and a repair command. The default profile checks only the minimal files
-selected by standard onboarding. Repos that opt into the full agent lifecycle,
-doc-health/doc-sweep, PR template, check-map, or required-gate features get the
-full startup/process audit, including concrete lifecycle files and
-`package.json` `agent:*` entries. Managed wiki markdown files may carry
+paths, and a repair command. The default profile includes the executable
+documentation floor and its report-only doc-health companion. Repos that opt
+into the full agent lifecycle, doc-sweep, PR template, check-map, or required-gate
+features get their additional startup/process surface audited too, including
+concrete lifecycle files and managed `package.json` `agent:*`/`docs:*` entries.
+Managed wiki markdown files may carry
 repo-local YAML frontmatter; audit and repair preserve that metadata when the
 baseline body is current. The startup baseline file itself is checked when it is
 part of the selected profile, and same-version contract drift is treated as
@@ -324,10 +325,16 @@ Existing agent-facing capabilities:
 - **Required gate plus check map** - optional `.agent/check-map.yml` and
   `repo-required-gate.yml` give agents and branch protection one shared map from
   changed paths to required verification when a repo wants enforced closeout.
-- **Installable documentation floor** - the locked `foundation.doc-system`
-  capability seeds `.agent/doc-map.yml`, `docs/CANON.md`, `docs/INDEX.md`, and
-  the doc-system contract. Existing CANON/INDEX content is never overwritten;
-  generated startup baselines require the floor because onboarding now installs it.
+- **Executable documentation floor** - the locked `foundation.doc-system`
+  capability installs a selection-aware `.agent/doc-map.yml`, non-destructive
+  `docs/CANON.md`/`docs/INDEX.md` seeds, the doc-system contract, all six
+  zero-dependency `scripts/docs/*.mjs` generators, and the managed
+  `docs:render`/`docs:status` package commands. Its report-only doc-health
+  companion is a required dependency, while doc-sweep remains an explicit
+  opt-in. The opt-in changelog capability owns both `CHANGELOG.md` and
+  `docs:changelog`, so no profile advertises a command without its input. Audit
+  validates the same files and package-script ownership, and generated-consumer
+  tests execute the installed commands end to end.
 - **Versioned startup baseline** - `.agent/startup-baseline.json`,
   `docs/plans/README.md`, `AGENTS.md`, and `agent:status` give agents one
   canonical first-stop map for plans, process files, coordination, PR flow, and

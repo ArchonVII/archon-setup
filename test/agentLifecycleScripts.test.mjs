@@ -59,6 +59,13 @@ test("root lifecycle scripts stay byte-identical to their repo-template snapshot
     "scripts/doc-health/lib.mjs",
     "scripts/doc-health/health.mjs",
     "docs/agent-process/doc-health.md",
+    "docs/agent-process/doc-system.md",
+    "scripts/docs/lib.mjs",
+    "scripts/docs/index.mjs",
+    "scripts/docs/nav.mjs",
+    "scripts/docs/render.mjs",
+    "scripts/docs/status.mjs",
+    "scripts/docs/changelog.mjs",
   ];
   for (const rel of pairs) {
     const rootBody = normalized(await readFile(join(ROOT, rel), "utf8"));

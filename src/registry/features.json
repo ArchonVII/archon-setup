@@ -62,13 +62,12 @@
     "default": true,
     "locked": true,
     "requires": ["foundation.doc-system"],
-    "creates": ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/document-policy.md", "docs/agent-process/message-protocol.md"],
+    "creates": ["AGENTS.md", "docs/repo-update-log.md", ".agent/startup-baseline.json", "docs/plans/README.md", "docs/agent-process/message-protocol.md"],
     "installs": [
       { "path": "AGENTS.md", "source": "repo-template:AGENTS.md", "kind": "file", "contract": "required" },
       { "path": "docs/repo-update-log.md", "source": "repo-template:docs/repo-update-log.md", "kind": "file", "contract": "optional" },
       { "path": ".agent/startup-baseline.json", "source": "repo-template:.agent/startup-baseline.json", "kind": "file", "contract": "optional" },
       { "path": "docs/plans/README.md", "source": "repo-template:docs/plans/README.md", "kind": "file", "contract": "required" },
-      { "path": "docs/agent-process/document-policy.md", "source": "repo-template:docs/agent-process/document-policy.md", "kind": "file", "contract": "required" },
       { "path": "docs/agent-process/message-protocol.md", "source": "repo-template:docs/agent-process/message-protocol.md", "kind": "file", "contract": "optional" }
     ],
     "tasks": ["writeAgentsMd"],
@@ -82,16 +81,27 @@
     "default": true,
     "locked": true,
     "docFloor": true,
-    "creates": [".agent/doc-map.yml", "docs/CANON.md", "docs/INDEX.md", "docs/agent-process/doc-system.md"],
+    "requires": ["agent-workflow.doc-health"],
+    "creates": [".agent/doc-map.yml", "docs/CANON.md", "docs/INDEX.md", "docs/agent-process/doc-system.md", "scripts/docs/lib.mjs", "scripts/docs/index.mjs", "scripts/docs/nav.mjs", "scripts/docs/render.mjs", "scripts/docs/status.mjs", "scripts/docs/changelog.mjs", "package.json"],
     "installs": [
       { "path": ".agent/doc-map.yml", "source": "repo-template:.agent/doc-map.yml", "kind": "file", "contract": "required" },
       { "path": "docs/CANON.md", "source": "repo-template:docs/CANON.md", "kind": "file", "contract": "required" },
       { "path": "docs/INDEX.md", "source": "repo-template:docs/INDEX.md", "kind": "file", "contract": "required" },
-      { "path": "docs/agent-process/doc-system.md", "source": "repo-template:docs/agent-process/doc-system.md", "kind": "file", "contract": "required" }
+      { "path": "docs/agent-process/doc-system.md", "source": "repo-template:docs/agent-process/doc-system.md", "kind": "file", "contract": "required" },
+      { "path": "scripts/docs/lib.mjs", "source": "repo-template:scripts/docs/lib.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/docs/index.mjs", "source": "repo-template:scripts/docs/index.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/docs/nav.mjs", "source": "repo-template:scripts/docs/nav.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/docs/render.mjs", "source": "repo-template:scripts/docs/render.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/docs/status.mjs", "source": "repo-template:scripts/docs/status.mjs", "kind": "file", "contract": "required" },
+      { "path": "scripts/docs/changelog.mjs", "source": "repo-template:scripts/docs/changelog.mjs", "kind": "file", "contract": "required" },
+      { "path": "package.json", "kind": "merge", "contract": "required", "npmScripts": {
+        "docs:render": "node scripts/docs/render.mjs",
+        "docs:status": "node scripts/docs/status.mjs"
+      } }
     ],
     "tasks": ["writeDocSystem"],
     "beginnerDescription": "Installs the documentation map, canonical register, index, and doc-system contract as one coherent floor.",
-    "advancedDescription": "Copies the four doc-map required.base files from the pinned repo-template snapshot. foundation.agents requires this feature so generated startup baselines never demand an uninstallable documentation floor."
+    "advancedDescription": "Copies the selection-aware doc-map floor and all six scripts/docs generators from the pinned repo-template snapshot, merges the docs:render and docs:status commands into package.json, and requires the doc-health runner that the generators share. The opt-in foundation.changelog capability owns docs:changelog and its CHANGELOG.md input. foundation.agents requires this feature so generated startup baselines never demand an uninstallable documentation floor."
   },
   {
     "id": "foundation.claude-md",
@@ -202,13 +212,17 @@
     "label": "CHANGELOG.md (release-class)",
     "group": "foundations",
     "default": false,
-    "creates": ["CHANGELOG.md"],
+    "requires": ["foundation.doc-system"],
+    "creates": ["CHANGELOG.md", "package.json"],
     "installs": [
-      { "path": "CHANGELOG.md", "source": "repo-template:CHANGELOG.md", "kind": "file", "contract": "optional" }
+      { "path": "CHANGELOG.md", "source": "repo-template:CHANGELOG.md", "kind": "file", "contract": "optional" },
+      { "path": "package.json", "kind": "merge", "contract": "required", "npmScripts": {
+        "docs:changelog": "node scripts/docs/changelog.mjs"
+      } }
     ],
     "tasks": ["writeChangelog"],
     "beginnerDescription": "Adds the release-class changelog folded from Conventional Commit history at release time.",
-    "advancedDescription": "Release-class CHANGELOG baseline copied from repo-template; per-PR fragments are retired."
+    "advancedDescription": "Copies the release-class CHANGELOG baseline from repo-template and merges docs:changelog into package.json; per-PR fragments are retired."
   },
   {
     "id": "foundation.actionlint",
@@ -654,20 +668,21 @@
     "label": "Doc Health",
     "group": "agent-workflow",
     "default": false,
-    "requires": ["foundation.agents"],
     "creates": [
       "scripts/doc-health/lib.mjs",
       "scripts/doc-health/health.mjs",
-      "docs/agent-process/doc-health.md"
+      "docs/agent-process/doc-health.md",
+      "docs/agent-process/document-policy.md"
     ],
     "installs": [
       { "path": "scripts/doc-health/lib.mjs", "source": "repo-template:scripts/doc-health/lib.mjs", "kind": "file", "contract": "required" },
       { "path": "scripts/doc-health/health.mjs", "source": "repo-template:scripts/doc-health/health.mjs", "kind": "file", "contract": "required" },
-      { "path": "docs/agent-process/doc-health.md", "source": "repo-template:docs/agent-process/doc-health.md", "kind": "file", "contract": "required" }
+      { "path": "docs/agent-process/doc-health.md", "source": "repo-template:docs/agent-process/doc-health.md", "kind": "file", "contract": "required" },
+      { "path": "docs/agent-process/document-policy.md", "source": "repo-template:docs/agent-process/document-policy.md", "kind": "file", "contract": "required" }
     ],
     "tasks": ["writeDocHealth"],
     "beginnerDescription": "Installs the report-only doc-health runner so agents can find document drift (stale charters, dangling links, missing index entries) and turn it into the normal issue -> branch -> PR lane instead of silent rot.",
-    "advancedDescription": "Copies scripts/doc-health/{lib,health}.mjs and docs/agent-process/doc-health.md from the repo-template snapshot, content-aware (drift-repairing) and mirroring agent-workflow.doc-sweep. These files are named by the 2026-06-15-document-policy startup baseline; without this feature a fresh onboard reported startup readiness 'incomplete'. The deterministic report-only companion to the document policy — it never fixes, it reports. Full spec: docs/agent-process/doc-health.md."
+    "advancedDescription": "Copies scripts/doc-health/{lib,health}.mjs plus the doc-health and document-policy charters from the repo-template snapshot, content-aware (drift-repairing) and mirroring agent-workflow.doc-sweep. The deterministic report-only companion to the document policy — it never fixes, it reports. Full spec: docs/agent-process/doc-health.md."
   },
   {
     "id": "agent-workflow.template-library",

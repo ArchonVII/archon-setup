@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import * as writeDocSystem from "../src/server/tasks/writeDocSystem.mjs";
-import { DOC_SYSTEM_FILES } from "../src/server/tasks/writeDocSystem.mjs";
+import { DOC_SYSTEM_FILES, DOC_SYSTEM_SCRIPTS } from "../src/server/tasks/writeDocSystem.mjs";
 import { normalizeSnapshotText, REPO_TEMPLATE_SNAPSHOT } from "../src/server/tasks/repoTemplateSnapshot.mjs";
 
 const EXPECTED_FILES = [
@@ -13,7 +13,18 @@ const EXPECTED_FILES = [
   "docs/CANON.md",
   "docs/INDEX.md",
   "docs/agent-process/doc-system.md",
+  "scripts/docs/lib.mjs",
+  "scripts/docs/index.mjs",
+  "scripts/docs/nav.mjs",
+  "scripts/docs/render.mjs",
+  "scripts/docs/status.mjs",
+  "scripts/docs/changelog.mjs",
 ];
+
+const EXPECTED_SCRIPTS = {
+  "docs:render": "node scripts/docs/render.mjs",
+  "docs:status": "node scripts/docs/status.mjs",
+};
 
 async function makeTarget() {
   return mkdtemp(join(tmpdir(), "archon-docsystem-"));
@@ -25,8 +36,9 @@ function makeCtx(targetPath) {
 
 const snapshotBody = (file) => readFile(join(REPO_TEMPLATE_SNAPSHOT, file), "utf8").then(normalizeSnapshotText);
 
-test("doc-system task owns exactly the four declared floor files", () => {
+test("doc-system task owns the declared documentation floor and generators", () => {
   assert.deepEqual(DOC_SYSTEM_FILES, EXPECTED_FILES);
+  assert.deepEqual(DOC_SYSTEM_SCRIPTS, EXPECTED_SCRIPTS);
 });
 
 test("apply installs managed docs exactly and renders consumer seeds for the selection", async () => {
@@ -38,10 +50,29 @@ test("apply installs managed docs exactly and renders consumer seeds for the sel
     if (file === "docs/CANON.md" || file === "docs/INDEX.md") {
       assert.doesNotMatch(body, /LIBRARIAN\.md|project-status\.md/);
       if (file === "docs/INDEX.md") assert.doesNotMatch(body, /### adr\//);
-    } else {
+    } else if (file !== ".agent/doc-map.yml") {
       assert.equal(body, await snapshotBody(file));
     }
   }
+  const pkg = JSON.parse(await readFile(join(target, "package.json"), "utf8"));
+  assert.deepEqual(pkg.scripts, EXPECTED_SCRIPTS);
+  const docMap = await readFile(join(target, ".agent", "doc-map.yml"), "utf8");
+  assert.match(docMap, /path: "docs\/INDEX\.md"/);
+  assert.doesNotMatch(docMap, /path: "README\.md"|path: "llms\.txt"/);
+});
+
+test("existing repo code roots are assigned to CANON in the generated doc map", async () => {
+  const target = await makeTarget();
+  await mkdir(join(target, "bin"));
+  await mkdir(join(target, "src"));
+
+  await writeDocSystem.apply(makeCtx(target));
+
+  const docMap = await readFile(join(target, ".agent", "doc-map.yml"), "utf8");
+  assert.match(docMap, /owns: \[.*"bin\/\*\*".*"src\/\*\*".*\]/);
+  assert.match(docMap, /bin: "docs\/CANON\.md"/);
+  assert.match(docMap, /src: "docs\/CANON\.md"/);
+  assert.doesNotMatch(docMap, /node_modules:/);
 });
 
 test("check, apply, verify, and re-apply are idempotent", async () => {
@@ -51,9 +82,9 @@ test("check, apply, verify, and re-apply are idempotent", async () => {
   await writeDocSystem.apply(ctx);
   assert.equal(await writeDocSystem.check(ctx), "already-done");
   assert.deepEqual(await writeDocSystem.verify(ctx), { ok: true });
-  const before = await Promise.all(EXPECTED_FILES.map((file) => readFile(join(target, file), "utf8")));
+  const before = await Promise.all([...EXPECTED_FILES, "package.json"].map((file) => readFile(join(target, file), "utf8")));
   await writeDocSystem.apply(ctx);
-  const after = await Promise.all(EXPECTED_FILES.map((file) => readFile(join(target, file), "utf8")));
+  const after = await Promise.all([...EXPECTED_FILES, "package.json"].map((file) => readFile(join(target, file), "utf8")));
   assert.deepEqual(after, before);
 });
 
@@ -90,5 +121,5 @@ test("apply records every doc-floor file in the setup manifest", async () => {
   const target = await makeTarget();
   const ctx = makeCtx(target);
   await writeDocSystem.apply(ctx);
-  assert.deepEqual(ctx.manifest.createdFiles.map((entry) => entry.path), EXPECTED_FILES);
+  assert.deepEqual(ctx.manifest.createdFiles.map((entry) => entry.path), [...EXPECTED_FILES, "package.json"]);
 });

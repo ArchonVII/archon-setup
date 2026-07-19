@@ -82,6 +82,123 @@ test("selection validation reports relative Markdown links outside the selected 
   ]);
 });
 
+test("selection validation reports runtime imports outside the selected install closure", async () => {
+  const validation = await validateSelectionSurface({
+    selectedFeatureIds: ["foundation.example"],
+    features: [
+      {
+        id: "foundation.example",
+        installs: [{ path: "scripts/main.mjs", source: "repo-template:scripts/main.mjs", kind: "file", contract: "required" }],
+      },
+    ],
+    baseline: { version: "test", required: ["scripts/main.mjs"], expectedDirectories: [], legacy: [] },
+    readSnapshot: async () => "import './missing.mjs';\n",
+  });
+
+  assert.equal(validation.ok, false);
+  assert.deepEqual(validation.findings, [
+    {
+      code: "dangling-selected-runtime-import",
+      sourcePath: "scripts/main.mjs",
+      targetPath: "scripts/missing.mjs",
+      message: "scripts/main.mjs imports scripts/missing.mjs, but the selected feature closure does not install that runtime file.",
+    },
+  ]);
+});
+
+test("documentation runtime imports are conditional only until the doc-map is selected", async () => {
+  const runtime = {
+    id: "agent-workflow.health",
+    installs: [{ path: "scripts/health.mjs", source: "repo-template:scripts/health.mjs", kind: "file", contract: "required" }],
+  };
+  const readSnapshot = async (path) => path === "scripts/health.mjs"
+    ? "await import('./docs/lib.mjs');\n"
+    : [
+        "version: 1",
+        "generated:",
+        "checked:",
+        "human:",
+        "required:",
+        "  base:",
+        "code_roots:",
+        "",
+      ].join("\n");
+
+  const withoutDocMap = await validateSelectionSurface({
+    selectedFeatureIds: [runtime.id],
+    features: [runtime],
+    baseline: { version: "test", required: ["scripts/health.mjs"], expectedDirectories: [], legacy: [] },
+    readSnapshot,
+  });
+  assert.equal(withoutDocMap.ok, true);
+
+  const withDocMap = await validateSelectionSurface({
+    selectedFeatureIds: [runtime.id, "foundation.docs"],
+    features: [
+      runtime,
+      {
+        id: "foundation.docs",
+        installs: [{ path: ".agent/doc-map.yml", source: "repo-template:.agent/doc-map.yml", kind: "file", contract: "required" }],
+      },
+    ],
+    baseline: { version: "test", required: ["scripts/health.mjs", ".agent/doc-map.yml"], expectedDirectories: [], legacy: [] },
+    readSnapshot,
+  });
+  assert.deepEqual(withDocMap.findings, [
+    {
+      code: "dangling-selected-runtime-import",
+      sourcePath: "scripts/health.mjs",
+      targetPath: "scripts/docs/lib.mjs",
+      message: "scripts/health.mjs imports scripts/docs/lib.mjs, but the selected feature closure does not install that runtime file.",
+    },
+  ]);
+});
+
+test("selection validation reports doc-map generators without selected package scripts", async () => {
+  const validation = await validateSelectionSurface({
+    selectedFeatureIds: ["foundation.example"],
+    features: [
+      {
+        id: "foundation.example",
+        installs: [
+          { path: ".agent/doc-map.yml", source: "repo-template:.agent/doc-map.yml", kind: "file", contract: "required" },
+          { path: "docs/INDEX.md", source: "repo-template:docs/INDEX.md", kind: "file", contract: "required" },
+        ],
+      },
+    ],
+    baseline: { version: "test", required: [".agent/doc-map.yml", "docs/INDEX.md"], expectedDirectories: [], legacy: [] },
+    readSnapshot: async (path) => path === ".agent/doc-map.yml"
+      ? [
+          "version: 1",
+          "generated:",
+          "  - path: docs/INDEX.md",
+          "    class: committed",
+          "    generator: docs:render",
+          "    block: index-pages",
+          "    inputs: [\"docs/**/*.md\"]",
+          "checked:",
+          "human:",
+          "required:",
+          "  base:",
+          "    - docs/INDEX.md",
+          "code_roots:",
+          "  docs: self",
+          "",
+        ].join("\n")
+      : "# Index\n",
+  });
+
+  assert.equal(validation.ok, false);
+  assert.deepEqual(validation.findings, [
+    {
+      code: "missing-selected-package-script",
+      sourcePath: ".agent/doc-map.yml",
+      command: "docs:render",
+      message: ".agent/doc-map.yml references npm script docs:render, but the selected feature closure does not provide it.",
+    },
+  ]);
+});
+
 test("consumer-owned documentation seeds omit links to unselected provider pages", () => {
   const installed = new Set(["docs/CANON.md", "docs/INDEX.md"]);
   const canon = renderSelectionAwareSeed(

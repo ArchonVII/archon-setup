@@ -23,8 +23,12 @@ const FILES = [
   "scripts/doc-health/lib.mjs",
   "scripts/doc-health/health.mjs",
   "docs/agent-process/doc-health.md",
+  "docs/agent-process/document-policy.md",
 ];
-const FRONTMATTER_AWARE_FILES = new Set(["docs/agent-process/doc-health.md"]);
+const FRONTMATTER_AWARE_FILES = new Set([
+  "docs/agent-process/doc-health.md",
+  "docs/agent-process/document-policy.md",
+]);
 
 export const DOC_HEALTH_FILES = FILES;
 
@@ -83,5 +87,5 @@ export async function verify(ctx) {
 }
 
 export function rollbackHint(ctx) {
-  return `Delete ${ctx.targetPath}/scripts/doc-health/ and ${ctx.targetPath}/docs/agent-process/doc-health.md to retry.`;
+  return `Delete ${ctx.targetPath}/scripts/doc-health/, ${ctx.targetPath}/docs/agent-process/doc-health.md, and ${ctx.targetPath}/docs/agent-process/document-policy.md to retry.`;
 }

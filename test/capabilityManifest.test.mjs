@@ -16,7 +16,8 @@ import { HOOK_FILES } from "../src/server/tasks/writeGithooks.mjs";
 import { TEMPLATE_LIBRARY_FILES } from "../src/server/tasks/writeTemplateLibrary.mjs";
 import { AGENTS_MANAGED_FILES } from "../src/server/tasks/writeAgentsMd.mjs";
 import { REQUIRED_GITIGNORE_LINES } from "../src/server/tasks/writeFrictionLedger.mjs";
-import { DOC_SYSTEM_FILES } from "../src/server/tasks/writeDocSystem.mjs";
+import { DOC_SYSTEM_FILES, DOC_SYSTEM_SCRIPTS } from "../src/server/tasks/writeDocSystem.mjs";
+import { DOC_CHANGELOG_SCRIPTS } from "../src/server/tasks/writeChangelog.mjs";
 
 // Lane C1 (#351): the capability manifest (`installs[]` in features.json) is the
 // single home for "which feature installs which files". This test proves the
@@ -241,6 +242,20 @@ test("writeDocSystem DOC_SYSTEM_FILES === foundation.doc-system file installs", 
   const docSystem = featureById("foundation.doc-system");
   assert.deepEqual(sorted(fileDirPaths(docSystem)), sorted(DOC_SYSTEM_FILES));
   assert.equal(docSystem.docFloor, true);
+});
+
+test("writeDocSystem DOC_SYSTEM_SCRIPTS === foundation.doc-system package.json merge", () => {
+  const docSystem = featureById("foundation.doc-system");
+  const pkg = (docSystem.installs || []).find((install) => install.path === "package.json" && install.kind === "merge");
+  assert.ok(pkg, "foundation.doc-system is missing its package.json merge install");
+  assert.deepEqual(pkg.npmScripts, DOC_SYSTEM_SCRIPTS);
+});
+
+test("writeChangelog DOC_CHANGELOG_SCRIPTS === foundation.changelog package.json merge", () => {
+  const changelog = featureById("foundation.changelog");
+  const pkg = (changelog.installs || []).find((install) => install.path === "package.json" && install.kind === "merge");
+  assert.ok(pkg, "foundation.changelog is missing its package.json merge install");
+  assert.deepEqual(pkg.npmScripts, DOC_CHANGELOG_SCRIPTS);
 });
 
 test("writeFrictionLedger REQUIRED_GITIGNORE_LINES === friction-ledger .gitignore merge append", () => {

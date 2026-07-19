@@ -11,6 +11,8 @@ import { TEMPLATE as CLAUDE_TEMPLATE } from "../tasks/writeClaudeMd.mjs";
 import { TEMPLATE as GEMINI_TEMPLATE } from "../tasks/writeGeminiMd.mjs";
 import { scrubHookBody } from "../tasks/writeGithooks.mjs";
 import { AGENT_SCRIPTS } from "../tasks/writeAgentLifecycle.mjs";
+import { DOC_CHANGELOG_SCRIPTS } from "../tasks/writeChangelog.mjs";
+import { DOC_SYSTEM_SCRIPTS, expectedDocSystemBody } from "../tasks/writeDocSystem.mjs";
 import { TEMPLATE_LIBRARY_FILES } from "../tasks/writeTemplateLibrary.mjs";
 import { hasCurrentManagedBlock } from "../tasks/managedMarkdownBlock.mjs";
 import {
@@ -25,6 +27,7 @@ import {
 import { startupBaselineMatchesExpected } from "../tasks/startupBaselineContract.mjs";
 import { loadStartupBaseline } from "../tasks/startupBaseline.mjs";
 import { loadCheckMapBody } from "../tasks/writeCheckMap.mjs";
+import { loadRegistry, resolveSelection } from "../planner/buildPlan.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GITHUB_WORKFLOWS_SNAPSHOT = join(__dirname, "..", "..", "snapshots", "github-workflows");
@@ -99,15 +102,6 @@ async function expectedBodyFor({ path, unit, context, generatedBaseline, selecte
           body: await repoTemplateBody(join("docs", "plans", "README.md")),
         };
       }
-      if (path === "docs/agent-process/document-policy.md") {
-        // Document-policy charter (document-policy spec §5.1, lane 1c). Like the
-        // plans README it tolerates repo-local YAML frontmatter in wiki-managed
-        // repos, so it gets the markdown-frontmatter comparison.
-        return {
-          comparison: "markdown-frontmatter",
-          body: await repoTemplateBody(join("docs", "agent-process", "document-policy.md")),
-        };
-      }
       return null;
     case "writeClaudeMd":
       return CLAUDE_TEMPLATE;
@@ -133,9 +127,11 @@ async function expectedBodyFor({ path, unit, context, generatedBaseline, selecte
     case "writeGithooks":
       return repoTemplateBody(path, scrubHookBody);
     case "writeGitattributes":
-    case "writeChangelog":
     case "writeDependabot":
     case "writePrTemplate":
+      return repoTemplateBody(path);
+    case "writeChangelog":
+      if (path === "package.json") return { comparison: "entries", entries: DOC_CHANGELOG_SCRIPTS };
       return repoTemplateBody(path);
     case "writeCodeowners": {
       const owner = (context.owner || context.account || "").trim();
@@ -161,7 +157,7 @@ async function expectedBodyFor({ path, unit, context, generatedBaseline, selecte
     case "writeDocHealth":
       // Mirrors writeDocSweep: runner scripts are exact snapshot copies; the
       // markdown spec may carry repo-local frontmatter in wiki-managed repos.
-      if (path === "docs/agent-process/doc-health.md") {
+      if (path === "docs/agent-process/doc-health.md" || path === "docs/agent-process/document-policy.md") {
         return {
           comparison: "markdown-frontmatter",
           body: await repoTemplateBody(path),
@@ -169,14 +165,15 @@ async function expectedBodyFor({ path, unit, context, generatedBaseline, selecte
       }
       return repoTemplateBody(path);
     case "writeDocSystem":
+      if (path === "package.json") return { comparison: "entries", entries: DOC_SYSTEM_SCRIPTS };
       if (path === "docs/CANON.md" || path === "docs/INDEX.md") return null;
       if (path.endsWith(".md")) {
         return {
           comparison: "markdown-frontmatter",
-          body: await repoTemplateBody(path, stripYamlFrontmatter),
+          body: stripYamlFrontmatter(await expectedDocSystemBody({ ...context, selectedFeatureIds }, path)),
         };
       }
-      return repoTemplateBody(path);
+      return expectedDocSystemBody({ ...context, selectedFeatureIds }, path);
     case "writeTemplateLibrary":
       if (TEMPLATE_LIBRARY_FILES.includes(path)) return repoTemplateBody(path);
       return null;
@@ -261,11 +258,19 @@ async function evaluateOnboardingDispositions(targetPath, manifest, items) {
 export async function auditPlan(plan) {
   const items = [];
   const baselineFeatureIds = plan.baselineFeatureIds || plan.selectedFeatureIds || [];
+  const { features } = await loadRegistry();
+  const mergeItems = resolveSelection(features, plan.selectedFeatureIds || [])
+    .flatMap((feature) => (feature.installs || [])
+      .filter((install) => install.kind === "merge" && install.npmScripts)
+      .map((install) => ({ action: "merge", path: install.path, feature: feature.id })));
+  const auditFiles = [...plan.files, ...mergeItems].filter((file, index, all) =>
+    all.findIndex((candidate) => candidate.feature === file.feature && candidate.path === file.path) === index
+  );
   // The startup baseline this plan's resolved selection expects — generated once
   // from the capability manifest and shared by the per-file check and the
   // startup-readiness derivation so they never disagree (lane C2, #352).
   const generatedBaseline = await loadStartupBaseline(baselineFeatureIds);
-  for (const file of plan.files) {
+  for (const file of auditFiles) {
     const unit = unitForFile(plan, file);
     const fullPath = safeJoin(plan.context.targetPath, file.path);
     const expected = await expectedBodyFor({
@@ -608,7 +613,18 @@ async function startupReadiness(plan, items, baseline) {
   const required = installsBaseline ? unique([STARTUP_BASELINE_PATH, ...floor]) : floor;
   const expectedDirectories = Array.isArray(baseline.expectedDirectories) ? baseline.expectedDirectories : [];
   const legacy = Array.isArray(baseline.legacy) ? baseline.legacy : [];
-  const byPath = new Map(items.map((item) => [item.path, item]));
+  // Multiple selected features may own different merge entries in the same
+  // file (notably package.json). Readiness must retain the worst item for that
+  // path; last-write-wins can otherwise hide a drifted docs command behind a
+  // present changelog or agent-lifecycle entry.
+  const severity = { present: 0, drifted: 1, missing: 2 };
+  const byPath = new Map();
+  for (const item of items) {
+    const current = byPath.get(item.path);
+    if (!current || (severity[item.status] ?? 0) > (severity[current.status] ?? 0)) {
+      byPath.set(item.path, item);
+    }
+  }
   const present = [];
   const missing = [];
   const stale = [];
@@ -659,6 +675,7 @@ async function startupReadiness(plan, items, baseline) {
 async function startupRequiredPathStatus(root, relativePath, item, baseline) {
   if (item?.disposition?.choice === "keep-local" && item.disposition.state === "accepted") return "present";
   if (item?.status === "present") return "present";
+  if (relativePath === "package.json" && item?.status === "drifted") return "stale";
   if (!(await pathExists(root, relativePath))) return "missing";
 
   switch (relativePath) {

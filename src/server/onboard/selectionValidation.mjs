@@ -1,17 +1,34 @@
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 
 import { loadRegistry, resolveSelection } from "../planner/buildPlan.mjs";
 import { REPO_TEMPLATE_SNAPSHOT } from "../tasks/repoTemplateSnapshot.mjs";
 import {
   normalizeRepoPath,
+  docMapGeneratorCommands,
   relativeMarkdownTargets,
+  renderSelectionAwareDocMap,
   renderSelectionAwareSeed,
 } from "../tasks/selectionAwareMarkdown.mjs";
 import { generateStartupBaseline } from "../tasks/startupBaseline.mjs";
 
 function findingKey(finding) {
-  return [finding.code, finding.path || "", finding.sourcePath || "", finding.targetPath || ""].join("\0");
+  return [finding.code, finding.path || "", finding.sourcePath || "", finding.targetPath || "", finding.command || ""].join("\0");
+}
+
+function relativeRuntimeTargets(body, sourcePath) {
+  const targets = new Map();
+  const patterns = [
+    { dynamic: false, expression: /\b(?:import|export)\s+(?:[^"'()\n]*?\s+from\s+)?(["'])(\.\.?\/[^"']+)\1/g },
+    { dynamic: true, expression: /\bimport\s*\(\s*(["'])(\.\.?\/[^"']+)\1\s*\)/g },
+  ];
+  for (const { dynamic, expression } of patterns) {
+    for (const match of body.matchAll(expression)) {
+      const targetPath = normalizeRepoPath(posix.join(posix.dirname(sourcePath), match[2]));
+      targets.set(targetPath, { targetPath, dynamic: targets.get(targetPath)?.dynamic === false ? false : dynamic });
+    }
+  }
+  return [...targets.values()].sort((a, b) => a.targetPath.localeCompare(b.targetPath));
 }
 
 // Validate the generated startup floor and the relative links in every selected
@@ -27,6 +44,15 @@ export async function validateSelectionSurface({
   const selectedIds = resolved.map((feature) => feature.id);
   const installs = resolved.flatMap((feature) => feature.installs || []);
   const installedPaths = new Set(installs.map((install) => normalizeRepoPath(install.path)));
+  const managedSnapshotPaths = new Set(
+    installs
+      .filter((install) => install.source === `repo-template:${install.path}`)
+      .map((install) => normalizeRepoPath(install.path))
+  );
+  const packageScripts = Object.assign(
+    {},
+    ...installs.filter((install) => install.kind === "merge" && install.npmScripts).map((install) => install.npmScripts)
+  );
   const findings = [];
 
   for (const requiredPath of baseline.required || []) {
@@ -74,6 +100,72 @@ export async function validateSelectionSurface({
     }
   }
 
+  const runtimeSources = installs
+    .filter((install) => install.source?.startsWith("repo-template:") && install.path.toLowerCase().endsWith(".mjs"))
+    .map((install) => ({
+      outputPath: normalizeRepoPath(install.path),
+      snapshotPath: normalizeRepoPath(install.source.slice("repo-template:".length)),
+    }))
+    .sort((a, b) => a.outputPath.localeCompare(b.outputPath));
+
+  for (const source of runtimeSources) {
+    let body;
+    try {
+      body = await readSnapshot(source.snapshotPath);
+    } catch (error) {
+      findings.push({
+        code: "missing-selected-template-source",
+        sourcePath: source.outputPath,
+        snapshotPath: source.snapshotPath,
+        message: `${source.outputPath} selects missing repo-template source ${source.snapshotPath}: ${error.message}`,
+      });
+      continue;
+    }
+    for (const { targetPath, dynamic } of relativeRuntimeTargets(body, source.outputPath)) {
+      if (!installedPaths.has(targetPath)) {
+        // Provider close/doc-health runners deliberately load the docs parser
+        // only when the selected contract installed a doc-map. Without that
+        // activating surface the dynamic import is unreachable; with it, the
+        // same missing target is a genuine execution-closure defect.
+        if (dynamic && targetPath.startsWith("scripts/docs/") && !installedPaths.has(".agent/doc-map.yml")) continue;
+        findings.push({
+          code: "dangling-selected-runtime-import",
+          sourcePath: source.outputPath,
+          targetPath,
+          message: `${source.outputPath} imports ${targetPath}, but the selected feature closure does not install that runtime file.`,
+        });
+      }
+    }
+  }
+
+  let packageCommands = [];
+  const docMapInstall = installs.find((install) => normalizeRepoPath(install.path) === ".agent/doc-map.yml");
+  if (docMapInstall?.source?.startsWith("repo-template:")) {
+    const snapshotPath = normalizeRepoPath(docMapInstall.source.slice("repo-template:".length));
+    try {
+      const sourceBody = await readSnapshot(snapshotPath);
+      const selectedBody = renderSelectionAwareDocMap(sourceBody, installedPaths, managedSnapshotPaths);
+      packageCommands = docMapGeneratorCommands(selectedBody);
+      for (const command of packageCommands) {
+        if (!Object.hasOwn(packageScripts, command)) {
+          findings.push({
+            code: "missing-selected-package-script",
+            sourcePath: ".agent/doc-map.yml",
+            command,
+            message: `.agent/doc-map.yml references npm script ${command}, but the selected feature closure does not provide it.`,
+          });
+        }
+      }
+    } catch (error) {
+      findings.push({
+        code: "missing-selected-template-source",
+        sourcePath: ".agent/doc-map.yml",
+        snapshotPath,
+        message: `.agent/doc-map.yml selects missing or invalid repo-template source ${snapshotPath}: ${error.message}`,
+      });
+    }
+  }
+
   const deduped = [...new Map(findings.map((finding) => [findingKey(finding), finding])).values()].sort((a, b) =>
     findingKey(a).localeCompare(findingKey(b))
   );
@@ -84,6 +176,8 @@ export async function validateSelectionSurface({
     checked: {
       baselineRequiredPaths: (baseline.required || []).length,
       repoTemplateMarkdownSources: markdownSources.length,
+      repoTemplateRuntimeSources: runtimeSources.length,
+      packageCommands: packageCommands.length,
     },
     findings: deduped,
   };

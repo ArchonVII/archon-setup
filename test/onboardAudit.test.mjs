@@ -106,28 +106,13 @@ async function writeCurrentSetupManifest(root, selectedFeatures = []) {
 }
 
 async function seedCurrentMinimalAgentBaseline(root, selectedFeatures = ["foundation.agents"]) {
+  // Let the real task graph seed the execution-closed docs contract, then
+  // widen only the recorded selection/baseline for tests whose deliberate
+  // missing or drifted item must remain absent.
+  await runOnboard({ targetPath: root, features: ["foundation.agents"] });
   await writeCurrentSetupManifest(root, selectedFeatures);
-  const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
-  const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
-
-  await writeFile(
-    join(root, "AGENTS.md"),
-    `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n\n## Local workflow\n\nKeep repo-specific rules.\n\n${await deliveryWorkflowBlock()}\n`,
-    "utf8"
-  );
-
-  for (const relativePath of [
-    "docs/repo-update-log.md",
-    "docs/plans/README.md",
-    "docs/agent-process/document-policy.md",
-    "docs/agent-process/message-protocol.md",
-    ...DOC_SYSTEM_FILES,
-  ]) {
-    await copySnapshot(root, relativePath);
-  }
   // Lane C2 (#352): the baseline is generated per selection, so seed the
   // GENERATED expectation for the recorded selection rather than the snapshot.
-  await mkdir(join(root, ".agent"), { recursive: true });
   await writeFile(join(root, ".agent", "startup-baseline.json"), generatedBaselineBody(selectedFeatures), "utf8");
 }
 
@@ -246,6 +231,37 @@ test("onboard --audit accepts a repaired doc-system body with repo-local frontma
   const result = await runOnboard({ targetPath: root, features, audit: true });
   assert.equal(byPath(result.audit, "docs/agent-process/doc-system.md").status, "present");
   assert.equal(result.audit.onboardingCompletion.status, "complete");
+});
+
+test("onboard --audit reports doc-system package scripts as decisionable entries", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const features = ["foundation.doc-system", "foundation.changelog"];
+  await runOnboard({ targetPath: root, features });
+
+  let result = await runOnboard({ targetPath: root, features, audit: true });
+  let pkg = result.audit.items.find((item) =>
+    item.feature === "foundation.doc-system" && item.path === "package.json"
+  );
+  assert.equal(pkg?.comparison, "entries");
+  assert.equal(pkg?.status, "present");
+  assert.deepEqual(pkg?.detail.map((entry) => entry.key), ["docs:render", "docs:status"]);
+
+  const packagePath = join(root, "package.json");
+  const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
+  packageJson.scripts["docs:render"] = "node wrong-file.mjs";
+  await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+  result = await runOnboard({ targetPath: root, features, audit: true });
+  pkg = result.audit.items.find((item) =>
+    item.feature === "foundation.doc-system" && item.path === "package.json"
+  );
+  assert.equal(pkg?.status, "drifted");
+  assert.equal(pkg?.detail.find((entry) => entry.key === "docs:render")?.status, "drifted");
+  const changelogPackage = result.audit.items.find((item) =>
+    item.feature === "foundation.changelog" && item.path === "package.json"
+  );
+  assert.equal(changelogPackage?.status, "present");
+  assert.ok(result.audit.startupReadiness.stale.includes("package.json"));
 });
 
 test("onboard --audit refuses completion when a selected baseline item is missing", async () => {
