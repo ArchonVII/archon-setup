@@ -12,7 +12,7 @@ test("globalUpdatesCatalogEntries maps every agents-managed-block record to a ru
   const updates = listGlobalUpdates();
   const entries = globalUpdatesCatalogEntries(updates);
 
-  assert.equal(entries.length, updates.length);
+  assert.equal(entries.length, updates.filter((update) => update.distribution?.kind === "agents-managed-block").length);
   const browser = entries.find((e) => e.id === "2026-05-31-browser-backend-preflight");
   assert.ok(browser);
   assert.equal(browser.group, "agents");
@@ -30,6 +30,25 @@ test("globalUpdatesCatalogEntries maps every agents-managed-block record to a ru
   assert.equal(browser.markerShape, "global-update");
   assert.deepEqual(browser.anchor, { kind: "eof-append" });
   assert.deepEqual(browser.protectedBranches, ["main", "master"]);
+  assert.deepEqual(browser.capabilityIds, record.distribution.capabilityIds);
+  const startup = entries.find((entry) => entry.id === "2026-06-09-agent-startup-baseline");
+  assert.equal(startup.requireSelectedCapabilities, true);
+});
+
+test("global update catalog entries fail closed without valid capability manifest ids", () => {
+  const base = {
+    id: "future-update",
+    distribution: {
+      kind: "agents-managed-block",
+      targetPath: "AGENTS.md",
+      body: "Managed body",
+    },
+  };
+  assert.throws(() => globalUpdatesCatalogEntries([base]), /capabilityIds/i);
+  assert.throws(
+    () => globalUpdatesCatalogEntries([{ ...base, distribution: { ...base.distribution, capabilityIds: ["not.a.feature"] } }]),
+    /unknown capability id/i,
+  );
 });
 
 test("manifestCatalogEntries extracts each region's desired inner from its snapshot source", () => {
@@ -45,6 +64,7 @@ test("manifestCatalogEntries extracts each region's desired inner from its snaps
         group: "agents",
         wholeFile: false,
         appliesToDefault: "existing-file-only",
+        capabilityIds: ["foundation.agents"],
       },
     ],
   };
@@ -72,6 +92,30 @@ test("manifestCatalogEntries extracts each region's desired inner from its snaps
   assert.equal(entries[0].snapshotBody, files["fixtures/sample.md"]);
 });
 
+test("manifest catalog entries fail closed without valid capability manifest ids", () => {
+  const base = {
+    id: "agents.sample-block",
+    provider: "repo-template",
+    snapshotFile: "fixtures/sample.md",
+    targetRelpath: "AGENTS.md",
+    adapter: "markdown",
+    group: "agents",
+    wholeFile: false,
+    appliesToDefault: "existing-file-only",
+  };
+  const read = () =>
+    "<!-- BEGIN ARCHONVII MANAGED: agents.sample-block -->\nx\n<!-- END ARCHONVII MANAGED: agents.sample-block -->\n";
+
+  assert.throws(
+    () => manifestCatalogEntries({ entries: [base] }, read),
+    /capabilityIds/i,
+  );
+  assert.throws(
+    () => manifestCatalogEntries({ entries: [{ ...base, capabilityIds: ["not.a.feature"] }] }, read),
+    /unknown capability id/i,
+  );
+});
+
 test("buildCatalog merges manifest and globalUpdates entries and exposes the full known-id set", () => {
   const manifest = {
     schemaVersion: 1,
@@ -85,6 +129,7 @@ test("buildCatalog merges manifest and globalUpdates entries and exposes the ful
         group: "callers",
         wholeFile: false,
         appliesToDefault: "existing-file-only",
+        capabilityIds: ["workflow.required-gate"],
       },
     ],
   };
@@ -126,6 +171,7 @@ test("buildCatalog rejects an id that appears in both sources", () => {
         group: "agents",
         wholeFile: false,
         appliesToDefault: "existing-file-only",
+        capabilityIds: ["foundation.agents"],
       },
     ],
   };

@@ -18,9 +18,19 @@ function source(overrides = {}) {
     group: "callers",
     wholeFile: false,
     appliesToDefault: "existing-file-only",
+    capabilityIds: ["foundation.agents"],
     ...overrides,
   };
 }
+
+test("buildManifest rejects sources without valid capability manifest ids", () => {
+  const content = "# BEGIN ARCHONVII MANAGED: x.pin\nx: 1\n# END ARCHONVII MANAGED: x.pin\n";
+  const missing = buildManifest([source({ capabilityIds: undefined })], () => content);
+  assert.ok(missing.diagnostics.some((diagnostic) => diagnostic.kind === "missing-capability-ids"));
+
+  const unknown = buildManifest([source({ capabilityIds: ["not.a.feature"] })], () => content);
+  assert.ok(unknown.diagnostics.some((diagnostic) => diagnostic.kind === "unknown-capability-id"));
+});
 
 test("buildManifest expands marked sources into sorted per-region entries", () => {
   const { entries, diagnostics } = buildManifest(fixtureSources, readFixture);
@@ -46,6 +56,7 @@ test("buildManifest expands marked sources into sorted per-region entries", () =
     group: "callers",
     wholeFile: false,
     appliesToDefault: "existing-file-only",
+    capabilityIds: ["workflow.required-gate"],
   });
 });
 

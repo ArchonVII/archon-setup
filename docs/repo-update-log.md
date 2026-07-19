@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-07-15 - Capability-bound distribution catalog
+
+- **Issue/PR:** #354 / #359
+- **Branch:** agent/codex/354-manifest-distribution-provenance
+- **Changed paths:** `src/distributor/capabilityRefs.mjs`, `src/distributor/catalogSource.mjs`, `src/distributor/markerManifest.mjs`, `src/server/globalUpdates.mjs`, `test/**`, `README.md`, `docs/plans/2026-07-11-lane-c-capability-manifest-design.md`, `.changelog/unreleased/354-manifest-distribution-provenance.md`, `docs/repo-update-log.md`
+- **What changed:** Global-update records and generated managed-region sources now cite valid feature IDs from `src/registry/features.json`, with validation at both manifest generation and catalog consumption. The existing startup-baseline managed block keeps its stable region ID but replaces the stale fixed path list with selection-derived `foundation.agents` and `agent-lifecycle.baseline` guidance, so a future authorized distribution updates the old block in place.
+- **Verification:** `npm test` passed 717 total / 715 passed / 0 failed / 2 skipped; `npm run snapshots:verify` passed for all three providers; `npm run agent:self-apply -- --check` reported all six root surfaces already current; `npm run lint:markers -- --check` reported the committed managed-region manifest current; `git diff --check` passed.
+- **Propagation:** none; source catalog only. Consumer repositories remain untouched pending owner selection.
+
 ## 2026-07-09 - Byte-idempotent anomaly permission updates
 
 - **Issue/PR:** #344 / pending

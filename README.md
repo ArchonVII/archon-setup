@@ -464,7 +464,12 @@ npm run snapshot -- --repo-registry none
 Global/shared fixes, such as agent workflow rules or Codex capability guardrails,
 must be recorded before they are disseminated. Each record lives in the
 archon-setup global update catalog and should also be mentioned in this README
-and `CHANGELOG.md`.
+and the current `.changelog/unreleased/` fragment.
+
+Every distributable record and every generated managed-region source cites one
+or more feature IDs from `src/registry/features.json`. The marker lint and
+runtime catalog both reject missing or unknown IDs, so distribution guidance
+cannot establish a second, hand-maintained inventory of capability paths.
 
 The Ecosystem screen now shows **Global Update Records**. Each record includes a
 confirmation phrase and a **Distribute Fix to Ecosystem** button. The button does
@@ -500,9 +505,9 @@ Current recorded global fixes include:
 - `2026-06-05-owner-docs-safe-paths` - records that add-only `docs/**` files are
   owner-maintenance safe by default while explicit unsafe paths still require
   normal PR lanes.
-- `2026-06-09-agent-startup-baseline` - records the canonical startup map for
-  plans, process files, coordination, PR flow, and the onboard audit repair
-  command.
+- `2026-06-09-agent-startup-baseline` - records the selection-derived startup
+  baseline contract. Its managed body cites `foundation.agents` and
+  `agent-lifecycle.baseline` instead of copying a fixed path inventory.
 - `2026-06-10-plan-status-closeout` - records that agents must close, narrow,
   or supersede lane-created or lane-used plan/status artifacts before PR
   ready/merge.
