@@ -25,7 +25,7 @@ agents can find it.
 <!-- BEGIN ARCHONVII MANAGED BLOCK: index-pages -->
 _Generated from docs/**/*.md frontmatter by `npm run docs:render` — do not edit by hand._
 
-- [CANON.md](CANON.md) — High-density register of what is true for this repo now vs. intended, plus locked decisions — read first. (Scaffold — fill per repo.) `CANON`
+- [CANON.md](CANON.md) — Ground truth for Archon Setup's integrator role, provider boundaries, generated-repo contract, and current repair state. `CANON`
 - [COORDINATION_STANDARD.md](COORDINATION_STANDARD.md) `Validated design (brainstorming complete 2026-0…`
 - [COORDINATOR_HANDOFF.md](COORDINATOR_HANDOFF.md)
 - [CURRENT_WORK.md](CURRENT_WORK.md)
