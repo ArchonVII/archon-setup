@@ -72,3 +72,96 @@ test("apply preserves existing manifest history while adding the current run", a
   assert.deepEqual(parsed.postChecks, [{ type: "branchProtection.tightenRequiredChecks", reason: "after first run" }]);
   assert.deepEqual(manifest.selectedFeatures, ["foundation.agents", "agent-lifecycle.baseline"], "ctx manifest remains current-run only");
 });
+
+test("manifest merge replaces dispositions by item and removes declined capabilities from the effective selection", () => {
+  const previous = {
+    tool: "archon-setup",
+    selectedFeatures: ["foundation.readme", "foundation.license", "foundation.agents"],
+    createdFiles: [],
+    skippedFiles: [],
+    remoteActions: [],
+    postChecks: [],
+    onboardingDispositions: {
+      schemaVersion: 1,
+      items: [
+        {
+          itemId: "foundation.readme:README.md",
+          feature: "foundation.readme",
+          path: "README.md",
+          choice: "keep-local",
+          fingerprint: { algorithm: "sha256", value: "old" },
+        },
+        {
+          itemId: "foundation.agents:AGENTS.md",
+          feature: "foundation.agents",
+          path: "AGENTS.md",
+          choice: "blocked",
+        },
+      ],
+    },
+  };
+  const next = {
+    ...previous,
+    selectedFeatures: ["foundation.readme", "foundation.agents"],
+    onboardingDispositions: {
+      schemaVersion: 1,
+      items: [
+        {
+          itemId: "foundation.readme:README.md",
+          feature: "foundation.readme",
+          path: "README.md",
+          choice: "keep-local",
+          fingerprint: { algorithm: "sha256", value: "new" },
+        },
+        {
+          itemId: "foundation.license:LICENSE",
+          feature: "foundation.license",
+          path: "LICENSE",
+          choice: "declined",
+        },
+      ],
+    },
+  };
+
+  const merged = writeSetupManifest.mergeSetupManifest(previous, next);
+
+  assert.deepEqual(merged.selectedFeatures, ["foundation.readme", "foundation.agents"]);
+  assert.deepEqual(merged.onboardingDispositions, {
+    schemaVersion: 1,
+    items: [
+      next.onboardingDispositions.items[0],
+      previous.onboardingDispositions.items[1],
+      next.onboardingDispositions.items[1],
+    ],
+  });
+});
+
+test("repair manifest selection is authoritative after transitive dependent removal", () => {
+  const previous = {
+    tool: "archon-setup",
+    selectedFeatures: ["foundation.readme", "agent-workflow.check-map", "workflow.required-gate"],
+    createdFiles: [],
+    skippedFiles: [],
+    remoteActions: [],
+    postChecks: [],
+  };
+  const next = {
+    ...previous,
+    selectedFeatures: ["foundation.readme"],
+    onboardingDispositions: {
+      schemaVersion: 1,
+      items: [
+        {
+          itemId: "agent-workflow.check-map:.agent/check-map.yml",
+          feature: "agent-workflow.check-map",
+          path: ".agent/check-map.yml",
+          choice: "declined",
+        },
+      ],
+    },
+  };
+
+  const merged = writeSetupManifest.mergeSetupManifest(previous, next);
+
+  assert.deepEqual(merged.selectedFeatures, ["foundation.readme"]);
+});

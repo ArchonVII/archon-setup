@@ -147,11 +147,14 @@ node bin/onboard.mjs repair C:\path\to\repo --intake issue:#123 --owner OWNER --
 node bin/onboard.mjs verify-merged C:\path\to\repo --record C:\Users\you\.claude\archon-onboarding-repair\<run>.jsonl
 ```
 
-Only `apply-central` decisions write files. `keep-local`, `merge-manual`,
-`defer`, and `blocked` are carried into the draft PR without automated writes;
-the repair flow never auto-merges or changes branch protection. A selective
-repair applies only the resolved `apply-central` features, while its generated
-startup baseline and setup manifest retain the decision document's full
+Only `apply-central` decisions write files. `keep-local`, `declined`,
+`merge-manual`, `defer`, and `blocked` are persisted in the setup manifest and
+carried into the draft PR; the repair flow never auto-merges or changes branch
+protection. Matching `keep-local` fingerprints are accepted local authority,
+`declined` capabilities leave the effective selection, and the other manual
+states keep onboarding incomplete. Every defer needs a review trigger or
+expiry. A selective repair applies only the resolved `apply-central` features,
+while its generated startup baseline and setup manifest retain the effective
 selection and named profile.
 
 ### Updating managed workflows

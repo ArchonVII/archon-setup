@@ -315,6 +315,27 @@ test("onboard --audit refuses completion when the manifest omits a selected feat
   );
 });
 
+test("onboard --audit reports a malformed disposition instead of crashing", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const features = ["foundation.agents"];
+  await runOnboard({ targetPath: root, features });
+
+  const manifestPath = join(root, ".github", "archon-setup.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.onboardingDispositions = { schemaVersion: 1, items: [null] };
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+  const result = await runOnboard({ targetPath: root, features, audit: true });
+
+  assert.equal(result.audit.onboardingCompletion.status, "incomplete");
+  assert.ok(
+    result.audit.onboardingCompletion.manifestProblems.includes(
+      "manifest onboarding disposition is invalid: unknown"
+    )
+  );
+});
+
 test("onboard CLI resolves a relative target path before auditing", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);

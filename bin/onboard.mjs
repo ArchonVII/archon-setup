@@ -179,6 +179,12 @@ function printAudit(audit) {
     if (s.legacyDetected.length) console.log(`  legacy detected: ${s.legacyDetected.join(", ")}`);
     console.log(`  repair: ${s.repairCommand}`);
   }
+  if (audit.dispositions?.length) {
+    console.log("\nOwner dispositions:");
+    for (const item of audit.dispositions) {
+      console.log(`  ${item.state.padEnd(12, " ")} ${item.itemId} (${item.choice})`);
+    }
+  }
   console.log("\nBaseline items:");
   for (const item of audit.items) {
     const label = item.status.padEnd(7, " ");

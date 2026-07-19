@@ -29,6 +29,20 @@ function uniqueObjects(previous = [], next = []) {
   return merged;
 }
 
+function mergeOnboardingDispositions(previous, next) {
+  if (!previous && !next) return undefined;
+  const merged = new Map();
+  for (const entry of [...(previous?.items || []), ...(next?.items || [])]) {
+    if (entry?.itemId) merged.set(entry.itemId, entry);
+  }
+  return {
+    ...(previous || {}),
+    ...(next || {}),
+    schemaVersion: next?.schemaVersion || previous?.schemaVersion || 1,
+    items: [...merged.values()],
+  };
+}
+
 async function readExistingManifest(targetPath) {
   try {
     return JSON.parse(await readFile(safeJoin(targetPath, PATH), "utf8"));
@@ -39,13 +53,30 @@ async function readExistingManifest(targetPath) {
 
 export function mergeSetupManifest(previous, next) {
   if (!previous) return next;
+  const onboardingDispositions = mergeOnboardingDispositions(
+    previous.onboardingDispositions,
+    next.onboardingDispositions
+  );
+  const declinedFeatures = new Set(
+    (onboardingDispositions?.items || [])
+      .filter((item) => item?.choice === "declined")
+      .map((item) => item.feature)
+  );
+  // A repair records the complete effective selection after owner decisions,
+  // including transitive removal of capabilities that depend on a decline.
+  // Treat that selection as authoritative; unioning the previous manifest
+  // here would silently reintroduce those removed dependents.
+  const selectedFeatures = next.onboardingDispositions
+    ? uniqueStrings(next.selectedFeatures || [])
+    : uniqueStrings([...(previous.selectedFeatures || []), ...(next.selectedFeatures || [])]);
   return {
     ...next,
-    selectedFeatures: uniqueStrings([...(previous.selectedFeatures || []), ...(next.selectedFeatures || [])]),
+    selectedFeatures: selectedFeatures.filter((feature) => !declinedFeatures.has(feature)),
     createdFiles: mergeByPath(previous.createdFiles, next.createdFiles),
     skippedFiles: mergeByPath(previous.skippedFiles, next.skippedFiles),
     remoteActions: uniqueObjects(previous.remoteActions, next.remoteActions),
     postChecks: uniqueObjects(previous.postChecks, next.postChecks),
+    ...(onboardingDispositions ? { onboardingDispositions } : {}),
   };
 }
 

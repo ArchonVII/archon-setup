@@ -7,6 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { buildOnboardingDecision, intakeOnboardingDecision } from "../src/server/onboard/repairDecision.mjs";
+import { runOnboard } from "../src/server/onboard/headlessOnboard.mjs";
 import { runOnboardingRepair, verifyMergedOnboardingRepair } from "../src/server/onboard/repairRun.mjs";
 import { readRunRecord } from "../src/server/prlane/runRecord.mjs";
 import { loadProfileFeatures, loadStartupBaseline } from "../src/server/tasks/startupBaseline.mjs";
@@ -80,6 +81,51 @@ test("onboarding repair creates a draft PR from a fresh worktree and never queue
   ]);
 });
 
+test("onboarding repair persists manifest-only owner decisions without applying defaults", async () => {
+  const repo = await fixtureRepo();
+  const doc = await buildOnboardingDecision({
+    targetPath: repo.targetPath,
+    features: ["foundation.readme"],
+    runId: "repair-run-manifest-only",
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+  });
+  const decision = {
+    ...doc,
+    items: doc.items.map((item) => ({
+      ...item,
+      resolution: {
+        choice: "declined",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+        review: null,
+      },
+    })),
+  };
+  const intake = await intakeOnboardingDecision({ input: decision, targetPath: repo.targetPath });
+  assert.deepEqual(intake.applyFeatures, []);
+  assert.deepEqual(intake.effectiveSelectedFeatures, []);
+
+  const result = await runOnboardingRepair({
+    intake,
+    targetPath: repo.targetPath,
+    sourceIssueNumber: 123,
+    recordPath: join(repo.root, "repair-manifest-only.jsonl"),
+    workRoot: join(repo.root, "worktrees"),
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    runGh: async () => ({ code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/456\n", stderr: "" }),
+  });
+
+  assert.equal(result.state, "pr_created");
+  assert.equal(existsSync(join(result.worktreePath, "README.md")), false);
+  const manifest = JSON.parse(await readFile(join(result.worktreePath, ".github", "archon-setup.json"), "utf8"));
+  assert.deepEqual(manifest.selectedFeatures, []);
+  assert.equal(manifest.onboardingDispositions.items[0].choice, "declined");
+  assert.equal(result.audit.audit.onboardingCompletion.manifestStatus, "complete");
+  assert.deepEqual(result.audit.audit.onboardingCompletion.manifestMissingFeatures, []);
+});
+
 test("onboarding repair generates the baseline from the full decision selection", async () => {
   const repo = await fixtureRepo();
   const selectedFeatures = await loadProfileFeatures("agent-standard");
@@ -98,6 +144,9 @@ test("onboarding repair generates the baseline from the full decision selection"
         choice: item.feature === "foundation.agents" ? "apply-central" : "defer",
         decidedBy: "owner",
         decidedAt: "2026-07-10T00:00:00.000Z",
+        review: item.feature === "foundation.agents"
+          ? null
+          : { trigger: "review when the deferred capability is scheduled" },
       },
     })),
   };
@@ -159,6 +208,9 @@ test("repair honors non-apply-central resolutions inside an applied feature (#36
               : "apply-central",
         decidedBy: "owner",
         decidedAt: "2026-07-10T00:00:00.000Z",
+        review: item.path === "docs/repo-update-log.md"
+          ? { expiresAt: "2000-01-01T00:00:00.000Z" }
+          : null,
       },
     })),
   };
@@ -196,6 +248,97 @@ test("repair honors non-apply-central resolutions inside an applied feature (#36
   // PR body reports the manual decisions instead of "none".
   assert.match(ghCalls[0].options.stdin, /foundation\.agents:AGENTS\.md`: keep-local/);
   assert.match(ghCalls[0].options.stdin, /foundation\.agents:docs\/repo-update-log\.md`: defer/);
+  assert.equal(
+    result.audit.audit.items.find((item) => item.path === "AGENTS.md")?.disposition?.state,
+    "accepted"
+  );
+  assert.equal(
+    result.audit.audit.dispositions.find((item) => item.path === "docs/repo-update-log.md")?.state,
+    "expired"
+  );
+  assert.match(
+    result.audit.audit.onboardingCompletion.blockers.join("\n"),
+    /onboarding disposition expired: foundation\.agents:docs\/repo-update-log\.md/
+  );
+  const acceptedDecision = await buildOnboardingDecision({
+    targetPath: result.worktreePath,
+    features: intake.effectiveSelectedFeatures,
+    runId: "repair-run-mixed-follow-up",
+  });
+  assert.equal(acceptedDecision.items.some((item) => item.path === "AGENTS.md"), false);
+  assert.equal(acceptedDecision.items.some((item) => item.path === "docs/repo-update-log.md"), true);
+
+  await writeFile(join(result.worktreePath, "AGENTS.md"), `${localAgents}\nNew unapproved policy.\n`, "utf8");
+  const staleAudit = await runOnboard({
+    targetPath: result.worktreePath,
+    features: intake.effectiveSelectedFeatures,
+    audit: true,
+  });
+  assert.equal(
+    staleAudit.audit.items.find((item) => item.path === "AGENTS.md")?.disposition?.state,
+    "stale"
+  );
+  assert.match(
+    staleAudit.audit.onboardingCompletion.blockers.join("\n"),
+    /onboarding disposition stale: foundation\.agents:AGENTS\.md/
+  );
+  const staleDecision = await buildOnboardingDecision({
+    targetPath: result.worktreePath,
+    features: intake.effectiveSelectedFeatures,
+    runId: "repair-run-mixed-stale-follow-up",
+  });
+  assert.equal(staleDecision.items.some((item) => item.path === "AGENTS.md"), true);
+});
+
+test("repair persists declined capabilities and decision provenance in the setup manifest", async () => {
+  const repo = await fixtureRepo();
+  const doc = await buildOnboardingDecision({
+    targetPath: repo.targetPath,
+    features: ["foundation.readme", "foundation.license"],
+    runId: "repair-run-declined",
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+  });
+  const decision = {
+    ...doc,
+    items: doc.items.map((item) => ({
+      ...item,
+      resolution: {
+        choice: item.feature === "foundation.license" ? "declined" : "apply-central",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+        review: null,
+      },
+    })),
+  };
+  const intake = await intakeOnboardingDecision({ input: decision, targetPath: repo.targetPath });
+
+  const result = await runOnboardingRepair({
+    intake,
+    targetPath: repo.targetPath,
+    sourceIssueNumber: 777,
+    recordPath: join(repo.root, "repair-declined.jsonl"),
+    workRoot: join(repo.root, "worktrees"),
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    runGh: async () => ({ code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/778\n", stderr: "" }),
+    now: () => "2026-07-10T01:00:00.000Z",
+  });
+
+  const manifest = JSON.parse(await readFile(join(result.worktreePath, ".github", "archon-setup.json"), "utf8"));
+  assert.deepEqual(manifest.selectedFeatures, ["foundation.readme"]);
+  assert.equal(manifest.onboardingDispositions.schemaVersion, 1);
+  const declined = manifest.onboardingDispositions.items.find((item) => item.choice === "declined");
+  assert.deepEqual(declined.decisionSource, {
+    type: "github-issue",
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    number: 777,
+    url: "https://github.com/ArchonVII/consumer-repo/issues/777",
+  });
+  assert.equal(declined.runId, "repair-run-declined");
+  assert.equal(declined.baseSha, intake.baseSha);
+  assert.equal(result.audit.audit.dispositions.find((item) => item.choice === "declined")?.state, "declined");
 });
 
 test("repair commit survives a tracked-modified file as the first status line (#364)", async () => {

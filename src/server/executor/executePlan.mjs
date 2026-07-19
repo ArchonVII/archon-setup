@@ -87,6 +87,9 @@ export async function executePlan(plan, { onEvent, secretProvider } = {}) {
     skippedFiles: [],
     remoteActions: [],
     postChecks: plan.postChecks,
+    ...(plan.context.onboardingDispositions
+      ? { onboardingDispositions: plan.context.onboardingDispositions }
+      : {}),
   };
 
   // Best-effort event stream into the target repo's .archon/events.jsonl.

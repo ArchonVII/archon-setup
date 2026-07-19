@@ -49,6 +49,8 @@ export async function loadSourceSnapshots() {
 //   features    optional array of feature IDs; defaults to the minimal local baseline
 //   baselineFeatures optional full recorded selection when a repair applies only
 //                    a subset now but must preserve the repository's full floor
+//   onboardingDispositions optional durable, validated repair decisions written
+//                          to the setup manifest
 //   owner/repo/visibility   manifest + CODEOWNERS context
 //   options     per-feature option overrides (e.g. { foundation.license: { spdx } })
 //   capabilities  capability bits for remote features (default none)
@@ -65,6 +67,7 @@ export async function runOnboard({
   targetPath,
   features = null,
   baselineFeatures = null,
+  onboardingDispositions = null,
   owner = "",
   repo = "",
   visibility = "private",
@@ -99,6 +102,7 @@ export async function runOnboard({
     capabilities,
     originDetected,
     sourceSnapshots: await loadSourceSnapshots(),
+    ...(onboardingDispositions ? { onboardingDispositions } : {}),
   };
 
   const plan = await buildPlan({ selection, options, context });
