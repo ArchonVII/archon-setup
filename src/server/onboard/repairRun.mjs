@@ -154,7 +154,9 @@ export async function runOnboardingRepair({
   const resolvedOwner = owner || intake.owner;
   const resolvedRepo = repo || intake.repo;
   if (!resolvedOwner || !resolvedRepo) throw new Error("owner and repo are required for draft PR creation");
-  if (!intake.applyFeatures.length) throw new Error("the resolved decision contains no apply-central items");
+  if (!intake.applyFeatures.length && !(intake.dispositions || []).length) {
+    throw new Error("the resolved decision contains no apply-central items or durable dispositions");
+  }
 
   const absoluteTarget = resolve(targetPath);
   const effectiveSelectedFeatures = intake.effectiveSelectedFeatures || intake.selectedFeatures;

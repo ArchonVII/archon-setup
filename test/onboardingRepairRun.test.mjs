@@ -81,6 +81,51 @@ test("onboarding repair creates a draft PR from a fresh worktree and never queue
   ]);
 });
 
+test("onboarding repair persists manifest-only owner decisions without applying defaults", async () => {
+  const repo = await fixtureRepo();
+  const doc = await buildOnboardingDecision({
+    targetPath: repo.targetPath,
+    features: ["foundation.readme"],
+    runId: "repair-run-manifest-only",
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+  });
+  const decision = {
+    ...doc,
+    items: doc.items.map((item) => ({
+      ...item,
+      resolution: {
+        choice: "declined",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+        review: null,
+      },
+    })),
+  };
+  const intake = await intakeOnboardingDecision({ input: decision, targetPath: repo.targetPath });
+  assert.deepEqual(intake.applyFeatures, []);
+  assert.deepEqual(intake.effectiveSelectedFeatures, []);
+
+  const result = await runOnboardingRepair({
+    intake,
+    targetPath: repo.targetPath,
+    sourceIssueNumber: 123,
+    recordPath: join(repo.root, "repair-manifest-only.jsonl"),
+    workRoot: join(repo.root, "worktrees"),
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    runGh: async () => ({ code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/456\n", stderr: "" }),
+  });
+
+  assert.equal(result.state, "pr_created");
+  assert.equal(existsSync(join(result.worktreePath, "README.md")), false);
+  const manifest = JSON.parse(await readFile(join(result.worktreePath, ".github", "archon-setup.json"), "utf8"));
+  assert.deepEqual(manifest.selectedFeatures, []);
+  assert.equal(manifest.onboardingDispositions.items[0].choice, "declined");
+  assert.equal(result.audit.audit.onboardingCompletion.manifestStatus, "complete");
+  assert.deepEqual(result.audit.audit.onboardingCompletion.manifestMissingFeatures, []);
+});
+
 test("onboarding repair generates the baseline from the full decision selection", async () => {
   const repo = await fixtureRepo();
   const selectedFeatures = await loadProfileFeatures("agent-standard");
