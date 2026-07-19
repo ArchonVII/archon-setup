@@ -238,6 +238,11 @@ test("repair honors non-apply-central resolutions inside an applied feature (#36
   assert.equal(await readFile(join(result.worktreePath, "AGENTS.md"), "utf8"), localAgents);
   // defer on a missing item: the feature run writes it, the repair must not ship it.
   assert.equal(existsSync(join(result.worktreePath, "docs", "repo-update-log.md")), false);
+  assert.doesNotMatch(
+    await readFile(join(result.worktreePath, "docs", "INDEX.md"), "utf8"),
+    /repo-update-log\.md/,
+    "selection-aware seeds must not link a missing deferred path"
+  );
   // The repair commit carries apply-central items only — no decision-overridden paths.
   const committed = git(result.worktreePath, ["show", "--name-only", "--format=", "HEAD"])
     .split(/\r?\n/)
@@ -403,6 +408,8 @@ test("merged verification audits the fetched default branch rather than the sour
   });
 
   assert.equal(verified.status, "partial_onboarding");
+  assert.equal(verified.selectionValidation.ok, true);
+  assert.deepEqual(verified.selectionValidation.findings, []);
   assert.equal(verified.audit.onboardingCompletion.status, "incomplete");
   const record = await readRunRecord(recordPath);
   assert.deepEqual(record.entries.slice(-2).map((entry) => entry.state), ["merged", "verified_merged"]);
@@ -449,6 +456,7 @@ test("merged verification recognizes a squash merge of the repair PR (#367)", as
   });
 
   assert.equal(verified.status, "partial_onboarding");
+  assert.equal(verified.selectionValidation.ok, true);
   assert.equal(verified.audit.onboardingCompletion.status, "incomplete");
   assert.deepEqual(ghCalls, [["pr", "view", "456", "--repo", "ArchonVII/consumer-repo", "--json", "state,mergeCommit"]]);
   const record = await readRunRecord(recordPath);

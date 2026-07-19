@@ -4,7 +4,7 @@
 > **Owner:** ecosystem
 > **Scope:** onboarding
 > **Source of truth:** yes
-> **Last reviewed:** 2026-07-09
+> **Last reviewed:** 2026-07-18
 > **Supersedes:** none
 > **Superseded by:** none
 
@@ -40,6 +40,10 @@ and records success from a side branch.
    tool, inspect diffs, explain conflicts, and file follow-up issues. If the tool
    cannot perform a repeatable step, the agent records the tooling gap instead of
    hand-assembling a bespoke onboarding.
+8. **The selected contract must close over itself.** Every generated startup
+   requirement and every relative link in a selected repo-template Markdown
+   source must resolve to a path installed by the same resolved feature closure.
+   An internal dangling path is a blocking provider defect, not consumer drift.
 
 ## Fully Onboarded
 
@@ -49,7 +53,7 @@ All of these must be true before using "fully onboarded":
 | --- | --- |
 | Default branch | A fresh fetch shows `origin/<default>` contains the selected baseline files. |
 | Local lane | For existing-repo repair, the onboarding PR merged and the primary checkout can fast-forward to the merged commit without overwriting unrelated work. For direct fresh bootstrap, the initial onboarding commit is already on the default branch and the working tree is clean. |
-| Audit | The selected onboarding profile reports no missing baseline files and no unmanaged drift that the lane claimed to fix. |
+| Audit | The selected onboarding profile reports no missing baseline files, unmanaged drift that the lane claimed to fix, or selection-contract findings. |
 | Manifest | `.github/archon-setup.json` exists on the default branch and records the selected features, created/skipped files, source snapshot SHAs, remote actions, and post-check status. |
 | Workflows | Every required or documented workflow caller exists on the default branch. |
 | Required gate | Branch protection does not require `repo-required-gate / decision` unless the default branch has the caller and GitHub has seen the check run. |
@@ -68,6 +72,7 @@ These are deterministic and should be tool-owned:
 | Existing-repo audit | Report selected baseline items as present, missing, drifted, skipped, or blocked without writing. |
 | Basic completion verdict | `onboard --audit` must emit `audit.onboardingCompletion`; it is incomplete if required anchors, manifest provenance for the selected feature set, startup readiness, or any selected baseline item is missing or drifted. |
 | Feature closure | Expand selected features through the registry so the UI, CLI, audit, and apply paths use the same plan. |
+| Selection contract | Validate the generated startup floor and selected repo-template Markdown links against that resolved feature closure before apply and during audit. |
 | Baseline file writes | Render managed files and managed blocks from one source path, with no ad hoc agent copies. |
 | Manifest writes | Record source snapshots, selected features, created/skipped files, remote actions, and deferred post-checks. |
 | Disposable lane setup | Create an issue-backed branch and worktree from fresh `origin/<default>`. |
@@ -121,7 +126,8 @@ pass after the onboarding PR merges:
 gate in a detached worktree at fetched `origin/<default>` and emits
 `fully_onboarded`, `partial_onboarding`, or `blocked`. It also blocks a merged
 verification when branch protection requires the stable gate but its workflow
-caller is absent from that default-branch commit.
+caller is absent from that default-branch commit, or when the selected contract
+contains an internally dangling required path or relative Markdown link.
 
 ### P2: Harden `tighten-required-gate`
 

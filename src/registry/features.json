@@ -654,6 +654,7 @@
     "label": "Doc Health",
     "group": "agent-workflow",
     "default": false,
+    "requires": ["foundation.agents"],
     "creates": [
       "scripts/doc-health/lib.mjs",
       "scripts/doc-health/health.mjs",
@@ -673,6 +674,7 @@
     "label": "Template Library",
     "group": "agent-workflow",
     "default": false,
+    "requires": ["foundation.agents"],
     "creates": [
       "templates/README.md",
       "templates/MANIFEST.md",

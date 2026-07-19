@@ -11,6 +11,7 @@ import {
   loadSourceSnapshots,
 } from "../src/server/onboard/headlessOnboard.mjs";
 import { loadRegistry, buildPlan } from "../src/server/planner/buildPlan.mjs";
+import { attachSelectionValidation } from "../src/server/onboard/selectionValidation.mjs";
 
 // Baseline files the minimal local-default selection must produce.
 const MINIMAL_BASELINE_FILES = [
@@ -127,7 +128,7 @@ test("dry-run builds a plan via the shared planner and writes nothing", async ()
   // Single source of truth: the dry-run plan must equal a direct buildPlan call
   // with the same inputs the CLI assembles.
   const { features } = await loadRegistry();
-  const reference = await buildPlan({
+  const reference = await attachSelectionValidation(await buildPlan({
     selection: defaultLocalSelection(features),
     options: {},
     context: {
@@ -140,7 +141,7 @@ test("dry-run builds a plan via the shared planner and writes nothing", async ()
       originDetected: null,
       sourceSnapshots: await loadSourceSnapshots(),
     },
-  });
+  }));
   assert.deepEqual(result.plan, reference);
 
   // Nothing was written to disk.

@@ -184,6 +184,8 @@ test("onboard --audit is exposed by the CLI JSON contract", async () => {
 
   assert.equal(parsed.ok, true);
   assert.equal(parsed.mode, "audit");
+  assert.equal(parsed.selectionValidation.ok, true);
+  assert.deepEqual(parsed.selectionValidation.findings, []);
   assert.equal(byPath(parsed.audit, ".github/workflows/actionlint.yml").status, "present");
 });
 
@@ -365,6 +367,7 @@ test("human audit output prints the onboarding completion gate", async () => {
 
   assert.match(stdout, /Onboarding completion: incomplete/);
   assert.match(stdout, /missing required anchors: AGENTS\.md, \.github\/archon-setup\.json/);
+  assert.match(stdout, /Selection contract: valid/);
 });
 
 test("onboard --audit reports template library files as missing, present, or drifted", async () => {

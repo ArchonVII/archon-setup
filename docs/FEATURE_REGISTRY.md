@@ -60,7 +60,9 @@ the seed-only documentation floor, `.gitattributes`, and the initial git commit.
 
 `foundation.doc-system` is the floor exception to the usual opt-in doc tooling:
 it creates missing CANON/INDEX seeds but never overwrites their consumer-owned
-content; the managed doc-map and doc-system contract remain repairable snapshots.
+content. New seeds are rendered against the resolved selection, so provider-only
+navigation does not point at uninstalled or explicitly deferred capability paths;
+the managed doc-map and doc-system contract remain repairable snapshots.
 
 Features that add local hooks, changelog ceremony, PR templates, CODEOWNERS,
 Dependabot, GitHub labels, branch protection, runner-backed workflows, agent
@@ -90,6 +92,12 @@ the headless CLI) — the gate is in the UI.
 3. Register the task in `src/server/executor/executePlan.mjs`'s `TASKS` map.
 4. If it references a new workflow snapshot, run `npm run refresh-snapshots`.
 5. Add a golden-file test under `test/golden/`.
+
+For an install whose `source` is repo-template Markdown, every relative link in
+that source must target another path installed by the resolved feature closure.
+Required startup-baseline paths obey the same rule. Headless onboarding exposes
+the check as `selectionValidation` and treats its deterministic findings as
+blocking provider defects before apply and during audit.
 
 Optional foundation features may compose existing baseline tasks through
 `requires`. For example, `foundation.friction-ledger` owns only
