@@ -208,6 +208,12 @@ test("writeChangelog writes the release-class changelog baseline", async () => {
   assert.deepEqual(await task.verify(taskCtx), { ok: true });
   const changelog = await readFile(join(root, "CHANGELOG.md"), "utf8");
   assert.match(changelog, /Keep a Changelog/i);
+  const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+  assert.equal(pkg.scripts["docs:changelog"], "node scripts/docs/changelog.mjs");
+  assert.equal(await task.check(taskCtx), "already-done");
+  const before = await readFile(join(root, "package.json"), "utf8");
+  await task.apply(taskCtx);
+  assert.equal(await readFile(join(root, "package.json"), "utf8"), before);
 });
 
 test("writeCodeowners writes a known owner and records an intentional skip without one", async () => {

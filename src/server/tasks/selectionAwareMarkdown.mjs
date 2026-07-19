@@ -1,8 +1,98 @@
 import { posix } from "node:path";
 
+import { parseDocMap } from "../../snapshots/repo-template/scripts/docs/lib.mjs";
+
 const MARKDOWN_LINK = /(?<!!)\[[^\]]+\]\(([^)]+)\)/g;
 const EXTERNAL_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const SEED_PATHS = new Set(["docs/CANON.md", "docs/INDEX.md"]);
+
+function patternMatchesInstalledPath(pattern, installedPaths) {
+  const normalized = normalizeRepoPath(pattern);
+  if (!normalized.includes("*")) return installedPaths.has(normalized);
+  const expression = normalized
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+    .replaceAll("**", "\0")
+    .replaceAll("*", "[^/]*")
+    .replaceAll("\0", ".*");
+  const matcher = new RegExp(`^${expression}$`);
+  return [...installedPaths].some((path) => matcher.test(path));
+}
+
+function quoteYaml(value) {
+  if (Array.isArray(value)) return `[${value.map((item) => JSON.stringify(String(item))).join(", ")}]`;
+  return JSON.stringify(String(value));
+}
+
+function renderListSection(name, entries, keys) {
+  const lines = [`${name}:`];
+  for (const entry of entries) {
+    const presentKeys = keys.filter((key) => entry[key] !== undefined);
+    if (presentKeys.length === 0) continue;
+    lines.push(`  - ${presentKeys[0]}: ${quoteYaml(entry[presentKeys[0]])}`);
+    for (const key of presentKeys.slice(1)) lines.push(`    ${key}: ${quoteYaml(entry[key])}`);
+  }
+  return lines;
+}
+
+function serializeDocMap(docMap) {
+  const lines = [`version: ${docMap.version}`, ""];
+  lines.push(...renderListSection("generated", docMap.generated, ["path", "class", "generator", "block", "inputs"]), "");
+  lines.push(...renderListSection("checked", docMap.checked, ["path", "owns", "checks"]), "");
+  lines.push(...renderListSection("human", docMap.human, ["path", "heal_when"]), "");
+  lines.push("required:", "  base:");
+  for (const path of docMap.required.base) lines.push(`    - ${quoteYaml(path)}`);
+  lines.push("", "code_roots:");
+  for (const [root, owner] of Object.entries(docMap.code_roots)) lines.push(`  ${root}: ${quoteYaml(owner)}`);
+  return `${lines.join("\n")}\n`;
+}
+
+// The provider doc-map describes repo-template's complete surface. Consumers
+// receive only the entries their selected install closure can actually own.
+// Rendered outputs (currently docs/STATUS.md) are retained because they are
+// created on demand; committed/release outputs require a snapshot-managed
+// target so a generic README without the provider marker is never promised.
+export function renderSelectionAwareDocMap(
+  body,
+  installedPathValues,
+  managedSnapshotPathValues = installedPathValues,
+  additionalCodeRootValues = []
+) {
+  const installedPaths = new Set([...installedPathValues].map(normalizeRepoPath));
+  const managedSnapshotPaths = new Set([...managedSnapshotPathValues].map(normalizeRepoPath));
+  const source = parseDocMap(body);
+  const generated = source.generated.filter((entry) =>
+    entry.class === "rendered" || managedSnapshotPaths.has(normalizeRepoPath(entry.path))
+  );
+  const checked = source.checked.filter((entry) => patternMatchesInstalledPath(entry.path, installedPaths));
+  const checkedPaths = new Set(checked.map((entry) => normalizeRepoPath(entry.path)));
+  const human = source.human.filter((entry) => patternMatchesInstalledPath(entry.path, installedPaths));
+  const required = {
+    base: source.required.base.filter((path) => installedPaths.has(normalizeRepoPath(path))),
+  };
+  const codeRoots = Object.fromEntries(
+    Object.entries(source.code_roots).filter(([, owner]) =>
+      owner === "self" || owner === "unmapped_ok" || checkedPaths.has(normalizeRepoPath(owner))
+    )
+  );
+  const canon = checked.find((entry) => normalizeRepoPath(entry.path) === "docs/CANON.md");
+  if (canon) {
+    canon.owns = [...new Set(canon.owns || [])];
+    const additionalRoots = [...new Set(additionalCodeRootValues)]
+      .map(normalizeRepoPath)
+      .filter((root) => /^[A-Za-z0-9_-]+$/.test(root) && !root.includes("/"))
+      .sort();
+    for (const root of additionalRoots) {
+      if (Object.hasOwn(codeRoots, root)) continue;
+      codeRoots[root] = "docs/CANON.md";
+      canon.owns.push(`${root}/**`);
+    }
+  }
+  return serializeDocMap({ version: source.version, generated, checked, human, required, code_roots: codeRoots });
+}
+
+export function docMapGeneratorCommands(body) {
+  return [...new Set(parseDocMap(body).generated.map((entry) => entry.generator).filter(Boolean))].sort();
+}
 
 export function normalizeRepoPath(path) {
   return posix.normalize(path.replaceAll("\\", "/")).replace(/^\.\//, "");

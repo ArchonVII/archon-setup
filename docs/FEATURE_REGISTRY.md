@@ -38,9 +38,10 @@
 - `group` — references `groups.json[].id`.
 - `tasks` — list of task module IDs to run (in order).
 
-`docFloor: true` marks the single feature that installs the documentation floor
-declared by repo-template's `doc-map.required.base`. Its required `installs[]`
-entries feed the same selection-derived startup baseline as every other feature.
+`docFloor: true` marks the single feature that installs the executable
+documentation floor declared by repo-template's `doc-map.required.base`. Its
+required file installs and `npmScripts` package merge feed the same
+selection-derived startup baseline and audit plan as every other feature.
 
 ## Dependency types
 
@@ -56,17 +57,24 @@ entries feed the same selection-derived startup baseline as every other feature.
 Standard onboarding is intentionally minimal for solo-dev repos. `default: true`
 is reserved for local, low-ceremony files needed to create a usable repository:
 README, license, gitignore, agent pointers, neutral coordination docs,
-the seed-only documentation floor, `.gitattributes`, and the initial git commit.
+the zero-dependency documentation floor, `.gitattributes`, and the initial git
+commit.
 
 `foundation.doc-system` is the floor exception to the usual opt-in doc tooling:
-it creates missing CANON/INDEX seeds but never overwrites their consumer-owned
-content. New seeds are rendered against the resolved selection, so provider-only
-navigation does not point at uninstalled or explicitly deferred capability paths;
-the managed doc-map and doc-system contract remain repairable snapshots.
+it creates missing CANON/INDEX seeds without overwriting their consumer-owned
+content, installs the six `scripts/docs/*.mjs` generators, and merges
+`docs:render` and `docs:status` into `package.json`. The opt-in
+`foundation.changelog` capability owns both the `CHANGELOG.md` input and the
+`docs:changelog` package command. The doc map and new seeds are rendered against
+the resolved selection, so provider-only
+navigation and ownership do not point at uninstalled or explicitly deferred
+capability paths. Its `agent-workflow.doc-health` dependency supplies the
+report-only validation command that the doc-system contract invokes; the
+state-changing `agent-workflow.doc-sweep` capability remains opt-in.
 
 Features that add local hooks, changelog ceremony, PR templates, CODEOWNERS,
 Dependabot, GitHub labels, branch protection, runner-backed workflows, agent
-lifecycle scripts, doc-health/doc-sweep runners, or template libraries stay
+lifecycle scripts, doc-sweep runners, or template libraries stay
 `default: false` unless the user explicitly selects them.
 
 ## Staged (disabled) features

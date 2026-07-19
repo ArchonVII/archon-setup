@@ -21,7 +21,10 @@ test('foundation agents no longer installs the retired repo-update-log fragments
 
 test('foundation changelog is release-class and creates no fragment directory', async () => {
   const plan = await buildPlan({ selection: ['foundation.changelog'], context });
-  assert.deepEqual(plan.files.map((file) => file.path), ['CHANGELOG.md']);
+  const paths = plan.files.map((file) => file.path);
+  assert.ok(paths.includes('CHANGELOG.md'));
+  assert.ok(paths.includes('scripts/docs/changelog.mjs'));
+  assert.equal(paths.some((path) => path.startsWith('.changelog/unreleased/')), false);
 });
 
 test('the retired repo-update-log workflow feature remains a disabled no-op for old manifests', async () => {

@@ -120,7 +120,10 @@ test("tasks do not record existing files as created during apply", async () => {
     {
       name: "writeChangelog",
       task: writeChangelog,
-      files: ["CHANGELOG.md"],
+      files: ["CHANGELOG.md", "package.json"],
+      seedBodies: {
+        "package.json": '{"scripts":{"docs:changelog":"node scripts/docs/changelog.mjs"}}\n',
+      },
     },
     { name: "writeCodeowners", task: writeCodeowners, files: [".github/CODEOWNERS"] },
     { name: "writeDependabot", task: writeDependabot, files: [".github/dependabot.yml"] },
@@ -137,9 +140,9 @@ test("tasks do not record existing files as created during apply", async () => {
     },
   ];
 
-  for (const { name, task, files, taskOptions = {}, fetch = false } of cases) {
+  for (const { name, task, files, taskOptions = {}, seedBodies = {}, fetch = false } of cases) {
     const root = await tempRoot();
-    for (const file of files) await seed(root, file);
+    for (const file of files) await seed(root, file, seedBodies[file]);
     const taskCtx = ctx(root, { taskOptions });
     const run = () => task.apply(taskCtx);
 
@@ -169,10 +172,6 @@ test("tasks record only the files actually written during a mixed apply", async 
     {
       path: "docs/plans/README.md",
       source: "snapshot:repo-template/docs/plans/README.md",
-    },
-    {
-      path: "docs/agent-process/document-policy.md",
-      source: "snapshot:repo-template/docs/agent-process/document-policy.md",
     },
     {
       path: "docs/agent-process/message-protocol.md",

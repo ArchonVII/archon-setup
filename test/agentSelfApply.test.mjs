@@ -33,6 +33,22 @@ const BASELINE_FILES = [
   "scripts/doc-health/lib.mjs",
   "scripts/doc-health/health.mjs",
   "docs/agent-process/doc-health.md",
+  "docs/agent-process/doc-system.md",
+  "scripts/docs/lib.mjs",
+  "scripts/docs/index.mjs",
+  "scripts/docs/nav.mjs",
+  "scripts/docs/render.mjs",
+  "scripts/docs/status.mjs",
+  "scripts/docs/changelog.mjs",
+];
+
+// These files are generated from the provider snapshot for the target's
+// selected feature closure. They are intentionally not byte-equal to the raw
+// provider copies, which contain provider-only navigation and ownership.
+const SELECTION_AWARE_FILES = [
+  ".agent/doc-map.yml",
+  "docs/CANON.md",
+  "docs/INDEX.md",
 ];
 
 async function snapshotBody(rel) {
@@ -52,11 +68,21 @@ test("selfApply installs the full baseline into an empty target from the snapsho
   for (const rel of BASELINE_FILES) {
     assert.equal(await targetBody(root, rel), await snapshotBody(rel), `${rel} must match the snapshot`);
   }
+  for (const rel of SELECTION_AWARE_FILES) {
+    await access(join(root, rel));
+  }
+  const docMap = await readFile(join(root, ".agent", "doc-map.yml"), "utf8");
+  assert.match(docMap, /generator: "docs:changelog"/);
+  assert.match(docMap, /path: "docs\/agent-process\/doc-sweep\.md"/);
   const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
   assert.equal(pkg.scripts["agent:status"], "node scripts/agent/status.mjs");
   assert.equal(pkg.scripts["agent:pr-body"], "node scripts/agent/pr-body.mjs");
   assert.equal(pkg.scripts["close:scan:complete"], "node scripts/close/scan-complete.mjs");
   assert.equal(pkg.scripts["close:ci:guard"], "node scripts/close/ci-guard.mjs");
+  assert.equal(pkg.scripts["docs:render"], "node scripts/docs/render.mjs");
+  assert.equal(pkg.scripts["docs:status"], "node scripts/docs/status.mjs");
+  assert.equal(pkg.scripts["docs:changelog"], "node scripts/docs/changelog.mjs");
+  await access(join(root, "CHANGELOG.md"));
 });
 
 test("current root has every path declared by the startup baseline", async () => {
@@ -85,7 +111,7 @@ test("selfApply is idempotent: a second run reports already-done and changes no 
   await selfApply({ targetPath: root });
 
   const before = new Map();
-  for (const rel of [...BASELINE_FILES, "package.json"]) {
+  for (const rel of [...BASELINE_FILES, ...SELECTION_AWARE_FILES, "CHANGELOG.md", "package.json"]) {
     before.set(rel, await readFile(join(root, rel), "utf8"));
   }
 
@@ -93,7 +119,7 @@ test("selfApply is idempotent: a second run reports already-done and changes no 
 
   assert.deepEqual(report.map((r) => r.status), TASKS.map(() => "already-done"));
   assert.deepEqual(createdFiles, []);
-  for (const rel of [...BASELINE_FILES, "package.json"]) {
+  for (const rel of [...BASELINE_FILES, ...SELECTION_AWARE_FILES, "CHANGELOG.md", "package.json"]) {
     assert.equal(await readFile(join(root, rel), "utf8"), before.get(rel), `${rel} must be byte-identical`);
   }
 });
@@ -107,14 +133,16 @@ test("selfApply repairs drifted root copies back to the snapshot (post-refresh u
   const drifted = [
     ".agent/startup-baseline.json",
     ".github/workflows/anomaly-triage.yml",
-    "docs/agent-process/document-policy.md",
+    "docs/agent-process/message-protocol.md",
     "scripts/agent/lib.mjs",
-    "scripts/doc-sweep/sweep.mjs",
     "scripts/doc-health/health.mjs",
+    "scripts/docs/render.mjs",
+    "scripts/doc-sweep/sweep.mjs",
   ];
   for (const rel of drifted) {
     await writeFile(join(root, rel), "stale root copy\n", "utf8");
   }
+  await writeFile(join(root, "package.json"), '{"scripts":{"docs:changelog":"stale"}}\n', "utf8");
 
   const { report } = await selfApply({ targetPath: root });
 
@@ -122,6 +150,9 @@ test("selfApply repairs drifted root copies back to the snapshot (post-refresh u
   for (const rel of drifted) {
     assert.equal(await targetBody(root, rel), await snapshotBody(rel), `${rel} must be repaired from the snapshot`);
   }
+  const repairedPackage = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+  assert.equal(repairedPackage.scripts["docs:render"], "node scripts/docs/render.mjs");
+  assert.equal(repairedPackage.scripts["docs:changelog"], "node scripts/docs/changelog.mjs");
 });
 
 test("checkOnly reports drift without writing anything", async () => {
@@ -133,9 +164,12 @@ test("checkOnly reports drift without writing anything", async () => {
 
   const byTask = Object.fromEntries(report.map((r) => [r.task, r.status]));
   assert.equal(byTask["agent-lifecycle"], "needs-apply");
+  assert.equal(byTask["doc-health"], "already-done");
+  assert.equal(byTask["doc-system"], "already-done");
+  assert.equal(byTask["doc-changelog"], "already-done");
   assert.equal(byTask["doc-sweep"], "already-done");
   assert.equal(byTask["root-support-docs"], "already-done");
-  assert.equal(byTask["doc-health"], "already-done");
+  assert.equal(byTask["anomaly-triage-workflow"], "already-done");
   assert.equal(byTask["startup-baseline"], "already-done");
   assert.deepEqual(createdFiles, []);
   assert.equal(await readFile(join(root, "scripts/agent/lib.mjs"), "utf8"), "stale root copy\n");
