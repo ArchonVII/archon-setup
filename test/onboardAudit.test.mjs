@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -304,6 +304,11 @@ test("startup readiness rejects missing selected package scripts even when agent
   assert.equal(result.audit.startupReadiness.status, "incomplete");
   assert.ok(result.audit.startupReadiness.stale.includes("package.json"));
   assert.ok(!result.audit.startupReadiness.present.includes("package.json"));
+
+  await rm(packagePath);
+  const missingFileResult = await runOnboard({ targetPath: root, features, audit: true });
+  assert.ok(missingFileResult.audit.startupReadiness.missing.includes("package.json"));
+  assert.ok(!missingFileResult.audit.startupReadiness.stale.includes("package.json"));
 });
 
 test("onboard --audit refuses completion when a selected baseline item is missing", async () => {
