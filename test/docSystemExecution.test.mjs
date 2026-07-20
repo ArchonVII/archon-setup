@@ -36,9 +36,11 @@ async function withGitIdentity(fn) {
 async function onboardConsumer(features, name) {
   const root = await mkdtemp(join(tmpdir(), "archon-doc-system-execution-"));
   const originalFetch = globalThis.fetch;
+  const originalGitignoreBody = process.env.ARCHON_GITIGNORE_BODY_JSON;
   globalThis.fetch = async (input) => {
     throw new Error(`unexpected network request in documentation execution test: ${input}`);
   };
+  process.env.ARCHON_GITIGNORE_BODY_JSON = JSON.stringify({ Node: "node_modules/\n" });
   let result;
   try {
     result = await withGitIdentity(() => runOnboard({
@@ -49,6 +51,8 @@ async function onboardConsumer(features, name) {
     }));
   } finally {
     globalThis.fetch = originalFetch;
+    if (originalGitignoreBody === undefined) delete process.env.ARCHON_GITIGNORE_BODY_JSON;
+    else process.env.ARCHON_GITIGNORE_BODY_JSON = originalGitignoreBody;
   }
   assert.equal(result.ok, true, JSON.stringify(result.blockingWarnings || []));
   return root;
