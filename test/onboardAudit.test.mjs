@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -279,6 +279,38 @@ test("onboard --audit reports doc-system package scripts as decisionable entries
   assert.ok(result.audit.startupReadiness.stale.includes("package.json"));
 });
 
+test("startup readiness rejects missing selected package scripts even when agent scripts remain", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  await writeFile(join(root, ".gitignore"), "node_modules/\n", "utf8");
+  const features = ["foundation.doc-system", "agent-lifecycle.baseline"];
+  await runOnboard({ targetPath: root, features });
+
+  const packagePath = join(root, "package.json");
+  const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
+  delete packageJson.scripts["docs:render"];
+  await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+
+  for (const [name, command] of Object.entries(AGENT_SCRIPTS)) {
+    assert.equal(packageJson.scripts[name], command, `precondition: ${name} remains installed`);
+  }
+
+  const result = await runOnboard({ targetPath: root, features, audit: true });
+  const docSystemPackage = result.audit.items.find((item) =>
+    item.feature === "foundation.doc-system" && item.path === "package.json"
+  );
+
+  assert.equal(docSystemPackage?.status, "missing");
+  assert.equal(result.audit.startupReadiness.status, "incomplete");
+  assert.ok(result.audit.startupReadiness.stale.includes("package.json"));
+  assert.ok(!result.audit.startupReadiness.present.includes("package.json"));
+
+  await rm(packagePath);
+  const missingFileResult = await runOnboard({ targetPath: root, features, audit: true });
+  assert.ok(missingFileResult.audit.startupReadiness.missing.includes("package.json"));
+  assert.ok(!missingFileResult.audit.startupReadiness.stale.includes("package.json"));
+});
+
 test("onboard --audit refuses completion when a selected baseline item is missing", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
@@ -501,7 +533,13 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await writeFile(join(root, ".agent", "check-map.yml"), await loadCheckMapBody(), "utf8");
   await copySnapshot(root, ".agent/coordination/README.md");
   await copySnapshot(root, ".github/PULL_REQUEST_TEMPLATE.md");
-  await writeFile(join(root, "package.json"), JSON.stringify({ name: "demo", scripts: { ...AGENT_SCRIPTS } }, null, 2) + "\n");
+  const snapshotPackage = JSON.parse(
+    await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "package.json"), "utf8")
+  );
+  await writeFile(
+    join(root, "package.json"),
+    JSON.stringify({ name: "demo", scripts: snapshotPackage.scripts }, null, 2) + "\n"
+  );
 
   for (const relativePath of [
     ".github/workflows/anomaly-triage.yml",

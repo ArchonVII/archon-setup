@@ -195,6 +195,8 @@ test("writeGitattributes writes the repo-template attributes file", async () => 
   await task.apply(taskCtx);
   assert.deepEqual(await task.verify(taskCtx), { ok: true });
   const body = await readFile(join(root, ".gitattributes"), "utf8");
+  assert.match(body, /^\* text=auto eol=lf/m);
+  assert.match(body, /^\*\.ps1 text eol=crlf/m);
   assert.match(body, /\*\.sh\s+text eol=lf/);
   assert.match(body, /\.githooks\/\*\s+text eol=lf/);
 });

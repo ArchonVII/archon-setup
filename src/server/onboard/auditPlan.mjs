@@ -681,6 +681,9 @@ async function startupReadiness(plan, items, baseline) {
 async function startupRequiredPathStatus(root, relativePath, item, baseline, selectedFeatureIds) {
   if (item?.disposition?.choice === "keep-local" && item.disposition.state === "accepted") return "present";
   if (item?.status === "present") return "present";
+  if (relativePath === "package.json" && item?.status === "missing") {
+    return (await pathExists(root, relativePath)) ? "stale" : "missing";
+  }
   if (relativePath === "package.json" && item?.status === "drifted") return "stale";
   if (!(await pathExists(root, relativePath))) return "missing";
 

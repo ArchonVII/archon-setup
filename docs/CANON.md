@@ -2,7 +2,7 @@
 summary: Ground truth for Archon Setup's integrator role, provider boundaries, generated-repo contract, and current repair state.
 status: CANON
 confidence: VERIFIED
-updated: 2026-07-19
+updated: 2026-07-20
 relates:
   - "[[INDEX]]"
 depends-on: []
@@ -25,14 +25,19 @@ it does not replace those providers as the source of their content.
 ## Current state vs. intended — `CURRENT`
 
 - The repo-template snapshot is pinned at
-  `318fb1c6612a1bc89c33e1f0661d31e4c6eef74f`; the github-workflows and
+  `efeba25a0fcd27a4f365d3768bc5d4750d21cdd4`; the github-workflows and
   org-default pins remain `f34893a3b67e5c17e59ca1413e92077833fdc571` and
   `fe48c2f5f9582e8344dbbc5c1ae7730268491daf`.
 - The documentation floor is execution-closed: selection validation, audit,
   repair, package-script ownership, generated-consumer execution, and root
   self-apply describe the same installed runtime.
-- Agent lifecycle onboarding includes verified explicit `--carry` inputs and
-  installs the supported `npm run pr:contract -- --body-file <path>` wrapper.
+- Agent lifecycle onboarding includes verified explicit `--carry` inputs,
+  including deletion-only changes and fail-closed cross-boundary rename
+  handling, and installs the supported
+  `npm run pr:contract -- --body-file <path>` wrapper.
+- Generated repositories receive a deterministic LF text policy with explicit
+  CRLF exceptions for Windows-native command files. Existing repo-specific
+  `.gitattributes` files remain decisionable rather than being overwritten.
 - Charter line budgets are advisory maintenance signals. Missing runtime,
   invalid ownership, stale generated blocks, and other doc-map contract failures
   remain blocking.

@@ -1,6 +1,6 @@
 # Current Work - ArchonVII Agent OS
 
-Updated: 2026-07-01 — **Live arc: ecosystem friction arc** (new section below; owner-approved this session). Landed since the 2026-06-26 map: onboarding-baseline arc **COMPLETE** (#284 merged, civ-sim onboarded via [civ-sim#73](https://github.com/ArchonVII/civ-sim/pull/73), lifeloot onboarded); **onboarding-hardening arc [#307](https://github.com/ArchonVII/archon-setup/issues/307) Phases A/B/C/E landed 2026-06-30** (PRs [#308](https://github.com/ArchonVII/archon-setup/pull/308)–[#312](https://github.com/ArchonVII/archon-setup/pull/312) + snapshot re-vendor [#316](https://github.com/ArchonVII/archon-setup/pull/316); repo-template [#133](https://github.com/ArchonVII/repo-template/pull/133)–[#137](https://github.com/ArchonVII/repo-template/pull/137); delivered issues closed with evidence 2026-07-01). **Stage 1 friction-telemetry window CLOSED ~2026-06-29 — the Stages 2-4 go/no-go decision is now due.** Open PRs across all four OS repos: **0** (verified 2026-07-01).
+Updated: 2026-07-20 — **Active bounded stability repair:** repo-template PRs [#203](https://github.com/ArchonVII/repo-template/pull/203) and [#205](https://github.com/ArchonVII/repo-template/pull/205) are merged; Archon Setup issue [#389](https://github.com/ArchonVII/archon-setup/issues/389) / draft PR [#390](https://github.com/ArchonVII/archon-setup/pull/390) repairs the delayed #386 findings and refreshes that combined provider baseline. Next is the existing Hudson Bend repair PR #383; its issue-370 feature lane stays paused. repo-template PR #207 and broader review-gate policy remain explicitly outside this chain. The older roadmap below remains the source for unrelated parked work.
 
 Update rule: update this file in the same PR whenever a lane merges, a lane issue is filed, or a decision gate changes. Keep it as the single current-work map; detailed history belongs in the linked issue, PR, roadmap, or `docs/ecosystem-status.md`.
 
@@ -106,7 +106,7 @@ Owner-approved plan (session 2026-07-01): kill the CI-budget fan-out, the brittl
 
 ## Open PRs (OS layer)
 
-**None.** 0 open PRs across archon-setup / repo-template / github-workflows / .github (verified 2026-07-01). The 2026-06-21 triage-fix dispatch fully landed (#273/#276/#274 merged; gw#68/#80 dependabot bumps merged 2026-06-27; gw#86 draft closed unmerged — its topic remains open as [github-workflows#85](https://github.com/ArchonVII/github-workflows/issues/85)); [#267](https://github.com/ArchonVII/archon-setup/pull/267) owner LICENSE patch merged 2026-06-27.
+Verified 2026-07-20: archon-setup has [#390](https://github.com/ArchonVII/archon-setup/pull/390) (this repair, draft) and Dependabot [#357](https://github.com/ArchonVII/archon-setup/pull/357); repo-template has [#207](https://github.com/ArchonVII/repo-template/pull/207), [#187](https://github.com/ArchonVII/repo-template/pull/187), [#167](https://github.com/ArchonVII/repo-template/pull/167), [#166](https://github.com/ArchonVII/repo-template/pull/166), and [#164](https://github.com/ArchonVII/repo-template/pull/164); github-workflows has [#115](https://github.com/ArchonVII/github-workflows/pull/115) and [#113](https://github.com/ArchonVII/github-workflows/pull/113); `.github` has none. Only #390 belongs to the active stability-repair chain.
 
 ## Hygiene / debt
 

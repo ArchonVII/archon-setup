@@ -81,6 +81,27 @@ test("startup baseline requires every direct start-task dependency", async () =>
   assert.ok(baseline.required.includes("scripts/agent/pr-body.mjs"));
 });
 
+test("refreshed provider carry and line-ending suites execute inside the snapshot", () => {
+  const result = spawnSync(
+    process.execPath,
+    [
+      "--test",
+      "test/agent/carry.test.mjs",
+      "test/agent/lib.test.mjs",
+      "test/agent/start-task.test.mjs",
+      "test/gitattributes-eol.test.mjs",
+    ],
+    {
+      cwd: SNAP,
+      encoding: "utf8",
+      timeout: 60_000,
+      windowsHide: true,
+    }
+  );
+
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+});
+
 test("primaryRootFromCommonDir strips the .git suffix for forward- and backslash paths", () => {
   assert.equal(primaryRootFromCommonDir("C:/GitHub/repo/.git"), "C:/GitHub/repo");
   assert.equal(primaryRootFromCommonDir("C:\\GitHub\\repo\\.git"), "C:\\GitHub\\repo");
