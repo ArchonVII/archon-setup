@@ -279,6 +279,33 @@ test("onboard --audit reports doc-system package scripts as decisionable entries
   assert.ok(result.audit.startupReadiness.stale.includes("package.json"));
 });
 
+test("startup readiness rejects missing selected package scripts even when agent scripts remain", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  await writeFile(join(root, ".gitignore"), "node_modules/\n", "utf8");
+  const features = ["foundation.doc-system", "agent-lifecycle.baseline"];
+  await runOnboard({ targetPath: root, features });
+
+  const packagePath = join(root, "package.json");
+  const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
+  delete packageJson.scripts["docs:render"];
+  await writeFile(packagePath, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+
+  for (const [name, command] of Object.entries(AGENT_SCRIPTS)) {
+    assert.equal(packageJson.scripts[name], command, `precondition: ${name} remains installed`);
+  }
+
+  const result = await runOnboard({ targetPath: root, features, audit: true });
+  const docSystemPackage = result.audit.items.find((item) =>
+    item.feature === "foundation.doc-system" && item.path === "package.json"
+  );
+
+  assert.equal(docSystemPackage?.status, "missing");
+  assert.equal(result.audit.startupReadiness.status, "incomplete");
+  assert.ok(result.audit.startupReadiness.stale.includes("package.json"));
+  assert.ok(!result.audit.startupReadiness.present.includes("package.json"));
+});
+
 test("onboard --audit refuses completion when a selected baseline item is missing", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);

@@ -35,12 +35,21 @@ async function withGitIdentity(fn) {
 
 async function onboardConsumer(features, name) {
   const root = await mkdtemp(join(tmpdir(), "archon-doc-system-execution-"));
-  const result = await withGitIdentity(() => runOnboard({
-    targetPath: root,
-    features: [...features, "foundation.git-init"],
-    owner: "ArchonVII",
-    repo: name,
-  }));
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    throw new Error(`unexpected network request in documentation execution test: ${input}`);
+  };
+  let result;
+  try {
+    result = await withGitIdentity(() => runOnboard({
+      targetPath: root,
+      features: [...features, "foundation.git-init"],
+      owner: "ArchonVII",
+      repo: name,
+    }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
   assert.equal(result.ok, true, JSON.stringify(result.blockingWarnings || []));
   return root;
 }
