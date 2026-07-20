@@ -112,6 +112,18 @@ Owned by [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md) (active lanes + decision ga
 
 ## Recently completed
 
+- **2026-07-20** — Follow-up provider fixes landed in repo-template
+  [#203](https://github.com/ArchonVII/repo-template/pull/203) (deletion-only
+  carry and cross-boundary rename safety) and
+  [#205](https://github.com/ArchonVII/repo-template/pull/205) (deterministic
+  cross-platform line endings). Archon Setup issue
+  [#389](https://github.com/ArchonVII/archon-setup/issues/389) / draft PR
+  [#390](https://github.com/ArchonVII/archon-setup/pull/390) repairs the two
+  delayed #386 review findings and refreshes the repo-template snapshot once to
+  exact merge SHA `efeba25a0fcd27a4f365d3768bc5d4750d21cdd4`. The next authorized
+  consumer is the existing Hudson Bend repair PR #383; the paused #370 feature
+  lane remains untouched.
+
 - **2026-07-19** — The repo-template provider chain landed verified explicit
   task-input carry ([#193](https://github.com/ArchonVII/repo-template/pull/193)),
   advisory rather than hard-blocking charter budgets
