@@ -632,7 +632,13 @@ async function startupReadiness(plan, items, baseline) {
   const legacyDetected = [];
 
   for (const path of required) {
-    const status = await startupRequiredPathStatus(plan.context.targetPath, path, byPath.get(path), baseline);
+    const status = await startupRequiredPathStatus(
+      plan.context.targetPath,
+      path,
+      byPath.get(path),
+      baseline,
+      baselineFeatureIds
+    );
     if (status === "present") present.push(path);
     else if (status === "stale") stale.push(path);
     else missing.push(path);
@@ -672,7 +678,7 @@ async function startupReadiness(plan, items, baseline) {
   };
 }
 
-async function startupRequiredPathStatus(root, relativePath, item, baseline) {
+async function startupRequiredPathStatus(root, relativePath, item, baseline, selectedFeatureIds) {
   if (item?.disposition?.choice === "keep-local" && item.disposition.state === "accepted") return "present";
   if (item?.status === "present") return "present";
   if (relativePath === "package.json" && item?.status === "drifted") return "stale";
@@ -683,7 +689,8 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
       // #306: AGENTS.md is only current when BOTH the start map and the managed
       // delivery-workflow contract are present and in sync. A missing
       // delivery-workflow block (the lifeloot gap) reports AGENTS.md as stale.
-      return (await agentsHasCurrentStartMap(root)) && (await agentsHasCurrentDeliveryWorkflow(root))
+      return (await agentsHasCurrentStartMap(root, selectedFeatureIds)) &&
+        (await agentsHasCurrentDeliveryWorkflow(root, selectedFeatureIds))
         ? "present"
         : "stale";
     case ".agent/startup-baseline.json":
@@ -715,9 +722,11 @@ async function startupRequiredPathStatus(root, relativePath, item, baseline) {
   }
 }
 
-async function agentsHasCurrentStartMap(root) {
+async function agentsHasCurrentStartMap(root, selectedFeatureIds) {
   const body = normalizeSnapshotText(await readFile(safeJoin(root, "AGENTS.md"), "utf8"));
-  const expected = extractManagedAgentStartMap(await repoTemplateBody("AGENTS.md"));
+  const expected = extractManagedAgentStartMap(
+    renderAgentsBody(await repoTemplateBody("AGENTS.md"), { selectedFeatureIds })
+  );
   return body.includes(expected) || hasCurrentManagedBlock(body, "agents-start-map", expected);
 }
 
@@ -730,9 +739,11 @@ function extractManagedAgentStartMap(body) {
 // #306: mirror agentsHasCurrentStartMap for the managed delivery-workflow block.
 // The expected body is rendered the same way the emitter renders it, so the
 // audit and onboarding never disagree on what "current" means.
-async function agentsHasCurrentDeliveryWorkflow(root) {
+async function agentsHasCurrentDeliveryWorkflow(root, selectedFeatureIds) {
   const body = normalizeSnapshotText(await readFile(safeJoin(root, "AGENTS.md"), "utf8"));
-  const expected = extractDeliveryWorkflowBody(renderAgentsBody(await repoTemplateBody("AGENTS.md")));
+  const expected = extractDeliveryWorkflowBody(
+    renderAgentsBody(await repoTemplateBody("AGENTS.md"), { selectedFeatureIds })
+  );
   return hasCurrentManagedBlock(body, DELIVERY_WORKFLOW_BLOCK_ID, expected);
 }
 

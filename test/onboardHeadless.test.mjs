@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, access } from "node:fs/promises";
+import { mkdtemp, readFile, access, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -264,6 +264,20 @@ test("a default onboard reports docs-min startup readiness complete", async () =
   // floor. The doc-system's own runner is part of the docs-min execution closure.
   assert.ok(!auditResult.audit.startupReadiness.present.includes("docs/repo-update-log.md"));
   assert.ok(auditResult.audit.startupReadiness.present.includes("scripts/doc-health/health.mjs"));
+
+  const agentsPath = join(root, "AGENTS.md");
+  const agentsBody = await readFile(agentsPath, "utf8");
+  await writeFile(
+    agentsPath,
+    `${agentsBody.trimEnd()}\n\n## Repository-specific guidance\n\nKeep this local section.\n`,
+    "utf8"
+  );
+
+  const customizedAudit = await withFetchStub(() => runOnboard({ targetPath: root, audit: true }));
+  assert.equal(customizedAudit.audit.items.find((item) => item.path === "AGENTS.md")?.status, "drifted");
+  assert.equal(customizedAudit.audit.startupReadiness.status, "complete");
+  assert.ok(customizedAudit.audit.startupReadiness.present.includes("AGENTS.md"));
+  assert.ok(!customizedAudit.audit.startupReadiness.stale.includes("AGENTS.md"));
 });
 
 test("unknown feature ids are rejected before any write", async () => {

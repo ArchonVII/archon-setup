@@ -29,6 +29,14 @@ async function deliveryWorkflowBlock() {
   return formatManagedBlock("delivery-workflow", extractDeliveryWorkflowBody(renderAgentsBody(snapshot)));
 }
 
+async function managedStartMap(selectedFeatureIds) {
+  const snapshot = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
+  const rendered = renderAgentsBody(snapshot, { selectedFeatureIds });
+  const match = rendered.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/);
+  assert.ok(match, "rendered AGENTS.md must contain the managed Agent Start Map");
+  return match[0];
+}
+
 const execFileP = promisify(execFile);
 const REPO_ROOT = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
 
@@ -38,6 +46,8 @@ const REPO_ROOT = dirname(fileURLToPath(new URL("../package.json", import.meta.u
 // selection (not the snapshot), matching what onboarding actually writes.
 const { features: REGISTRY_FEATURES } = await loadRegistry();
 const AGENT_STANDARD = await loadProfileFeatures("agent-standard");
+const FOUNDATION_AGENTS = resolveSelection(REGISTRY_FEATURES, ["foundation.agents"])
+  .map((feature) => feature.id);
 
 // The three closeout scripts from Lane C2 plus the provider's new carry helper
 // are required runtime dependencies. Seed all four alongside the historical
@@ -437,8 +447,7 @@ test("onboard --audit reports custom-profile startup readiness in JSON", async (
 test("startup readiness accepts repo-specific AGENTS when the managed start map is current", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
-  const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
-  const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
+  const startMap = await managedStartMap(AGENT_STANDARD);
   const plansReadme = await readFile(
     join(REPO_ROOT, "src", "snapshots", "repo-template", "docs", "plans", "README.md"),
     "utf8"
@@ -520,8 +529,7 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
 test("onboard --audit flags a missing managed delivery-workflow block on an existing repo", async () => {
   const root = await tempRoot();
   await seedGitRepo(root);
-  const snapshotAgents = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
-  const startMap = snapshotAgents.match(/<!-- BEGIN MANAGED AGENT START MAP -->[\s\S]*?<!-- END MANAGED AGENT START MAP -->/)[0];
+  const startMap = await managedStartMap(FOUNDATION_AGENTS);
   const startMapBlock = `<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->`;
 
   async function auditStartup() {
