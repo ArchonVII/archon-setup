@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -170,6 +170,68 @@ test("onboarding repair generates the baseline from the full decision selection"
   const manifest = JSON.parse(await readFile(join(result.worktreePath, ".github", "archon-setup.json"), "utf8"));
   assert.deepEqual(manifest.selectedFeatures, intake.selectedFeatures);
   assert.equal(manifest.profile, "agent-standard");
+});
+
+test("repair with keep-local audits generated AGENTS blocks by its custom selection", async () => {
+  const repo = await fixtureRepo();
+  git(repo.targetPath, ["config", "core.autocrlf", "false"]);
+  const localUpdateLog = "# Repository Update Log\n\nRepo-owned history that must remain local.\n";
+  await mkdir(join(repo.targetPath, "docs"), { recursive: true });
+  await writeFile(join(repo.targetPath, "docs", "repo-update-log.md"), localUpdateLog, "utf8");
+  git(repo.targetPath, ["add", "docs/repo-update-log.md"]);
+  git(repo.targetPath, ["commit", "-m", "docs: seed local update history"]);
+  git(repo.targetPath, ["push", "origin", "main"]);
+
+  const doc = await buildOnboardingDecision({
+    targetPath: repo.targetPath,
+    features: ["foundation.agents"],
+    runId: "repair-run-custom-keep-local",
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+  });
+  const updateLogItem = doc.items.find((item) => item.path === "docs/repo-update-log.md");
+  assert.equal(updateLogItem?.status, "drifted");
+  const decision = {
+    ...doc,
+    items: doc.items.map((item) => ({
+      ...item,
+      resolution: {
+        choice: item.status === "missing" ? "apply-central" : "keep-local",
+        decidedBy: "owner",
+        decidedAt: "2026-07-10T00:00:00.000Z",
+        review: null,
+      },
+    })),
+  };
+  const intake = await intakeOnboardingDecision({ input: decision, targetPath: repo.targetPath });
+  assert.equal(intake.ok, true, JSON.stringify(intake.errors || intake, null, 2));
+
+  const result = await runOnboardingRepair({
+    intake,
+    targetPath: repo.targetPath,
+    sourceIssueNumber: 384,
+    recordPath: join(repo.root, "repair-custom-keep-local.jsonl"),
+    workRoot: join(repo.root, "worktrees"),
+    owner: "ArchonVII",
+    repo: "consumer-repo",
+    runGh: async () => ({ code: 0, stdout: "https://github.com/ArchonVII/consumer-repo/pull/456\n", stderr: "" }),
+  });
+
+  const repairedAgents = await readFile(join(result.worktreePath, "AGENTS.md"), "utf8");
+  assert.match(repairedAgents, /BEGIN MANAGED AGENT START MAP/);
+  assert.doesNotMatch(repairedAgents, /- Check map:/);
+  assert.doesNotMatch(repairedAgents, /- Feature-gated bullets:/);
+  assert.equal(result.audit.audit.startupReadiness.profile, "custom");
+  assert.equal(
+    result.audit.audit.items.find((item) => item.path === "AGENTS.md")?.status,
+    "present"
+  );
+  assert.ok(result.audit.audit.startupReadiness.present.includes("AGENTS.md"));
+  assert.ok(!result.audit.audit.startupReadiness.stale.includes("AGENTS.md"));
+  assert.equal(
+    result.audit.audit.items.find((item) => item.path === "docs/repo-update-log.md")?.disposition?.state,
+    "accepted"
+  );
 });
 
 test("repair honors non-apply-central resolutions inside an applied feature (#362)", async () => {

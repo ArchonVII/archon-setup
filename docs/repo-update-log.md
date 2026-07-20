@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-07-20 - Selection-aware Agent Start Map audit
+
+- **Issue/PR:** #384 / pending
+- **Branch:** agent/codex/384-task-make-startup-map-audit-selection
+- **Changed paths:** `src/server/onboard/auditPlan.mjs`, `test/onboardAudit.test.mjs`, `test/onboardHeadless.test.mjs`, `.changelog/unreleased/384-startup-map-audit-selection.md`, `docs/repo-update-log.md`
+- **What changed:** Startup readiness now renders the expected managed Agent Start Map with the resolved baseline feature IDs, matching the onboarding writer for customized consumer `AGENTS.md` files.
+- **Verification:** `npm test` passed (768 tests: 766 passed, 2 skipped), including repair-split baseline-selection and custom-selection repair-with-keep-local regressions; `npm run snapshots:verify`, `npm run agent:self-apply -- --check`, and `npm run docs:render -- --check` passed; `node scripts/doc-health/health.mjs --repo . --json` reported 0 blocking findings and 8 advisory warnings.
+- **Propagation:** pending Hudson Bend repair PR #383 after the final Archon Setup baseline refresh.
+
 ## 2026-07-15 - Capability-bound distribution catalog
 
 - **Issue/PR:** #354 / #359
