@@ -24,9 +24,12 @@ import {
 
 // #306: the managed delivery-workflow block as onboarding renders it, used to
 // seed a "current" AGENTS.md in audit tests without hardcoding the contract.
-async function deliveryWorkflowBlock() {
+async function deliveryWorkflowBlock(selectedFeatureIds) {
   const snapshot = await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "AGENTS.md"), "utf8");
-  return formatManagedBlock("delivery-workflow", extractDeliveryWorkflowBody(renderAgentsBody(snapshot)));
+  return formatManagedBlock(
+    "delivery-workflow",
+    extractDeliveryWorkflowBody(renderAgentsBody(snapshot, { selectedFeatureIds }))
+  );
 }
 
 async function managedStartMap(selectedFeatureIds) {
@@ -442,6 +445,30 @@ test("onboard --audit reports custom-profile startup readiness in JSON", async (
   assert.ok(parsed.audit.startupReadiness.stale.includes("AGENTS.md"));
   assert.ok(parsed.audit.startupReadiness.legacyDetected.includes("docs/superpowers/plans/"));
   assert.match(parsed.audit.startupReadiness.repairCommand, /onboard\.mjs .* --dry-run/);
+});
+
+test("repair-split audit renders AGENTS from the full baseline selection", async () => {
+  const root = await tempRoot();
+  await seedGitRepo(root);
+  const startMap = await managedStartMap(AGENT_STANDARD);
+  assert.match(startMap, /- Check map:/, "the agent-standard baseline must exercise a gated Start Map bullet");
+
+  await writeFile(
+    join(root, "AGENTS.md"),
+    `# Local agent guide\n\n<!-- BEGIN ARCHONVII MANAGED BLOCK: agents-start-map -->\n${startMap}\n<!-- END ARCHONVII MANAGED BLOCK: agents-start-map -->\n\n## Local workflow\n\nKeep repo-specific rules.\n\n${await deliveryWorkflowBlock(AGENT_STANDARD)}\n`,
+    "utf8"
+  );
+
+  const result = await runOnboard({
+    targetPath: root,
+    features: ["foundation.agents"],
+    baselineFeatures: AGENT_STANDARD,
+    audit: true,
+  });
+
+  assert.equal(byPath(result.audit, "AGENTS.md").status, "drifted");
+  assert.ok(result.audit.startupReadiness.present.includes("AGENTS.md"));
+  assert.ok(!result.audit.startupReadiness.stale.includes("AGENTS.md"));
 });
 
 test("startup readiness accepts repo-specific AGENTS when the managed start map is current", async () => {
