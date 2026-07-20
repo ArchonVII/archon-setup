@@ -528,7 +528,13 @@ test("startup readiness accepts repo-specific AGENTS when the managed start map 
   await writeFile(join(root, ".agent", "check-map.yml"), await loadCheckMapBody(), "utf8");
   await copySnapshot(root, ".agent/coordination/README.md");
   await copySnapshot(root, ".github/PULL_REQUEST_TEMPLATE.md");
-  await writeFile(join(root, "package.json"), JSON.stringify({ name: "demo", scripts: { ...AGENT_SCRIPTS } }, null, 2) + "\n");
+  const snapshotPackage = JSON.parse(
+    await readFile(join(REPO_ROOT, "src", "snapshots", "repo-template", "package.json"), "utf8")
+  );
+  await writeFile(
+    join(root, "package.json"),
+    JSON.stringify({ name: "demo", scripts: snapshotPackage.scripts }, null, 2) + "\n"
+  );
 
   for (const relativePath of [
     ".github/workflows/anomaly-triage.yml",
