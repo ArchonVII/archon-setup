@@ -2,7 +2,7 @@
 summary: Ground truth for Archon Setup's integrator role, provider boundaries, generated-repo contract, and current repair state.
 status: CANON
 confidence: VERIFIED
-updated: 2026-07-20
+updated: 2026-07-21
 relates:
   - "[[INDEX]]"
 depends-on: []
@@ -25,7 +25,7 @@ it does not replace those providers as the source of their content.
 ## Current state vs. intended — `CURRENT`
 
 - The repo-template snapshot is pinned at
-  `e413928c0d029b8d6f0d718b64ea939fe5033fbe`; the github-workflows and
+  `e1cb10f0f4f0fefc85718d6be0a6230b49341bf4`; the github-workflows and
   org-default pins remain `f34893a3b67e5c17e59ca1413e92077833fdc571` and
   `fe48c2f5f9582e8344dbbc5c1ae7730268491daf`.
 - The documentation floor is execution-closed: selection validation, audit,
@@ -34,10 +34,12 @@ it does not replace those providers as the source of their content.
 - Agent lifecycle onboarding includes receipt-bound explicit `--carry` inputs,
   including deletion-only changes, fail-closed cross-boundary rename handling,
   rejection of divergent index/worktree versions, and preservation with
-  recovery details when a source changes or is recreated during startup. It
-  stages and structurally verifies directory copies before restoring their
-  modes and promoting them over a backed-up destination. It also installs the supported
-  `npm run pr:contract -- --body-file <path>` wrapper.
+  recovery details when a source changes or is recreated during startup.
+  Directory copies are staged and verified before promotion, and task copies
+  are isolated from source hard links. Cleanup restores captured POSIX
+  source-directory modes and streams tracked path sets without Windows argv
+  expansion. Tracked cleanup rejects Git older than 2.25 before source transfer.
+  It also installs the supported `npm run pr:contract -- --body-file <path>` wrapper.
 - Generated repositories receive a deterministic LF text policy with explicit
   CRLF exceptions for Windows-native command files. Existing repo-specific
   `.gitattributes` files remain decisionable rather than being overwritten.

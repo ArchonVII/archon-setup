@@ -67,6 +67,9 @@ test("global update catalog records the agent startup baseline", () => {
   assert.ok(record.source.includes("ArchonVII/repo-template PR #193"));
   assert.ok(record.source.includes("ArchonVII/repo-template PR #210"));
   assert.ok(record.source.includes("ArchonVII/repo-template PR #212"));
+  assert.ok(record.source.includes("ArchonVII/repo-template PR #214"));
+  assert.match(record.distribution.body, /Git 2\.25/i);
+  assert.match(record.distribution.body, /hard links/i);
   assert.match(record.distribution.body, /Directory copies are staged and verified before promotion/i);
   assert.match(record.distribution.body, /divergent index\/worktree versions are rejected/i);
   assert.match(record.distribution.body, /detected changes or recreations fail without overwriting/i);

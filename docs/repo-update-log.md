@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-07-21 - Final verified-carry safety provider refresh
+
+- **Issue/PR:** #393 / #394
+- **Branch:** agent/codex/393-task-refresh-final-carry-safety-provider
+- **Changed paths:** `src/snapshots/manifest.json`, `src/snapshots/repo-template/{scripts/agent/carry.mjs,test/agent/carry.test.mjs}`, `scripts/agent/carry.mjs`, `src/server/globalUpdates.mjs`, `test/globalUpdates.test.mjs`, `README.md`, `docs/{CANON,CURRENT_WORK,ecosystem-overview,ecosystem-status,repo-update-log}.md`, `.changelog/unreleased/393-final-carry-safety-provider-refresh.md`
+- **What changed:** Refreshed only the repo-template snapshot from `e413928c0d029b8d6f0d718b64ea939fe5033fbe` through reviewed PR #214 to exact merge SHA `e1cb10f0f4f0fefc85718d6be0a6230b49341bf4` and self-applied the managed carry implementation. Task copies now remain independent of source hard links; cleanup restores captured POSIX source-directory modes, streams large tracked path sets, refreshes filtered-checkout stat data, retains destination recovery evidence, and rejects Git older than 2.25 before source transfer.
+- **Verification:** `npm run snapshots:verify` passed for `githubWorkflows@f34893a` (18 files), `repoTemplate@e1cb10f` (135 files), and `orgDefaults@fe48c2f` (1 file); `npm run agent:self-apply -- --check` reported all eight tasks already done; provider, snapshot, and root carry files share SHA-256 `BA4F4DAC2AC0E26434117ABFBE3DAAAA3567C0A7AB090073CB3167B3C135107D`. Final focused, full-suite, and generated-doc evidence is recorded in PR #394; exact-head GitHub Codex review remains a required pre-merge gate there.
+- **Propagation:** completed in PR #394; the next consumer is existing Hudson Bend repair PR #383. Issue #370 remains paused and untouched; broader fleet distribution and review-gate policy remain out of scope.
+
 ## 2026-07-20 - Receipt-bound carry provider refresh
 
 - **Issue/PR:** #391 / #392
