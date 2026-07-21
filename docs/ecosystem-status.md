@@ -115,9 +115,9 @@ Owned by [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md) (active lanes + decision ga
 - **2026-07-21** — Final verified-carry safety fixes landed in repo-template
   [#214](https://github.com/ArchonVII/repo-template/pull/214) at exact merge SHA
   `e1cb10f0f4f0fefc85718d6be0a6230b49341bf4`. Archon Setup issue
-  [#393](https://github.com/ArchonVII/archon-setup/issues/393) / draft PR
-  [#394](https://github.com/ArchonVII/archon-setup/pull/394) refreshes only that
-  provider and self-applies it. The next authorized consumer remains existing
+  [#393](https://github.com/ArchonVII/archon-setup/issues/393) / PR
+  [#394](https://github.com/ArchonVII/archon-setup/pull/394) carries only that
+  provider and self-applies it. The next authorized consumer is the existing
   Hudson Bend repair PR #383; the paused #370 feature lane remains untouched.
 
 - **2026-07-20** — Follow-up provider fixes landed in repo-template

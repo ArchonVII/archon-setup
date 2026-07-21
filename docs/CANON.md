@@ -2,7 +2,7 @@
 summary: Ground truth for Archon Setup's integrator role, provider boundaries, generated-repo contract, and current repair state.
 status: CANON
 confidence: VERIFIED
-updated: 2026-07-20
+updated: 2026-07-21
 relates:
   - "[[INDEX]]"
 depends-on: []
