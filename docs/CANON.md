@@ -25,15 +25,17 @@ it does not replace those providers as the source of their content.
 ## Current state vs. intended — `CURRENT`
 
 - The repo-template snapshot is pinned at
-  `efeba25a0fcd27a4f365d3768bc5d4750d21cdd4`; the github-workflows and
+  `62cf1d01314d4ff555ac9fa878c4f9a7a2477b80`; the github-workflows and
   org-default pins remain `f34893a3b67e5c17e59ca1413e92077833fdc571` and
   `fe48c2f5f9582e8344dbbc5c1ae7730268491daf`.
 - The documentation floor is execution-closed: selection validation, audit,
   repair, package-script ownership, generated-consumer execution, and root
   self-apply describe the same installed runtime.
-- Agent lifecycle onboarding includes verified explicit `--carry` inputs,
-  including deletion-only changes and fail-closed cross-boundary rename
-  handling, and installs the supported
+- Agent lifecycle onboarding includes receipt-bound explicit `--carry` inputs,
+  including deletion-only changes, fail-closed cross-boundary rename handling,
+  rejection of divergent index/worktree versions, and preservation with
+  recovery details when a source changes or is recreated during startup. It
+  also installs the supported
   `npm run pr:contract -- --body-file <path>` wrapper.
 - Generated repositories receive a deterministic LF text policy with explicit
   CRLF exceptions for Windows-native command files. Existing repo-specific
@@ -41,9 +43,10 @@ it does not replace those providers as the source of their content.
 - Charter line budgets are advisory maintenance signals. Missing runtime,
   invalid ownership, stale generated blocks, and other doc-map contract failures
   remain blocking.
-- Hudson Bend is the authorized consumer follow-up. Its canonical checkout at
-  `C:\jill\hudson-bend` has been audited read-only; repair must land through its
-  own issue, worktree, and PR without touching the paused issue-370 lane.
+- Hudson Bend is the authorized consumer follow-up. Refresh the existing repair
+  PR #383 in its isolated repair worktree after this integrator baseline lands;
+  do not touch its canonical checkout at `C:\jill\hudson-bend` or the paused
+  issue-370 feature lane.
 
 ## Locked decisions — `CANON`
 
@@ -55,9 +58,11 @@ it does not replace those providers as the source of their content.
   installs `.agent/doc-map.yml` must also install its referenced imports,
   generator commands, caller inputs, and audit/repair ownership. Source: issue
   #383 and PR #386.
-- **2026-07-19 — dirty task inputs are explicit.** `--carry` accepts only named
-  in-repo task artifacts, verifies destination hashes, and cleans only verified
-  sources; unrelated dirt still blocks startup. Source: repo-template PR #193.
+- **2026-07-19 — dirty task inputs are explicit and receipt-bound.** `--carry`
+  accepts only named in-repo task artifacts, rejects ambiguous index/worktree
+  states, and cleans only verified sources that still match their captured
+  receipt; unrelated dirt still blocks startup. Sources: repo-template PRs #193
+  and #210.
 - **2026-07-19 — wrapper commands are real dependencies.** Policy may document
   an npm command only when the owning capability installs both its runtime file
   and package-script entry. Source: repo-template PR #197 and issue #385.
