@@ -18,6 +18,15 @@ repository-policy changes in `archon-setup`.
 - **Propagation:** none | pending <repo/path> | completed <repo/path>
 ```
 
+## 2026-07-20 - Receipt-bound carry provider refresh
+
+- **Issue/PR:** #391 / #392
+- **Branch:** agent/codex/391-refresh-durable-carry-provider-baseline
+- **Changed paths:** `src/snapshots/manifest.json`, `src/snapshots/repo-template/{AGENTS.md,scripts/agent/{carry,start-task}.mjs,test/agent/{carry,start-task}.test.mjs}`, `scripts/agent/{carry,start-task}.mjs`, `src/server/globalUpdates.mjs`, `test/{agentSelfApply,globalUpdates}.test.mjs`, `README.md`, `docs/{CANON,CURRENT_WORK,ecosystem-overview,ecosystem-status,repo-update-log}.md`, `.changelog/unreleased/391-durable-carry-provider-refresh.md`
+- **What changed:** Refreshed only the repo-template snapshot from `efeba25a0fcd27a4f365d3768bc5d4750d21cdd4` through reviewed PRs #210 and #212 to exact merge SHA `e413928c0d029b8d6f0d718b64ea939fe5033fbe`, self-applied the managed carry baseline, and strengthened the existing startup global-update contract and self-apply coverage. Cleanup remains bound to the verified filesystem and Git-index receipt; directory copies now use private structural verification, deepest-first mode restoration, and destination backup/promotion before the live copy is accepted.
+- **Verification:** The provider range contains exactly repo-template PRs #210 and #212. `node --test test/agentSelfApply.test.mjs test/writeAgentLifecycle.test.mjs test/refreshSnapshots.test.mjs test/agentLifecycleScripts.test.mjs test/globalUpdates.test.mjs` passed 53/53; the snapshot carry suite passed 31 with one POSIX-only skip on Windows and 32/32 under WSL/Linux; `npm test` passed 771 total / 769 passed / 2 skipped / 0 failed; `npm run snapshots:verify`, `npm run agent:self-apply -- --check`, `npm run update-ecosystem-overview -- --check`, `npm run docs:render -- --check`, and `git diff --check` passed. Doc health reported 0 blocking findings and 8 advisory warnings.
+- **Propagation:** pending merge of PR #392, then refresh of the existing Hudson Bend repair PR #383. Issue #370 remains paused and untouched; broader fleet distribution and repo-template PR #207 remain out of scope.
+
 ## 2026-07-20 - Post-review repair and provider refresh
 
 - **Issue/PR:** #389 / #390
@@ -25,7 +34,7 @@ repository-policy changes in `archon-setup`.
 - **Changed paths:** `src/server/onboard/auditPlan.mjs`, `test/docSystemExecution.test.mjs`, `src/snapshots/**`, `scripts/agent/{carry,lib,start-task}.mjs`, `.gitattributes`, `test/**`, `docs/**`, `.changelog/unreleased/389-post-review-provider-refresh.md`
 - **What changed:** Missing selected package-script entries now keep startup readiness incomplete even when unrelated agent scripts remain, while physical `package.json` absence remains distinguishable as missing. Documentation execution tests reject unmocked fetches, intercept the generated `docs:status` GitHub CLI calls with a deterministic process-local fixture, and use the existing offline gitignore fixture. The repo-template snapshot is pinned to `efeba25a0fcd27a4f365d3768bc5d4750d21cdd4`, root lifecycle copies are self-applied, and Archon Setup explicitly adopts the provider's deterministic fresh-checkout line-ending policy without changing the generic optional `.gitattributes` ownership contract.
 - **Verification:** Failing-first focused tests produced the expected readiness, missing-file, GitHub CLI, and identity-restoration failures; `node --test test/onboardAudit.test.mjs test/docSystemExecution.test.mjs` then passed 25/25. `node --test test/agentSelfApply.test.mjs test/foundationParity.test.mjs test/agentLifecycleScripts.test.mjs` passed 21/21, including 56/56 refreshed provider carry/EOL tests executed inside the snapshot. `npm run snapshots:verify` passed at `repoTemplate@efeba25` (135 files); `npm run agent:self-apply -- --check` and `npm run docs:render -- --check` passed; `npm test` passed 771 total / 769 passed / 2 skipped / 0 failed.
-- **Propagation:** pending the separately reviewed refresh of existing Hudson Bend PR #383; issue #370 remains paused and untouched. Existing clean checkouts still need the one-time recycle/rematerialization owned by the separate line-ending lane before the original workstation incident is fully closed.
+- **Propagation:** superseded before Hudson by issue #391 / PR #392 after receipt-bound carry cleanup landed in repo-template PR #210. Issue #370 remains paused and untouched. Existing clean checkouts still need the one-time recycle/rematerialization owned by the separate line-ending lane before the original workstation incident is fully closed.
 
 ## 2026-07-20 - Selection-aware Agent Start Map audit
 

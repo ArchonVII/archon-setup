@@ -116,13 +116,19 @@ Owned by [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md) (active lanes + decision ga
   [#203](https://github.com/ArchonVII/repo-template/pull/203) (deletion-only
   carry and cross-boundary rename safety) and
   [#205](https://github.com/ArchonVII/repo-template/pull/205) (deterministic
-  cross-platform line endings). Archon Setup issue
-  [#389](https://github.com/ArchonVII/archon-setup/issues/389) / draft PR
-  [#390](https://github.com/ArchonVII/archon-setup/pull/390) repairs the two
-  delayed #386 review findings and refreshes the repo-template snapshot once to
-  exact merge SHA `efeba25a0fcd27a4f365d3768bc5d4750d21cdd4`. The next authorized
-  consumer is the existing Hudson Bend repair PR #383; the paused #370 feature
-  lane remains untouched.
+  cross-platform line endings). Archon Setup PR
+  [#390](https://github.com/ArchonVII/archon-setup/pull/390) then repaired the
+  two delayed #386 review findings and refreshed their provider baseline.
+  Receipt-bound carry cleanup landed separately in repo-template
+  [#210](https://github.com/ArchonVII/repo-template/pull/210), followed by
+  [#212](https://github.com/ArchonVII/repo-template/pull/212) for verified
+  staged directory-mode preservation; Archon Setup issue
+  [#391](https://github.com/ArchonVII/archon-setup/issues/391) / PR
+  [#392](https://github.com/ArchonVII/archon-setup/pull/392) refreshes only that
+  reviewed provider chain to exact merge SHA
+  `e413928c0d029b8d6f0d718b64ea939fe5033fbe`. The next authorized consumer is
+  the existing Hudson Bend repair PR #383; the paused #370 feature lane remains
+  untouched.
 
 - **2026-07-19** — The repo-template provider chain landed verified explicit
   task-input carry ([#193](https://github.com/ArchonVII/repo-template/pull/193)),
