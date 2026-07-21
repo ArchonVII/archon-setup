@@ -121,7 +121,7 @@ Owned by [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md) (active lanes + decision ga
   two delayed #386 review findings and refreshed their provider baseline.
   Receipt-bound carry cleanup landed separately in repo-template
   [#210](https://github.com/ArchonVII/repo-template/pull/210); Archon Setup issue
-  [#391](https://github.com/ArchonVII/archon-setup/issues/391) / draft PR
+  [#391](https://github.com/ArchonVII/archon-setup/issues/391) / PR
   [#392](https://github.com/ArchonVII/archon-setup/pull/392) refreshes only that
   reviewed delta to exact merge SHA
   `62cf1d01314d4ff555ac9fa878c4f9a7a2477b80`. The next authorized consumer is
