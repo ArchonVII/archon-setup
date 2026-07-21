@@ -343,8 +343,9 @@ Existing agent-facing capabilities:
   inputs in the new lane, then cleans only sources whose filesystem and Git-index
   state still match the captured receipt. Divergent staged/unstaged versions are
   rejected, changed or recreated sources are preserved with recovery details,
-  and unrelated dirt still blocks startup. Do not edit either checkout until
-  `agent:start-task` returns.
+  and directory copies are privately staged and verified before their modes and
+  destination are promoted. Unrelated dirt still blocks startup. Do not edit
+  either checkout until `agent:start-task` returns.
 - **Repo update log archive** - generated repos receive the frozen
   `docs/repo-update-log.md` archive for compatibility; the former per-PR fragment
   workflow is retired and its feature identifier resolves as a disabled no-op.
@@ -535,7 +536,7 @@ Current recorded global fixes include:
   baseline contract. Its managed body cites `foundation.agents` and
   `agent-lifecycle.baseline` instead of copying a fixed path inventory, and
   defines receipt-bound, fail-closed `--carry` behavior for explicit dirty task
-  inputs.
+  inputs, including verified directory-mode-preserving promotion.
 - `2026-06-10-plan-status-closeout` - records that agents must close, narrow,
   or supersede lane-created or lane-used plan/status artifacts before PR
   ready/merge.

@@ -120,11 +120,13 @@ Owned by [`docs/CURRENT_WORK.md`](./CURRENT_WORK.md) (active lanes + decision ga
   [#390](https://github.com/ArchonVII/archon-setup/pull/390) then repaired the
   two delayed #386 review findings and refreshed their provider baseline.
   Receipt-bound carry cleanup landed separately in repo-template
-  [#210](https://github.com/ArchonVII/repo-template/pull/210); Archon Setup issue
+  [#210](https://github.com/ArchonVII/repo-template/pull/210), followed by
+  [#212](https://github.com/ArchonVII/repo-template/pull/212) for verified
+  staged directory-mode preservation; Archon Setup issue
   [#391](https://github.com/ArchonVII/archon-setup/issues/391) / PR
   [#392](https://github.com/ArchonVII/archon-setup/pull/392) refreshes only that
-  reviewed delta to exact merge SHA
-  `62cf1d01314d4ff555ac9fa878c4f9a7a2477b80`. The next authorized consumer is
+  reviewed provider chain to exact merge SHA
+  `e413928c0d029b8d6f0d718b64ea939fe5033fbe`. The next authorized consumer is
   the existing Hudson Bend repair PR #383; the paused #370 feature lane remains
   untouched.
 

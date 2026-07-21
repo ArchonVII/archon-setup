@@ -25,7 +25,7 @@ it does not replace those providers as the source of their content.
 ## Current state vs. intended — `CURRENT`
 
 - The repo-template snapshot is pinned at
-  `62cf1d01314d4ff555ac9fa878c4f9a7a2477b80`; the github-workflows and
+  `e413928c0d029b8d6f0d718b64ea939fe5033fbe`; the github-workflows and
   org-default pins remain `f34893a3b67e5c17e59ca1413e92077833fdc571` and
   `fe48c2f5f9582e8344dbbc5c1ae7730268491daf`.
 - The documentation floor is execution-closed: selection validation, audit,
@@ -35,7 +35,8 @@ it does not replace those providers as the source of their content.
   including deletion-only changes, fail-closed cross-boundary rename handling,
   rejection of divergent index/worktree versions, and preservation with
   recovery details when a source changes or is recreated during startup. It
-  also installs the supported
+  stages and structurally verifies directory copies before restoring their
+  modes and promoting them over a backed-up destination. It also installs the supported
   `npm run pr:contract -- --body-file <path>` wrapper.
 - Generated repositories receive a deterministic LF text policy with explicit
   CRLF exceptions for Windows-native command files. Existing repo-specific
@@ -61,8 +62,9 @@ it does not replace those providers as the source of their content.
 - **2026-07-19 — dirty task inputs are explicit and receipt-bound.** `--carry`
   accepts only named in-repo task artifacts, rejects ambiguous index/worktree
   states, and cleans only verified sources that still match their captured
-  receipt; unrelated dirt still blocks startup. Sources: repo-template PRs #193
-  and #210.
+  receipt; directory copies preserve captured modes through verified private
+  staging and destination backup/promotion; unrelated dirt still blocks
+  startup. Sources: repo-template PRs #193, #210, and #212.
 - **2026-07-19 — wrapper commands are real dependencies.** Policy may document
   an npm command only when the owning capability installs both its runtime file
   and package-script entry. Source: repo-template PR #197 and issue #385.
