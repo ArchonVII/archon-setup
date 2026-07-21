@@ -129,12 +129,13 @@ const GLOBAL_UPDATES = [
     status: "ready",
     title: "Selection-derived agent startup baseline",
     summary:
-      "Records the first-stop map, selection-derived startup requirements, and verified carry of explicit task inputs into a clean worktree.",
+      "Records the first-stop map, selection-derived startup requirements, and receipt-bound carry of explicit task inputs into a clean worktree.",
     source: [
       "ArchonVII/repo-template AGENTS.md",
       "ArchonVII/repo-template .agent/startup-baseline.json",
       "ArchonVII/repo-template scripts/agent/status.mjs",
       "ArchonVII/repo-template PR #193",
+      "ArchonVII/repo-template PR #210",
       "ArchonVII/archon-setup src/registry/features.json",
       "ArchonVII/archon-setup issues #352 and #354",
     ],
@@ -154,7 +155,7 @@ const GLOBAL_UPDATES = [
         "- Start with the repo-local `AGENTS.md` and `npm run agent:status` before searching for process paths.",
         "- The startup baseline is derived from the selected `foundation.agents` and `agent-lifecycle.baseline` capability manifest entries. Do not replace it with a fixed cross-repository path list.",
         "- Startup readiness audits the selected managed files; a directory existing by itself is not enough.",
-        "- Use `npm run agent:start-task -- <issue> --carry <path...>` only for explicit in-repo task inputs. Every dirty path must be explicitly covered; destinations are verified before only the named sources are cleaned, and unrelated dirt still blocks startup.",
+        "- Use `npm run agent:start-task -- <issue> --carry <path...>` only for explicit in-repo task inputs. Every dirty path must be explicitly covered; cleanup is bound to the verified filesystem and Git-index state. Divergent index/worktree versions are rejected, detected changes or recreations fail without overwriting them and report recovery locations, and unrelated dirt still blocks startup. Do not edit either checkout until `agent:start-task` returns.",
         "- Active implementation plans belong in `docs/plans/YYYY-MM-DD-<slug>.md`; `docs/superpowers/plans/` is legacy/history only unless repo-local guidance says otherwise.",
         "- If startup files are missing, stale, misplaced, or unclear, stop searching and run the full startup/process audit:",
         "",

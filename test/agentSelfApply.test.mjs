@@ -18,6 +18,7 @@ const BASELINE_FILES = [
   ".github/workflows/anomaly-triage.yml",
   "docs/agent-process/document-policy.md",
   "docs/agent-process/message-protocol.md",
+  "scripts/agent/carry.mjs",
   "scripts/agent/lib.mjs",
   "scripts/agent/start-task.mjs",
   "scripts/agent/status.mjs",
