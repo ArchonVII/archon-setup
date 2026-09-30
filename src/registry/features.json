@@ -363,6 +363,7 @@
     "label": "Active coordination (board + live claims)",
     "group": "agent-workflow",
     "default": false,
+    "requires": ["foundation.coordination"],
     "creates": [".agent/coordination/board.md", ".agent/coordination/claims/.gitkeep"],
     "installs": [
       { "path": ".agent/coordination/board.md", "source": "repo-template:.agent/coordination/board.md", "kind": "file", "contract": "optional" },

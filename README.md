@@ -526,6 +526,11 @@ auto-merge lane.
 
 Current recorded global fixes include:
 
+- `2026-09-30-session-file-claims` - reserves files only during active editing,
+  releases claims at session boundaries, and caps renewable leases at 24 hours.
+  Expiry releases a reservation without authorizing changes to unfinished work.
+  Selecting the optional coordination board also installs its canonical
+  coordination contract, so the board's claim-lifetime link always resolves.
 - `2026-05-31-browser-backend-preflight` - separates Browser plugin availability
   from live browser backend availability and requires browser preflight.
 - `2026-05-31-strict-pr-ready-contract` - forbids direct `gh pr ready` and
