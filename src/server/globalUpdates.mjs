@@ -12,6 +12,32 @@ const PLAN_STATUS_CLOSEOUT_UPDATE_ID = "2026-06-10-plan-status-closeout";
 
 const GLOBAL_UPDATES = [
   {
+    id: "2026-09-30-session-file-claims",
+    date: "2026-09-30",
+    status: "ready",
+    title: "Session-scoped file claims",
+    summary: "Limit file reservations to active editing with a maximum 24-hour renewable lease; preserve unfinished work when reservations expire.",
+    source: ["ArchonVII/repo-template PR #226", "ArchonVII/pigafetta PR #1919", "ArchonVII/comfyui-companion PR #387"],
+    agentInstruction: "Release claims whenever editing stops; inspect and prune expired reservations before escalating a conflict. Do not infer liveness from an open PR or retained worktree.",
+    confirmationPhrase: "DISTRIBUTE 2026-09-30-session-file-claims",
+    distribution: {
+      kind: "agents-managed-block",
+      capabilityIds: ["foundation.agents"],
+      targetPath: "AGENTS.md",
+      protectedBranches: ["main", "master"],
+      heading: "File Claim Lifetime",
+      body: [
+        "## File Claim Lifetime",
+        "",
+        "- Claims reserve files only during active editing. Release before pause, bookmark, handoff or session end, and reacquire before resumed edits.",
+        "- Claims have a maximum 24-hour lease; renew only while working. Timestamped legacy claims expire 24 hours after their last claim or renewal; undated claims are unverified, never perpetual ownership.",
+        "- Inspect and prune expired reservations with the repo claim tool before reporting a conflict. No owner confirmation is needed solely to release an expired reservation.",
+        "- An open PR, retained worktree or dirty files alone do not establish a live competing writer. Coordinate before overlapping edits when a writer is demonstrably live or liveness remains unresolved.",
+        "- Expiry never authorizes deleting, resetting, committing or overwriting the former owner's work. Artifact recovery keeps its separate conservative safety checks.",
+      ].join("\n"),
+    },
+  },
+  {
     id: BROWSER_BACKEND_UPDATE_ID,
     date: "2026-05-31",
     status: "ready",

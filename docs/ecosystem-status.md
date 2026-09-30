@@ -51,6 +51,38 @@ Notes:
 
 ## Ecosystem Fix Queue
 
+### Session claim rollout — 2026-09-30 (#397)
+
+The owner authorized the cross-repository repair and delivery. File reservations
+now last only while editing, with a maximum renewable lease of 24 hours. An old
+PR/worktree is not evidence of a live writer. Expiry never authorizes modifying
+unfinished work or relaxing artifact-recovery checks.
+
+- Global Codex, Claude and Gemini instructions are installed on the owner's machine.
+- Provider repo-template#226 is merged at `51d8b86`; this lane refreshes that
+  provider snapshot and self-applies through the supported installer. Previously
+  landed provider doc-policy/close-scan simplifications accompany the snapshot;
+  the obsolete local full-suite test is replaced with required-CI boundary coverage.
+- Native enforcement is merged in pigafetta#1919 and comfyui-companion#387.
+  Pigafetta docs/backlog cleanup is merged in #1917.
+- The initial distributor run recorded nine `protected-main` skips and zero
+  failures. Dedicated PRs below replace direct primary-checkout writes.
+
+| Repository | Distribution result |
+| --- | --- |
+| pigafetta | Applied by #1919; primary checkout updated. |
+| comfyui-companion | Applied by #387; primary checkout updated. |
+| repo-template | Applied by #226; future templates inherit the coordination contract. |
+| archon-setup | Catalog, snapshot and local AGENTS update in #397's lane. |
+| archon | Policy PR #278. |
+| github-workflows | Policy PR #124. No reusable workflow body or release tag change. |
+| jma-history | Policy PR #455. |
+| jma-skill-review | Policy PR #235. |
+| hudson-bend | Policy PR #601; independent policy review found no substantive issues. |
+| .github | Skipped: no AGENTS.md or native claim tool; org-default templates are unaffected. Machine-global policy still applies. |
+
+The remaining delivery state is tracked in issue #397 and its linked PRs.
+
 Use this queue for small source-of-truth fixes that should be reviewed together
 before the next `archon-setup` snapshot refresh. It is a curated coordinator
 view, not a replacement for GitHub issues or provider PRs.
