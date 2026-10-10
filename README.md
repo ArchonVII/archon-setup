@@ -526,6 +526,13 @@ auto-merge lane.
 
 Current recorded global fixes include:
 
+- `2026-10-10-durable-handoffs` - writes handoffs only after relevant work and
+  results settle, keeps plans and handoffs in canonical project homes, and routes
+  each worktree scope to its authoritative branch/revision through existing status
+  surfaces. Share/localhost is viewing transport with source provenance. The owner
+  explicitly authorized ecosystem-wide application on October 10; rollout results
+  belong to this project's durable records, not just the machine-local run log.
+
 - `2026-09-30-session-file-claims` - reserves files only during active editing,
   releases claims at session boundaries, and caps renewable leases at 24 hours.
   Expiry releases a reservation without authorizing changes to unfinished work.

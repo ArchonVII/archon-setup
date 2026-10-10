@@ -51,6 +51,28 @@ Notes:
 
 ## Ecosystem Fix Queue
 
+### Durable handoff rollout — 2026-10-10
+
+The owner explicitly authorized applying the settled handoff and durable plan rules
+to all repositories. Provider work is tracked in
+https://github.com/ArchonVII/repo-template/issues/228 and distribution in
+https://github.com/ArchonVII/archon-setup/issues/399. Global Codex/Claude/Gemini
+instructions are already installed on the owner's machine; tracked repository
+delivery remains separate. Current rollout state is owned by `docs/CURRENT_WORK.md`
+and the linked distribution issue, not this historical/process record.
+
+Apply provider-first through normal review and snapshot refresh, then update each
+repository in its own clean lane. Preserve existing canonical document homes and
+status entry points. Reconcile local contradictions instead of adding parallel
+status ledgers; do not edit another agent's active worktree or live handoff.
+
+The repository inventory on October 10 found 164 GitHub repositories: 47 with root
+agent policy, 107 without it, six archived and four empty. These are policy coverage
+categories, not application results or a declaration that old worktrees are active.
+Archived/empty repositories cannot receive ordinary PR delivery; keep explicit
+skip reasons. COI Lab is an explicit consumer despite lacking root policy on its
+default `foundation` branch. The local health registry alone cannot define coverage.
+
 ### Session claim rollout — 2026-09-30 (#397)
 
 The owner authorized the cross-repository repair and delivery. File reservations

@@ -1,5 +1,16 @@
 # AGENTS.md
 
+<!-- BEGIN ARCHONVII GLOBAL UPDATE: 2026-10-10-durable-handoffs -->
+## Durable Handoffs And Plans
+
+- Do not draft, write or publish a cross-session handoff until relevant changes, owner input, agent/tool results and calls have landed. Let authorized operations finish or reach an authorized clean stop; never interrupt them to produce a handoff. Preserve outputs and reconcile failures or uncertain external results/charges before writing; do not rerun an operation to make the record look complete.
+- Immediately before writing, verify the settled revision, file state, outstanding questions and process/call state. Unfinished tasks and unmerged PRs may remain, but no operation may still be changing the checkpoint being reported.
+- Store handoffs and plans in the owning project's canonical locations through its normal version-control and delivery policy. Use an explicitly identified durable project home for work without a repository; do not collect unrelated projects' records in a machine-global folder.
+- `C:\Users\josep\share` and localhost URLs are viewing/transport copies, never the authoritative or sole durable record. Identify the canonical repository/path and checkpoint revision in the viewing copy. Give the owner a clickable pushed GitHub record or localhost viewing link.
+- With multiple worktrees, use the existing project coordination/status entry point to identify the authoritative handoff for each scope, including branch and revision. A lane handoff describes only its lane, not project-wide current state. Identify replacements and rewrite active records to remove superseded next steps instead of appending contradictory histories. Before resuming, verify the referenced revision and current lane issue/PR status.
+- A handoff identifies scope/checkpoint, canonical sources, completed work with evidence, remaining work/blockers, unresolved owner questions and the next safe action with its constraints. Separate observations from assumptions; Git preserves historical instructions.
+<!-- END ARCHONVII GLOBAL UPDATE: 2026-10-10-durable-handoffs -->
+
 Cross-tool contract for AI agents (Claude, Codex, Copilot, Gemini, etc.) working in this repo.
 
 > Per-tool addenda live in `CLAUDE.md`, `GEMINI.md` etc. when they exist. This file holds the rules every agent must follow.
